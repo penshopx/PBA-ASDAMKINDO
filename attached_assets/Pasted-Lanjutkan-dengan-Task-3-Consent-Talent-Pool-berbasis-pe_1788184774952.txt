@@ -1,0 +1,36 @@
+Lanjutkan dengan **Task #3: Consent Talent Pool berbasis perusahaan dan masa berlaku**, karena ini harus beres sebelum matching. Kirim ke Replit:
+
+```text
+Lanjutkan Task #3 dengan fokus pada consent Talent Pool yang aman dan granular.
+
+Implementasikan:
+1. Consent berlaku per perusahaan, bukan global.
+2. Anggota dapat melihat perusahaan yang meminta atau memiliki akses.
+3. Anggota dapat memberikan consent kepada perusahaan tertentu.
+4. Anggota dapat mencabut consent per perusahaan.
+5. Consent memiliki expiresAt dan dapat dikonfigurasi Admin.
+6. Consent kedaluwarsa otomatis dan tidak boleh muncul di query Company.
+7. Company hanya dapat melihat kandidat dengan consent aktif, belum kedaluwarsa, dan sesuai scope perusahaan tersebut.
+8. Admin dapat melihat, memfilter, dan mencabut consent jika diperlukan.
+9. Simpan consentGrantedAt, revokedAt, expiresAt, consentVersion, grantedBy, revokedBy.
+10. Catat semua grant, revoke, expire, dan admin override di audit log.
+
+Pertahankan keamanan yang sudah lulus:
+- Company tidak boleh menerima email, telepon, memberUserId, clerkUserId, atau data consent internal.
+- Passport publik tetap terpisah dari consent perusahaan.
+- Jangan implementasikan matching, shortlist, invite, atau contact action dulu.
+- Gunakan migration database yang aman dan update OpenAPI/codegen bila diperlukan.
+- Optimalkan query dengan filter database dan pagination, jangan filter setelah seluruh record diambil.
+
+Validasi wajib:
+1. Dua perusahaan memiliki consent berbeda untuk anggota yang sama.
+2. Revoke di Company A tidak memengaruhi Company B.
+3. Consent expired tidak muncul di Company.
+4. Company tidak dapat mengakses data perusahaan lain.
+5. Admin tetap dapat melihat seluruh status consent.
+6. Member hanya dapat mengelola consent miliknya sendiri.
+7. Audit log lengkap.
+8. Jalankan typecheck, migration, browser test tiga role, security test, dan git diff --check.
+
+Jangan lanjut ke matching sebelum semua validasi di atas lulus. Laporkan file berubah, migration, skenario uji, dan risiko tersisa.
+```
