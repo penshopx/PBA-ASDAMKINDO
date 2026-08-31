@@ -1,6 +1,6 @@
-# [Project name]
+# PBA ASDAMKINDO
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Platform pengembangan bisnis, kompetensi, dan karier tenaga konstruksi untuk anggota, perusahaan, dan tim operasional PBA.
 
 ## Run & Operate
 
@@ -22,23 +22,34 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/pba-asdamkindo` — aplikasi web utama, routing, dan design system frontend.
+- `artifacts/api-server` — REST API Express pada path `/api`.
+- `lib/api-spec/openapi.yaml` — kontrak API sumber tunggal.
+- `lib/db/src/schema` — schema PostgreSQL/Drizzle.
+- `attached_assets` — dokumen referensi master prompt produk.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Fase pertama memakai Clerk Auth terkelola Replit; browser menggunakan session cookie same-origin.
+- API dikembangkan contract-first lewat OpenAPI lalu codegen ke client React Query dan schema Zod.
+- Data program publik disimpan di PostgreSQL; data pengguna dibuat saat pertama kali session Clerk mengakses API.
+- Role onboarding perusahaan mengubah akun dari role awal `member` menjadi `company` setelah form lengkap.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Fase Foundation menyediakan landing page publik, autentikasi, onboarding, dashboard awal per role, katalog program, serta notifikasi in-app. Modul perjalanan anggota, Talent Pool, matching, dan pipeline akan dibangun setelah fondasi stabil.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Seluruh antarmuka menggunakan Bahasa Indonesia.
+- Format mata uang Rupiah dan konteks tanggal Indonesia/Asia Jakarta.
+- Gunakan data fiktif; jangan menampilkan klaim kelulusan, sertifikasi, atau jaminan kerja.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Setelah mengubah `lib/api-spec/openapi.yaml`, jalankan `pnpm --filter @workspace/api-spec run codegen`.
+- Schema database memakai `zod/v4` agar cocok dengan `drizzle-zod` pada workspace ini.
+- Restart workflow managed setelah mengubah konfigurasi server atau frontend.
 
 ## Pointers
 

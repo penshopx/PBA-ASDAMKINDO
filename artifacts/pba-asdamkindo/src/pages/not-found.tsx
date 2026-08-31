@@ -1,0 +1,7 @@
+import { ArrowLeft, Compass, TriangleAlert } from 'lucide-react';
+import { Link } from 'wouter';
+import { Brand } from '@/components/brand';
+
+export default function NotFound() {
+  return <div className="grid min-h-[100dvh] place-items-center bg-background px-5"><div className="w-full max-w-lg text-center"><Brand /><div className="mx-auto mt-20 grid h-16 w-16 place-items-center rounded-2xl bg-primary/15 text-accent"><TriangleAlert size={28} /></div><p className="eyebrow mt-7 text-accent">404 / halaman tidak ditemukan</p><h1 className="display-font mt-3 text-5xl font-semibold">Rute ini belum dibangun.</h1><p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">Halaman yang Anda cari mungkin dipindahkan, atau alamatnya belum tepat.</p><div className="mt-8 flex justify-center gap-3"><Link href="/" className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-bold" data-testid="link-404-home"><ArrowLeft size={16} /> Beranda</Link><Link href="/programs" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground" data-testid="link-404-programs"><Compass size={16} /> Jelajahi program</Link></div></div></div>;
+}

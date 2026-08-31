@@ -1,0 +1,1140 @@
+Bisa. Tempel **master prompt** berikut ke Replit Agent. Saya sengaja membatasi versi pertama pada **Minimum Commercial Platform**, bukan ERP raksasa, supaya peluang aplikasinya benar-benar selesai dan bisa segera diuji ke pengguna.
+
+```text
+Saya ingin membangun aplikasi web full-stack bernama:
+
+PBA ASDAMKINDO
+Platform Pengembangan Bisnis, Kompetensi, dan Karier Tenaga Konstruksi
+
+KONTEKS PENGGUNA
+
+Saya adalah pengguna non-teknis dan tidak bisa coding. Karena itu:
+
+1. Kerjakan aplikasi secara bertahap.
+2. Jangan meminta saya menulis atau memperbaiki kode.
+3. Jika ada keputusan teknis, pilih solusi yang paling sederhana, stabil, aman, dan mudah dipelihara.
+4. Jelaskan progres menggunakan bahasa Indonesia yang sederhana.
+5. Sebelum mengubah struktur database secara besar, jelaskan dampaknya.
+6. Jangan membangun fitur di luar ruang lingkup MVP ini.
+7. Pastikan aplikasi dapat dijalankan dan diuji langsung di Replit.
+8. Jangan hanya membuat mockup statis. Semua fungsi inti harus terhubung ke database dan dapat digunakan.
+9. Gunakan data contoh realistis agar aplikasi bisa langsung didemonstrasikan.
+10. Setelah setiap tahap, uji aplikasi dan perbaiki error sebelum melanjutkan.
+
+TUJUAN BISNIS
+
+PBA ASDAMKINDO adalah platform yang mendampingi perjalanan tenaga konstruksi:
+
+Registrasi
+→ Pemetaan profil dan kompetensi
+→ Diagnostik kesiapan
+→ Bimtek dan pembelajaran
+→ Pendampingan persiapan SKK
+→ Professional Passport
+→ Talent Pool
+→ Pencocokan pekerjaan
+→ Penempatan
+→ PKB dan peningkatan jenjang
+
+Aplikasi juga membantu perusahaan:
+
+Mendaftarkan perusahaan
+→ Membuat kebutuhan tenaga
+→ Menentukan kompetensi yang dibutuhkan
+→ Menerima kandidat yang cocok
+→ Melakukan shortlist
+→ Memantau proses rekrutmen dan penempatan
+
+POSISI SISTEM
+
+Aplikasi ini adalah versi awal SIMASDA sebagai:
+
+1. System of Record untuk profil anggota.
+2. Pusat data SKK, KTA, pelatihan, pengalaman, dan dokumen.
+3. Pusat transaksi layanan PBA.
+4. CRM peserta dan perusahaan.
+5. Talent Pool tenaga konstruksi.
+6. Mesin pencocokan kandidat dengan kebutuhan perusahaan.
+7. Pusat integrasi dengan platform pembelajaran Gustafta.
+
+Gustafta adalah Learning Intelligence Engine untuk:
+
+1. Diagnostik kompetensi.
+2. AI Tutor.
+3. Learning path.
+4. Latihan dan simulasi.
+5. Pendampingan portofolio.
+6. Progress tracking.
+7. Readiness score.
+
+Untuk MVP, integrasi Gustafta dibuat sebagai integration-ready mock service. Jangan mengarang endpoint API produksi. Buat adapter/service khusus agar nanti dapat dihubungkan dengan API resmi tanpa mengubah bagian lain aplikasi.
+
+PRINSIP PRODUK
+
+1. SIMASDA tetap menjadi pemilik master data pengguna dan transaksi.
+2. Gustafta hanya menerima data minimum yang dibutuhkan untuk pembelajaran.
+3. Data anggota tidak boleh dijual sebagai database mentah.
+4. Perusahaan hanya melihat kandidat yang memberikan persetujuan masuk Talent Pool.
+5. Bimtek tidak boleh menjanjikan kelulusan uji kompetensi.
+6. Readiness score bukan keputusan resmi kompeten atau tidak kompeten.
+7. Aplikasi harus mencatat persetujuan penggunaan data dan aktivitas penting.
+8. Bangun sistem modular agar integrasi dapat diganti pada masa depan.
+
+STACK TEKNOLOGI
+
+Gunakan stack yang stabil dan cocok untuk Replit:
+
+1. Frontend: React dan TypeScript.
+2. Backend: Node.js dan TypeScript.
+3. Database: PostgreSQL.
+4. ORM: pilih ORM stabil yang didukung baik di Replit.
+5. Authentication: gunakan solusi autentikasi yang paling stabil tersedia di Replit.
+6. Password tidak boleh disimpan sebagai plain text.
+7. Gunakan environment variables untuk semua secret.
+8. Gunakan REST API yang terstruktur.
+9. Buat validasi input pada frontend dan backend.
+10. Buat database migration dan seed data.
+11. Gunakan arsitektur sederhana, modular, dan terdokumentasi.
+
+Gunakan satu repository full-stack. Jangan membuat microservices.
+
+BAHASA DAN FORMAT
+
+1. Seluruh antarmuka menggunakan Bahasa Indonesia.
+2. Mata uang menggunakan Rupiah.
+3. Format tanggal Indonesia.
+4. Zona waktu default Asia/Jakarta.
+5. Aplikasi harus responsif untuk desktop dan ponsel.
+6. Gunakan terminologi:
+   - Anggota
+   - Perusahaan
+   - Program
+   - Bimtek
+   - Kompetensi
+   - SKK
+   - KTA
+   - Talent Pool
+   - Kebutuhan Tenaga
+   - Kandidat
+   - Shortlist
+   - Penempatan
+   - Professional Passport
+
+DESAIN ANTARMUKA
+
+Buat desain profesional, ringan, modern, dan dipercaya oleh industri konstruksi.
+
+Gunakan:
+
+1. Light mode.
+2. Warna netral hangat dengan aksen hijau tua atau hijau mineral.
+3. Hindari tampilan biru generik seperti aplikasi SaaS biasa.
+4. Hindari gradient berlebihan, glassmorphism, dan kartu bertumpuk.
+5. Gunakan tipografi yang bersih dan mudah dibaca.
+6. Navigasi sederhana dengan hierarki jelas.
+7. Minimum ukuran sentuh 44px pada ponsel.
+8. Sediakan state loading, kosong, error, dan sukses.
+9. Gunakan tabel hanya untuk data operasional yang memang membutuhkan tabel.
+10. Dashboard harus membantu pengguna mengambil tindakan, bukan sekadar menampilkan angka.
+
+ROLE PENGGUNA MVP
+
+Buat empat role:
+
+1. Anggota
+2. Perusahaan
+3. Admin PBA
+4. Super Admin
+
+HAK AKSES
+
+ANGGOTA dapat:
+
+1. Mengelola profil.
+2. Mengisi pengalaman kerja dan proyek.
+3. Menambahkan kompetensi.
+4. Mencatat riwayat SKK dan KTA.
+5. Mengunggah dokumen.
+6. Mengikuti diagnostik.
+7. Melihat readiness score.
+8. Mendaftar program Bimtek.
+9. Melihat progres belajar.
+10. Membuat Professional Passport.
+11. Memberikan atau mencabut persetujuan Talent Pool.
+12. Melihat rekomendasi peluang kerja.
+13. Menyatakan minat terhadap kebutuhan tenaga.
+14. Melihat status proses rekrutmen.
+
+PERUSAHAAN dapat:
+
+1. Membuat dan mengelola profil perusahaan.
+2. Membuat kebutuhan tenaga.
+3. Menentukan jabatan, jenjang, pengalaman, lokasi, dan jadwal.
+4. Melihat kandidat hasil pencocokan.
+5. Menambahkan kandidat ke shortlist.
+6. Mengubah status kandidat.
+7. Memberikan catatan internal.
+8. Melihat ringkasan kebutuhan tenaga.
+9. Melihat status kebutuhan aktif dan selesai.
+
+Perusahaan tidak boleh:
+
+1. Mengunduh seluruh database anggota.
+2. Melihat anggota yang tidak memberikan consent.
+3. Melihat data sensitif anggota sebelum tahap yang diizinkan.
+4. Mengakses data perusahaan lain.
+
+ADMIN PBA dapat:
+
+1. Mengelola anggota.
+2. Mengelola perusahaan.
+3. Mengelola katalog program.
+4. Mengelola pendaftaran peserta.
+5. Memantau progres diagnostik dan pembelajaran.
+6. Memverifikasi profil anggota.
+7. Memverifikasi SKK, KTA, dan dokumen.
+8. Mengelola kebutuhan tenaga.
+9. Menjalankan pencocokan kandidat.
+10. Mengelola shortlist dan pipeline penempatan.
+11. Melihat CRM peserta dan perusahaan.
+12. Melihat dashboard bisnis.
+13. Melihat audit log sesuai kewenangannya.
+
+SUPER ADMIN dapat melakukan semua fungsi Admin PBA serta:
+
+1. Mengelola akun dan role.
+2. Mengelola konfigurasi sistem.
+3. Mengelola master data.
+4. Mengelola konfigurasi integrasi.
+5. Melihat audit log lengkap.
+
+MODUL MVP
+
+Bangun modul berikut.
+
+MODUL 1: AUTENTIKASI DAN ONBOARDING
+
+Fitur:
+
+1. Registrasi sebagai Anggota atau Perusahaan.
+2. Login dan logout.
+3. Lupa password atau mekanisme pemulihan akun.
+4. Persetujuan syarat penggunaan dan kebijakan privasi.
+5. Onboarding berbeda sesuai role.
+6. Redirect otomatis ke dashboard masing-masing.
+7. Proteksi halaman berdasarkan role.
+
+Onboarding Anggota meminta:
+
+1. Nama lengkap.
+2. Nomor telepon.
+3. Email.
+4. Domisili.
+5. Pendidikan.
+6. Bidang keahlian.
+7. Tahun pengalaman.
+8. Tujuan utama:
+   - Persiapan SKK
+   - Peningkatan kompetensi
+   - Mencari pekerjaan
+   - Meningkatkan jenjang
+9. Persetujuan pemrosesan data.
+
+Onboarding Perusahaan meminta:
+
+1. Nama perusahaan.
+2. Jenis perusahaan.
+3. Nomor kontak.
+4. Email bisnis.
+5. Alamat.
+6. Nama PIC.
+7. Jabatan PIC.
+8. Kebutuhan utama:
+   - Pelatihan
+   - Sertifikasi tenaga
+   - Mencari tenaga
+   - Workforce compliance
+
+MODUL 2: PROFIL ANGGOTA
+
+Profil anggota memiliki tab:
+
+1. Ringkasan
+2. Data Pribadi
+3. Kompetensi
+4. Pengalaman Proyek
+5. SKK dan KTA
+6. Pelatihan
+7. Dokumen
+8. Preferensi Kerja
+9. Privasi dan Consent
+
+Data kompetensi:
+
+1. Nama kompetensi.
+2. Kategori.
+3. Tingkat kemampuan.
+4. Tahun pengalaman.
+5. Bukti atau keterangan.
+
+Data pengalaman proyek:
+
+1. Nama proyek.
+2. Perusahaan.
+3. Jabatan.
+4. Lokasi.
+5. Tanggal mulai.
+6. Tanggal selesai.
+7. Deskripsi tanggung jawab.
+8. Nilai atau skala proyek, opsional.
+9. Dokumen pendukung, opsional.
+
+Data SKK:
+
+1. Nomor SKK.
+2. Jabatan kerja.
+3. Jenjang.
+4. Lembaga penerbit.
+5. Tanggal terbit.
+6. Tanggal kedaluwarsa.
+7. Status verifikasi.
+8. Dokumen.
+
+Data KTA:
+
+1. Nomor KTA.
+2. Jenis KTA.
+3. Tanggal terbit.
+4. Tanggal kedaluwarsa.
+5. Status.
+6. Dokumen.
+
+MODUL 3: COMPETENCY CHECK
+
+Buat diagnostik sederhana untuk MVP.
+
+Admin dapat:
+
+1. Membuat template diagnostik.
+2. Membuat kategori.
+3. Membuat pertanyaan pilihan ganda.
+4. Menentukan jawaban benar.
+5. Menentukan bobot.
+6. Menghubungkan diagnostik dengan jabatan kerja dan jenjang.
+
+Anggota dapat:
+
+1. Memilih diagnostik.
+2. Menjawab pertanyaan.
+3. Melihat progres pengerjaan.
+4. Menyelesaikan diagnostik.
+5. Melihat skor.
+6. Melihat kesenjangan per kategori.
+7. Melihat rekomendasi program.
+
+Hasil diagnostik menampilkan:
+
+1. Skor total.
+2. Skor per kategori.
+3. Readiness level:
+   - Perlu Penguatan
+   - Cukup Siap
+   - Siap Melanjutkan Persiapan
+4. Rekomendasi materi.
+5. Rekomendasi program Bimtek.
+6. Disclaimer bahwa hasil bukan keputusan resmi asesmen.
+
+Buat struktur service bernama GustaftaIntegrationService dengan fungsi contoh:
+
+1. enrollUser()
+2. sendProfile()
+3. startDiagnostic()
+4. getLearningProgress()
+5. getReadinessResult()
+6. syncCompletion()
+
+Untuk MVP, service menggunakan mock data yang realistis. Pisahkan adapter dari business logic.
+
+MODUL 4: KATALOG PROGRAM DAN BIMTEK
+
+Admin dapat membuat program dengan data:
+
+1. Nama program.
+2. Kategori.
+3. Jabatan kerja.
+4. Jenjang.
+5. Modus:
+   - Digital Mandiri
+   - Blended
+   - In-House
+   - Bootcamp
+6. Deskripsi.
+7. Hasil belajar.
+8. Jadwal.
+9. Durasi.
+10. Kapasitas.
+11. Harga.
+12. Instruktur.
+13. Status draft atau dipublikasikan.
+14. Gambar program.
+15. Syarat peserta.
+
+Anggota dapat:
+
+1. Menelusuri program.
+2. Memfilter program.
+3. Melihat detail.
+4. Mendaftar.
+5. Melihat status pembayaran.
+6. Mengakses dashboard belajar.
+7. Melihat progres.
+8. Melihat jadwal dan aktivitas berikutnya.
+
+Untuk MVP, pembayaran dibuat dengan status:
+
+1. Menunggu Pembayaran
+2. Dibayar
+3. Gagal
+4. Dikembalikan
+
+Buat PaymentService terpisah. Gunakan simulasi pembayaran atau sandbox yang tersedia. Jangan menggunakan transaksi uang nyata sebelum konfigurasi production siap.
+
+MODUL 5: PROFESSIONAL PASSPORT
+
+Buat halaman profil profesional yang dapat dibagikan melalui URL unik.
+
+Professional Passport menampilkan data yang telah disetujui anggota:
+
+1. Nama.
+2. Foto.
+3. Ringkasan profesional.
+4. Domisili.
+5. Jabatan atau keahlian.
+6. Tahun pengalaman.
+7. Kompetensi utama.
+8. Pengalaman proyek.
+9. SKK terverifikasi.
+10. Pelatihan.
+11. Status ketersediaan kerja.
+12. Readiness badge, jika diizinkan.
+
+Sediakan:
+
+1. Tombol aktifkan atau nonaktifkan passport.
+2. Pengaturan data yang boleh ditampilkan.
+3. URL publik unik.
+4. Tampilan print-friendly.
+5. Indikator data terverifikasi.
+6. Disclaimer bahwa passport bukan pengganti dokumen resmi.
+
+Jangan tampilkan:
+
+1. Nomor identitas.
+2. Alamat lengkap.
+3. Dokumen asli.
+4. Nomor telepon tanpa persetujuan.
+5. Data pembayaran.
+6. Catatan internal.
+
+MODUL 6: TALENT POOL DAN CONSENT
+
+Anggota dapat:
+
+1. Mengaktifkan status “Bersedia Masuk Talent Pool”.
+2. Memilih jenis peluang.
+3. Memilih lokasi kerja.
+4. Menentukan kesiapan relokasi.
+5. Menentukan status ketersediaan.
+6. Menentukan ekspektasi penghasilan, opsional.
+7. Mencabut consent kapan saja.
+
+Simpan:
+
+1. Waktu consent diberikan.
+2. Versi teks consent.
+3. Data yang disetujui.
+4. Waktu consent dicabut.
+5. Audit trail.
+
+Admin dapat:
+
+1. Melihat anggota yang memberikan consent.
+2. Memfilter talent.
+3. Memverifikasi profil.
+4. Menandai profil lengkap atau belum lengkap.
+5. Menambahkan catatan internal.
+
+MODUL 7: PROFIL PERUSAHAAN
+
+Data perusahaan:
+
+1. Nama.
+2. Logo.
+3. Jenis usaha.
+4. Skala perusahaan.
+5. Alamat.
+6. Wilayah operasi.
+7. Website.
+8. Nama PIC.
+9. Jabatan PIC.
+10. Email dan telepon.
+11. Status verifikasi.
+12. Catatan internal Admin PBA.
+
+Perusahaan hanya dapat mengelola profil perusahaannya sendiri.
+
+MODUL 8: KEBUTUHAN TENAGA
+
+Perusahaan dapat membuat kebutuhan dengan data:
+
+1. Judul kebutuhan.
+2. Nama proyek.
+3. Jabatan kerja.
+4. Jenjang SKK.
+5. Kompetensi wajib.
+6. Kompetensi tambahan.
+7. Pengalaman minimum.
+8. Lokasi.
+9. Durasi kontrak.
+10. Tanggal mulai.
+11. Jumlah tenaga.
+12. Rentang kompensasi, opsional.
+13. Kesediaan relokasi.
+14. Deskripsi pekerjaan.
+15. Status:
+    - Draft
+    - Aktif
+    - Ditunda
+    - Terpenuhi
+    - Ditutup
+
+Admin PBA harus dapat meninjau kebutuhan sebelum dipublikasikan ke kandidat.
+
+MODUL 9: TALENT MATCHING
+
+Buat matching engine berbasis aturan yang transparan, bukan AI kompleks.
+
+Hitung match score 0 sampai 100 berdasarkan:
+
+1. Jabatan kerja: 25 poin.
+2. Jenjang SKK: 20 poin.
+3. Kompetensi wajib: 20 poin.
+4. Pengalaman: 15 poin.
+5. Lokasi atau kesediaan relokasi: 10 poin.
+6. Ketersediaan: 10 poin.
+
+Aturan:
+
+1. Kandidat harus memberikan consent.
+2. Profil kandidat harus aktif.
+3. Kandidat tanpa syarat wajib tertentu tetap dapat muncul, tetapi tandai kekurangannya.
+4. Tampilkan alasan skor.
+5. Admin dapat menjalankan ulang matching.
+6. Admin dapat memasukkan kandidat secara manual dengan alasan.
+7. Jangan membuat keputusan final otomatis.
+8. Perusahaan tetap melakukan seleksi.
+
+Tampilan hasil matching menampilkan:
+
+1. Nama kandidat.
+2. Match score.
+3. Jabatan.
+4. Jenjang SKK.
+5. Pengalaman.
+6. Lokasi.
+7. Ketersediaan.
+8. Kompetensi yang cocok.
+9. Kompetensi yang belum terpenuhi.
+10. Status verifikasi.
+11. Tombol shortlist.
+
+MODUL 10: PIPELINE REKRUTMEN DAN PENEMPATAN
+
+Status kandidat:
+
+1. Direkomendasikan
+2. Dilihat Perusahaan
+3. Shortlist
+4. Dihubungi
+5. Wawancara
+6. Ditawarkan
+7. Ditempatkan
+8. Tidak Dipilih
+9. Mengundurkan Diri
+
+Simpan histori perubahan status:
+
+1. Status lama.
+2. Status baru.
+3. Pengubah.
+4. Waktu perubahan.
+5. Catatan.
+
+Admin dan perusahaan dapat menambahkan catatan internal sesuai hak akses. Anggota hanya melihat status yang memang boleh dilihat kandidat.
+
+Saat kandidat berstatus “Ditempatkan”, simpan:
+
+1. Perusahaan.
+2. Kebutuhan tenaga.
+3. Jabatan.
+4. Tanggal mulai.
+5. Durasi.
+6. Status penempatan.
+7. Placement fee, hanya terlihat Admin.
+8. Catatan.
+
+MODUL 11: CRM SEDERHANA
+
+CRM peserta menampilkan:
+
+1. Tahap perjalanan anggota.
+2. Diagnostik terakhir.
+3. Program yang dibeli.
+4. Progres belajar.
+5. Status dokumen.
+6. Status Talent Pool.
+7. Peluang kerja.
+8. Aktivitas terakhir.
+9. Tindakan berikutnya.
+
+Tahap perjalanan anggota:
+
+1. Lead
+2. Terdaftar
+3. Diagnostik
+4. Peserta Berbayar
+5. Belajar
+6. Siap Melanjutkan
+7. Talent Ready
+8. Shortlisted
+9. Ditempatkan
+10. Alumni Aktif
+
+CRM perusahaan menampilkan:
+
+1. Tahap hubungan.
+2. PIC.
+3. Kebutuhan aktif.
+4. Jumlah shortlist.
+5. Jumlah penempatan.
+6. Aktivitas terakhir.
+7. Tindakan berikutnya.
+8. Catatan.
+
+Tahap perusahaan:
+
+1. Prospek
+2. Dihubungi
+3. Discovery
+4. Pilot
+5. Klien Aktif
+6. Klien Berulang
+7. Tidak Aktif
+
+MODUL 12: DASHBOARD
+
+DASHBOARD ANGGOTA
+
+Tampilkan:
+
+1. Kelengkapan profil.
+2. SKK atau KTA yang hampir kedaluwarsa.
+3. Program aktif.
+4. Progres belajar.
+5. Readiness score terakhir.
+6. Rekomendasi tindakan berikutnya.
+7. Peluang kerja yang relevan.
+8. Status proses rekrutmen.
+
+Prioritaskan satu tindakan utama, misalnya:
+
+“Lengkapi pengalaman proyek agar profil Anda dapat diverifikasi.”
+
+DASHBOARD PERUSAHAAN
+
+Tampilkan:
+
+1. Kebutuhan tenaga aktif.
+2. Jumlah kandidat cocok.
+3. Kandidat dalam shortlist.
+4. Kandidat dalam wawancara.
+5. Kandidat ditempatkan.
+6. Kebutuhan yang mendekati tanggal mulai.
+7. Tindakan yang perlu dilakukan.
+
+DASHBOARD ADMIN PBA
+
+Tampilkan:
+
+1. Anggota baru.
+2. Diagnostik selesai.
+3. Peserta program aktif.
+4. Pendapatan program.
+5. Talent terverifikasi.
+6. Kebutuhan tenaga aktif.
+7. Shortlist.
+8. Penempatan.
+9. Conversion funnel.
+10. Program terlaris.
+11. Tugas operasional yang tertunda.
+12. Dokumen menunggu verifikasi.
+
+Sediakan filter periode:
+
+1. 7 hari.
+2. 30 hari.
+3. 90 hari.
+4. Tahun berjalan.
+5. Rentang khusus.
+
+MODUL 13: NOTIFIKASI
+
+Buat notifikasi in-app untuk:
+
+1. Profil belum lengkap.
+2. Dokumen telah diverifikasi atau ditolak.
+3. SKK atau KTA mendekati kedaluwarsa.
+4. Pendaftaran program berhasil.
+5. Progres belajar tertinggal.
+6. Diagnostik selesai.
+7. Kandidat masuk shortlist.
+8. Perubahan status rekrutmen.
+9. Kebutuhan tenaga menerima kandidat baru.
+
+Buat NotificationService terpisah agar nanti mudah dihubungkan ke email dan WhatsApp. Untuk MVP, aktifkan in-app notification dan email hanya jika konfigurasi tersedia.
+
+MODUL 14: ADMIN MASTER DATA
+
+Master data:
+
+1. Jabatan kerja.
+2. Jenjang SKK.
+3. Kategori kompetensi.
+4. Kompetensi.
+5. Wilayah.
+6. Jenis perusahaan.
+7. Status program.
+8. Status kebutuhan.
+9. Status kandidat.
+10. Template consent.
+
+Master data jangan ditanam permanen di source code jika perlu dikelola Admin.
+
+MODUL 15: AUDIT LOG
+
+Catat aktivitas sensitif:
+
+1. Login.
+2. Perubahan role.
+3. Verifikasi dokumen.
+4. Perubahan data SKK dan KTA.
+5. Consent Talent Pool.
+6. Akses profil kandidat.
+7. Perubahan status kandidat.
+8. Perubahan konfigurasi.
+9. Perubahan data perusahaan.
+10. Perubahan transaksi.
+
+Audit log tidak dapat diedit oleh pengguna biasa.
+
+STRUKTUR DATA MINIMUM
+
+Buat database schema untuk entitas:
+
+1. users
+2. roles
+3. member_profiles
+4. company_profiles
+5. competencies
+6. member_competencies
+7. project_experiences
+8. certifications
+9. memberships
+10. documents
+11. diagnostic_templates
+12. diagnostic_questions
+13. diagnostic_attempts
+14. diagnostic_answers
+15. readiness_results
+16. programs
+17. program_batches
+18. enrollments
+19. learning_progress
+20. transactions
+21. professional_passports
+22. talent_consents
+23. workforce_requirements
+24. requirement_competencies
+25. talent_matches
+26. recruitment_pipeline
+27. placements
+28. crm_activities
+29. notifications
+30. audit_logs
+31. integration_logs
+32. system_settings
+
+Gunakan relational database, foreign key, indexes, timestamps, dan soft delete bila diperlukan.
+
+VALIDASI DAN KEAMANAN
+
+1. Terapkan role-based access control.
+2. Validasi semua input pada backend.
+3. Pengguna hanya boleh membaca data sesuai kewenangannya.
+4. Dokumen privat tidak boleh memiliki URL publik permanen.
+5. Batasi tipe dan ukuran file upload.
+6. Sanitasi nama file.
+7. Lindungi endpoint dari akses tanpa login.
+8. Tambahkan rate limiting pada login dan endpoint publik.
+9. Jangan menyimpan secret di source code.
+10. Catat aktivitas sensitif.
+11. Gunakan pagination untuk daftar panjang.
+12. Jangan menampilkan error teknis mentah kepada pengguna.
+13. Buat halaman 403, 404, dan error state.
+14. Tambahkan penghapusan atau anonimisasi akun secara terkontrol.
+15. Siapkan backup dan petunjuk pemulihan database.
+
+DATA CONTOH
+
+Buat seed data realistis:
+
+1. 1 akun Super Admin.
+2. 2 akun Admin PBA.
+3. 20 anggota dengan variasi profil.
+4. 5 perusahaan.
+5. 8 jabatan kerja.
+6. Beberapa jenjang SKK.
+7. 20 kompetensi.
+8. 6 program Bimtek.
+9. 3 template diagnostik.
+10. 5 kebutuhan tenaga aktif.
+11. Minimal 20 hasil matching.
+12. Beberapa kandidat pada setiap tahap pipeline.
+13. 5 contoh penempatan.
+
+Gunakan data fiktif. Jangan menggunakan data pribadi nyata.
+
+AKUN DEMO
+
+Buat akun demo untuk:
+
+1. Super Admin.
+2. Admin PBA.
+3. Anggota.
+4. Perusahaan.
+
+Tampilkan kredensial demo hanya pada environment development atau dokumentasi internal. Jangan tampilkan pada production.
+
+HALAMAN YANG HARUS TERSEDIA
+
+PUBLIC
+
+1. Landing page.
+2. Daftar program.
+3. Detail program.
+4. Login.
+5. Registrasi.
+6. Halaman Professional Passport publik.
+7. Kebijakan privasi.
+8. Syarat penggunaan.
+
+ANGGOTA
+
+1. Dashboard.
+2. Profil.
+3. Kompetensi.
+4. Pengalaman proyek.
+5. SKK dan KTA.
+6. Dokumen.
+7. Diagnostik.
+8. Hasil diagnostik.
+9. Katalog program.
+10. Program saya.
+11. Professional Passport.
+12. Talent Pool.
+13. Peluang kerja.
+14. Status lamaran.
+15. Notifikasi.
+16. Pengaturan privasi.
+
+PERUSAHAAN
+
+1. Dashboard.
+2. Profil perusahaan.
+3. Kebutuhan tenaga.
+4. Form kebutuhan baru.
+5. Detail kebutuhan.
+6. Kandidat cocok.
+7. Shortlist.
+8. Pipeline rekrutmen.
+9. Penempatan.
+10. Notifikasi.
+11. Pengaturan.
+
+ADMIN
+
+1. Dashboard bisnis.
+2. Manajemen anggota.
+3. Detail anggota.
+4. Verifikasi dokumen.
+5. Manajemen perusahaan.
+6. Detail perusahaan.
+7. Program dan batch.
+8. Diagnostik.
+9. Pendaftaran peserta.
+10. Learning progress.
+11. Talent Pool.
+12. Kebutuhan tenaga.
+13. Matching.
+14. Pipeline.
+15. Penempatan.
+16. CRM.
+17. Transaksi.
+18. Master data.
+19. Integrasi.
+20. Audit log.
+21. Pengaturan sistem.
+
+LANDING PAGE
+
+Buat landing page dengan pesan utama:
+
+“Dari Kompetensi Menuju Kesempatan”
+
+Subjudul:
+
+“PBA membantu tenaga konstruksi memetakan kompetensi, mempersiapkan diri, membangun profil profesional, dan terhubung dengan kebutuhan perusahaan.”
+
+CTA utama:
+
+“Periksa Kesiapan Kompetensi”
+
+CTA kedua:
+
+“Cari Tenaga Kompeten”
+
+Bagian landing page:
+
+1. Masalah yang diselesaikan.
+2. Cara kerja untuk anggota.
+3. Cara kerja untuk perusahaan.
+4. Program unggulan.
+5. Keunggulan SIMASDA dan Gustafta.
+6. Profesional dan perusahaan contoh, gunakan data fiktif.
+7. FAQ.
+8. CTA registrasi.
+
+Jangan mengklaim:
+
+1. Menjamin kelulusan.
+2. Sertifikasi resmi diterbitkan PBA jika belum benar.
+3. Jaminan memperoleh pekerjaan.
+4. Jumlah pengguna atau keberhasilan yang belum terbukti.
+
+ALUR UTAMA YANG WAJIB BERFUNGSI
+
+ALUR 1: ANGGOTA
+
+1. Registrasi.
+2. Melengkapi profil.
+3. Mengikuti diagnostik.
+4. Melihat hasil.
+5. Mendapat rekomendasi program.
+6. Mendaftar program.
+7. Melihat progres.
+8. Mengaktifkan Professional Passport.
+9. Memberikan consent Talent Pool.
+10. Melihat peluang kerja.
+11. Menyatakan minat.
+12. Melihat status seleksi.
+
+ALUR 2: PERUSAHAAN
+
+1. Registrasi.
+2. Melengkapi profil perusahaan.
+3. Membuat kebutuhan tenaga.
+4. Menunggu peninjauan Admin.
+5. Melihat kandidat cocok.
+6. Membuka ringkasan profil kandidat.
+7. Membuat shortlist.
+8. Mengubah tahap rekrutmen.
+9. Menandai kandidat ditempatkan.
+
+ALUR 3: ADMIN PBA
+
+1. Memverifikasi anggota dan perusahaan.
+2. Mengelola program.
+3. Mengelola diagnostik.
+4. Memantau enrollment.
+5. Memverifikasi dokumen.
+6. Meninjau kebutuhan tenaga.
+7. Menjalankan matching.
+8. Mengelola pipeline.
+9. Mencatat penempatan.
+10. Melihat funnel dan pendapatan.
+
+LAPORAN MVP
+
+Buat laporan:
+
+1. Registrasi anggota.
+2. Diagnostik selesai.
+3. Conversion diagnostik ke program.
+4. Enrollment per program.
+5. Completion rate.
+6. Talent aktif.
+7. Kebutuhan tenaga.
+8. Match dan shortlist.
+9. Placement rate.
+10. Pendapatan per program.
+11. Pendapatan per periode.
+12. Funnel perjalanan anggota.
+
+Sediakan filter dan export CSV untuk Admin.
+
+OUT OF SCOPE MVP
+
+Jangan membangun dahulu:
+
+1. ERP keuangan lengkap.
+2. Sistem persuratan.
+3. Payroll.
+4. Marketplace produk.
+5. Managed workforce kompleks.
+6. Penempatan internasional.
+7. Mobile app native.
+8. Blockchain.
+9. Machine learning untuk matching.
+10. Integrasi API LSP produksi.
+11. Integrasi WhatsApp berbayar.
+12. Sistem asesmen resmi.
+13. Otomasi keputusan kompeten atau tidak kompeten.
+14. Multi-tenant white-label.
+15. Fitur sosial atau forum komunitas.
+
+TAHAP PEMBANGUNAN
+
+Kerjakan secara berurutan.
+
+FASE 1: FOUNDATION
+
+1. Setup project.
+2. Database.
+3. Authentication.
+4. Role dan permission.
+5. Design system.
+6. Navigasi.
+7. Seed data.
+8. Akun demo.
+
+FASE 2: MEMBER JOURNEY
+
+1. Profil anggota.
+2. Kompetensi.
+3. Pengalaman proyek.
+4. SKK dan KTA.
+5. Dokumen.
+6. Diagnostik.
+7. Hasil dan rekomendasi.
+8. Katalog program.
+9. Enrollment.
+10. Progress.
+
+FASE 3: TALENT AND COMPANY
+
+1. Professional Passport.
+2. Consent.
+3. Talent Pool.
+4. Profil perusahaan.
+5. Kebutuhan tenaga.
+6. Matching.
+7. Shortlist.
+8. Pipeline.
+9. Penempatan.
+
+FASE 4: BUSINESS OPERATIONS
+
+1. Dashboard.
+2. CRM.
+3. Transaksi.
+4. Notifikasi.
+5. Laporan.
+6. Audit log.
+7. Integration settings.
+
+FASE 5: QUALITY ASSURANCE
+
+1. Uji semua alur utama.
+2. Perbaiki error.
+3. Uji role dan hak akses.
+4. Uji responsif.
+5. Uji empty state.
+6. Uji loading state.
+7. Uji error state.
+8. Uji validasi.
+9. Uji keamanan dasar.
+10. Buat dokumentasi.
+
+DEFINITION OF DONE
+
+Aplikasi dianggap selesai untuk MVP jika:
+
+1. Seluruh role dapat login.
+2. Hak akses berjalan benar.
+3. Anggota dapat menyelesaikan perjalanan dari registrasi sampai Talent Pool.
+4. Perusahaan dapat membuat kebutuhan dan melakukan shortlist.
+5. Admin dapat memverifikasi, menjalankan matching, dan mencatat placement.
+6. Data tersimpan di PostgreSQL.
+7. Dashboard menggunakan data database, bukan angka hard-coded.
+8. Audit log mencatat aktivitas penting.
+9. Aplikasi responsif.
+10. Tidak ada error kritis pada console atau server.
+11. Semua akun demo berfungsi.
+12. README tersedia.
+13. Database migration dan seed dapat dijalankan ulang.
+14. Aplikasi siap dipresentasikan.
+
+DOKUMENTASI YANG HARUS DIBUAT
+
+Buat README Bahasa Indonesia berisi:
+
+1. Ringkasan aplikasi.
+2. Arsitektur sederhana.
+3. Cara menjalankan aplikasi.
+4. Environment variables.
+5. Cara menjalankan migration.
+6. Cara menjalankan seed.
+7. Akun demo.
+8. Struktur role.
+9. Struktur modul.
+10. Cara mengganti mock Gustafta dengan API resmi.
+11. Cara mengganti simulasi pembayaran dengan payment gateway.
+12. Checklist deployment.
+13. Keterbatasan MVP.
+14. Rekomendasi pengembangan berikutnya.
+
+INSTRUKSI PELAKSANAAN
+
+Mulai dengan:
+
+1. Tampilkan rencana implementasi singkat.
+2. Buat struktur database dan arsitektur.
+3. Implementasikan Fase 1 terlebih dahulu.
+4. Jalankan aplikasi.
+5. Uji login semua role.
+6. Perbaiki error.
+7. Lanjutkan ke fase berikutnya.
+8. Jangan berhenti pada desain atau halaman statis.
+9. Jangan menghapus fungsi yang sudah berjalan tanpa alasan.
+10. Jika menemukan konflik kebutuhan, pilih solusi yang paling sederhana untuk MVP dan dokumentasikan keputusan tersebut.
+
+Setelah selesai pada setiap fase, berikan laporan:
+
+1. Fitur yang telah selesai.
+2. Fitur yang belum selesai.
+3. Error yang sudah diperbaiki.
+4. Cara saya menguji hasilnya tanpa coding.
+5. Langkah berikutnya.
+```
+
+Saran saya, **jangan langsung meminta Replit menyelesaikan semuanya dalam sekali jalan**. Gunakan prompt ini sebagai spesifikasi utama, lalu perintahkan: **“Kerjakan Fase 1 saja sampai stabil, jangan lanjut sebelum semua akun demo dan hak akses berhasil diuji.”**

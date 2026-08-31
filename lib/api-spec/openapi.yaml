@@ -10,6 +10,14 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: identity
+    description: Signed-in user identity and onboarding
+  - name: dashboards
+    description: Role-based dashboard summaries
+  - name: programs
+    description: Public program catalog
+  - name: notifications
+    description: In-app notifications
 paths:
   /healthz:
     get:
@@ -24,6 +32,166 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /me:
+    get:
+      operationId: getCurrentUser
+      tags: [identity]
+      summary: Get current user
+      description: Returns the signed-in user's role and onboarding profile.
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /onboarding/member:
+    post:
+      operationId: saveMemberOnboarding
+      tags: [identity]
+      summary: Save member onboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberOnboardingInput"
+      responses:
+        "200":
+          description: Saved member profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "400":
+          description: Invalid onboarding data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /onboarding/company:
+    post:
+      operationId: saveCompanyOnboarding
+      tags: [identity]
+      summary: Save company onboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyOnboardingInput"
+      responses:
+        "200":
+          description: Saved company profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "400":
+          description: Invalid onboarding data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /dashboard/member:
+    get:
+      operationId: getMemberDashboard
+      tags: [dashboards]
+      summary: Get member dashboard
+      responses:
+        "200":
+          description: Member dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberDashboard"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /dashboard/company:
+    get:
+      operationId: getCompanyDashboard
+      tags: [dashboards]
+      summary: Get company dashboard
+      responses:
+        "200":
+          description: Company dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyDashboard"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /dashboard/admin:
+    get:
+      operationId: getAdminDashboard
+      tags: [dashboards]
+      summary: Get admin dashboard
+      responses:
+        "200":
+          description: Admin dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDashboard"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /programs:
+    get:
+      operationId: listPrograms
+      tags: [programs]
+      summary: List published programs
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Published programs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Program"
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List current user notifications
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +201,217 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    Role:
+      type: string
+      enum: [member, company, admin, super_admin]
+    CurrentUser:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        onboardingComplete:
+          type: boolean
+        avatarUrl:
+          type: ["string", "null"]
+        organization:
+          type: ["string", "null"]
+      required: [id, name, email, role, onboardingComplete, avatarUrl, organization]
+    MemberOnboardingInput:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+        phone:
+          type: string
+          minLength: 8
+        domicile:
+          type: string
+          minLength: 2
+        education:
+          type: string
+        expertise:
+          type: string
+        experienceYears:
+          type: number
+          minimum: 0
+          maximum: 80
+        primaryGoal:
+          type: string
+          enum: [skk, competency, job, career]
+        dataConsent:
+          type: boolean
+      required: [fullName, phone, domicile, education, expertise, experienceYears, primaryGoal, dataConsent]
+    CompanyOnboardingInput:
+      type: object
+      properties:
+        companyName:
+          type: string
+          minLength: 2
+        companyType:
+          type: string
+        phone:
+          type: string
+          minLength: 8
+        businessEmail:
+          type: string
+        address:
+          type: string
+        picName:
+          type: string
+        picTitle:
+          type: string
+        primaryNeed:
+          type: string
+          enum: [training, certification, talent, compliance]
+      required: [companyName, companyType, phone, businessEmail, address, picName, picTitle, primaryNeed]
+    Metric:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+        change:
+          type: ["string", "null"]
+        tone:
+          type: string
+          enum: [neutral, positive, warning, attention]
+      required: [label, value, change, tone]
+    ActionItem:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        href:
+          type: string
+        tone:
+          type: string
+          enum: [primary, neutral, warning]
+      required: [title, description, href, tone]
+    MemberDashboard:
+      type: object
+      properties:
+        greeting:
+          type: string
+        profileCompletion:
+          type: number
+        readinessScore:
+          type: number
+        readinessLabel:
+          type: string
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metric"
+        nextAction:
+          $ref: "#/components/schemas/ActionItem"
+        activeProgram:
+          type: ["string", "null"]
+        progress:
+          type: number
+        notificationsCount:
+          type: number
+      required: [greeting, profileCompletion, readinessScore, readinessLabel, metrics, nextAction, activeProgram, progress, notificationsCount]
+    CompanyDashboard:
+      type: object
+      properties:
+        greeting:
+          type: string
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metric"
+        nextAction:
+          $ref: "#/components/schemas/ActionItem"
+        activeRequirements:
+          type: number
+        matchingCandidates:
+          type: number
+        shortlistCount:
+          type: number
+        notificationsCount:
+          type: number
+      required: [greeting, metrics, nextAction, activeRequirements, matchingCandidates, shortlistCount, notificationsCount]
+    AdminDashboard:
+      type: object
+      properties:
+        greeting:
+          type: string
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/Metric"
+        nextAction:
+          $ref: "#/components/schemas/ActionItem"
+        pendingVerifications:
+          type: number
+        activeMembers:
+          type: number
+        activeCompanies:
+          type: number
+        activeRequirements:
+          type: number
+        placements:
+          type: number
+        revenue:
+          type: string
+      required: [greeting, metrics, nextAction, pendingVerifications, activeMembers, activeCompanies, activeRequirements, placements, revenue]
+    Program:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        mode:
+          type: string
+        schedule:
+          type: string
+        duration:
+          type: string
+        price:
+          type: number
+        instructor:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft, published]
+      required: [id, name, category, mode, schedule, duration, price, instructor, description, status]
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        read:
+          type: boolean
+        type:
+          type: string
+          enum: [profile, document, program, learning, recruitment, system]
+      required: [id, title, description, createdAt, read, type]
 

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "PBA ASDAMKINDO"
+description = "Aplikasi web untuk membantu tenaga konstruksi memetakan kompetensi, mengikuti pembelajaran, membangun Professional Passport, dan terhubung dengan kebutuhan perusahaan melalui Talent Pool."
+version = "1.0.0"
+id = "artifacts/pba-asdamkindo"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23654
+
+[services.development]
+run = "pnpm --filter @workspace/pba-asdamkindo run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pba-asdamkindo", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/pba-asdamkindo/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23654"
+BASE_PATH = "/"
