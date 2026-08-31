@@ -1,7 +1,7 @@
-import VideoTemplate from '@/components/video/VideoTemplate';
+import VideoWithControls from '@/components/video/VideoWithControls';
 
 function App() {
-  return <VideoTemplate />;
+  return <VideoWithControls />;
 }
 
 export default App;

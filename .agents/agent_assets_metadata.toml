@@ -1,0 +1,9 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "kYAjOHc0ulzrA_Plj21km"
+uri = "file://artifacts/pba-asdamkindo/public/audio/bg_music.mp3"
+type = "audio"
+title = "PBA explainer background music"
+description = "Generated music: Instrumental background music scoring a polished B2B construction workforce platform product explainer. Warm restrained piano, muted analog synth pulse, soft marimba accents, light b…"
