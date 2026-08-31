@@ -419,6 +419,13 @@ paths:
           required: false
           schema:
             type: string
+        - name: expiry
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, next_30_days, expired]
+            default: all
         - name: location
           in: query
           required: false
@@ -566,15 +573,36 @@ paths:
       operationId: listCompanyConsentRequests
       tags: [talent-pool]
       summary: List consent requests made by the current company
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, requested, active, denied, revoked, expired]
+            default: all
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
       responses:
         "200":
           description: Company consent requests
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CompanyConsentRequest"
+                $ref: "#/components/schemas/CompanyConsentRequestPage"
     post:
       operationId: requestCompanyTalentConsent
       tags: [talent-pool]
@@ -1304,7 +1332,13 @@ components:
         grantedAt:
           type: ["string", "null"]
           format: date-time
+        deniedAt:
+          type: ["string", "null"]
+          format: date-time
         revokedAt:
+          type: ["string", "null"]
+          format: date-time
+        expiredAt:
           type: ["string", "null"]
           format: date-time
         expiresAt:
@@ -1319,7 +1353,31 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [id, companyId, companyName, companyType, status, requestedAt, grantedAt, revokedAt, expiresAt, consentVersion, requestNote, decisionNote, updatedAt]
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyConsentHistoryEntry"
+      required: [id, companyId, companyName, companyType, status, requestedAt, grantedAt, deniedAt, revokedAt, expiredAt, expiresAt, consentVersion, requestNote, decisionNote, updatedAt, history]
+    CompanyConsentHistoryEntry:
+      type: object
+      properties:
+        consentVersion:
+          type: integer
+          minimum: 1
+        action:
+          type: string
+        fromStatus:
+          type: ["string", "null"]
+        toStatus:
+          type: ["string", "null"]
+        note:
+          type: ["string", "null"]
+        actorRole:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [consentVersion, action, fromStatus, toStatus, note, actorRole, createdAt]
     TalentConsentSettings:
       type: object
       properties:
@@ -1568,7 +1626,13 @@ components:
         grantedAt:
           type: ["string", "null"]
           format: date-time
+        deniedAt:
+          type: ["string", "null"]
+          format: date-time
         revokedAt:
+          type: ["string", "null"]
+          format: date-time
+        expiredAt:
           type: ["string", "null"]
           format: date-time
         expiresAt:
@@ -1587,7 +1651,7 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [id, memberUserId, memberName, companyUserId, companyName, status, grantedAt, revokedAt, expiresAt, consentVersion, grantedBy, revokedBy, requestNote, decisionNote, updatedAt]
+      required: [id, memberUserId, memberName, companyUserId, companyName, status, grantedAt, deniedAt, revokedAt, expiredAt, expiresAt, consentVersion, grantedBy, revokedBy, requestNote, decisionNote, updatedAt]
     AdminTalentConsentPage:
       type: object
       properties:
@@ -1710,6 +1774,22 @@ components:
           type: string
           format: date-time
       required: [id, passportSlug, status, requestedAt, grantedAt, expiresAt, consentVersion, requestNote, updatedAt]
+    CompanyConsentRequestPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyConsentRequest"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+      required: [items, page, pageSize, total, totalPages]
     MemberDiagnosticInput:
       type: object
       properties:

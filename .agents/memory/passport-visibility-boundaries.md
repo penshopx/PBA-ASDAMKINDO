@@ -9,4 +9,4 @@ Company Talent Pool access is always scoped to one member-company pair and requi
 
 **Why:** Members need separate control over open-web sharing and access granted to companies inside PBA. Coupling the switches would make one privacy action silently change the other, while translating a global consent into company grants would silently broaden access.
 
-**How to apply:** Any matching, shortlist, or company-access feature must filter by the requesting company, active status, future expiry, and the member's general data-sharing consent in the database. Public passport routes must require public visibility regardless of consent status.
+**How to apply:** Any matching, shortlist, or company-access feature must filter by the requesting company, active status, and future expiry in the database. The legacy global consent is historical only and must neither grant nor block a company-specific grant. Public passport routes must require public visibility regardless of consent status.

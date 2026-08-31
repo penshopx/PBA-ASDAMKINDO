@@ -6,7 +6,8 @@ import {
   getListCompanyConsentRequestsQueryKey,
   useRequestCompanyTalentConsent,
   GetCompanyTalentPoolAvailability,
-  type GetCompanyTalentPoolParams
+  type GetCompanyTalentPoolParams,
+  type ListCompanyConsentRequestsStatus
 } from '@workspace/api-client-react';
 import { QueryState } from '@/components/ui-kit';
 import { Search, MapPin, Briefcase, UserCircle, CheckCircle2, LayoutGrid, List, Plus, Clock, FileText } from 'lucide-react';
@@ -226,8 +227,11 @@ export function CompanyTalentPoolPage() {
 
 function ConsentRequestsSection() {
   const queryClient = useQueryClient();
-  const { data: requests, isLoading, isError, refetch } = useListCompanyConsentRequests({
-    query: { queryKey: getListCompanyConsentRequestsQueryKey() }
+  const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<ListCompanyConsentRequestsStatus>('all');
+  const requestParams = { page, status };
+  const { data: requestsPage, isLoading, isError, refetch } = useListCompanyConsentRequests(requestParams, {
+    query: { queryKey: getListCompanyConsentRequestsQueryKey(requestParams) }
   });
 
   const requestConsent = useRequestCompanyTalentConsent();
@@ -252,6 +256,7 @@ function ConsentRequestsSection() {
       onSuccess: () => {
         setSlug('');
         setNote('');
+        setPage(1);
         queryClient.invalidateQueries({ queryKey: getListCompanyConsentRequestsQueryKey() });
       },
       onError: (err) => {
@@ -299,13 +304,29 @@ function ConsentRequestsSection() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
-        <div className="p-6 border-b border-border bg-muted/20">
-          <h2 className="text-lg font-bold">Riwayat Permintaan</h2>
+        <div className="flex flex-col gap-3 border-b border-border bg-muted/20 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold">Riwayat Permintaan</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{requestsPage?.total ?? 0} permintaan ditemukan</p>
+          </div>
+          <select
+            value={status}
+            onChange={(event) => { setStatus(event.target.value as ListCompanyConsentRequestsStatus); setPage(1); }}
+            className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-bold"
+            aria-label="Filter status permintaan"
+          >
+            <option value="all">Semua status</option>
+            <option value="requested">Menunggu</option>
+            <option value="active">Aktif</option>
+            <option value="denied">Ditolak</option>
+            <option value="revoked">Dicabut</option>
+            <option value="expired">Kedaluwarsa</option>
+          </select>
         </div>
 
         <QueryState loading={isLoading} error={isError} retry={() => refetch()}>
-          {requests && (
-            requests.length === 0 ? (
+          {requestsPage && (
+            requestsPage.items.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground mb-4">
                   <FileText size={20} />
@@ -314,7 +335,7 @@ function ConsentRequestsSection() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {requests.map(req => (
+                {requestsPage.items.map(req => (
                   <div key={req.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-3">
@@ -345,6 +366,15 @@ function ConsentRequestsSection() {
             )
           )}
         </QueryState>
+        {requestsPage && requestsPage.totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-border p-5">
+            <span className="text-xs text-muted-foreground">Halaman {requestsPage.page} dari {requestsPage.totalPages}</span>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page === 1} className="rounded-md border border-border px-3 py-1.5 text-xs font-bold disabled:opacity-50">Sebelumnya</button>
+              <button type="button" onClick={() => setPage((value) => Math.min(requestsPage.totalPages, value + 1))} disabled={page >= requestsPage.totalPages} className="rounded-md border border-border px-3 py-1.5 text-xs font-bold disabled:opacity-50">Berikutnya</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

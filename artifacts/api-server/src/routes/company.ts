@@ -214,7 +214,6 @@ router.get("/company/talent-pool/matches", ...companyOnly, async (req, res): Pro
         eq(companyTalentConsentsTable.companyUserId, user.id),
         eq(companyTalentConsentsTable.status, "active"),
         gt(companyTalentConsentsTable.expiresAt, new Date()),
-        eq(memberProfilesTable.dataConsent, true),
       ),
     )
     .leftJoin(readinessDiagnosticsTable, eq(readinessDiagnosticsTable.memberUserId, memberProfilesTable.userId))
@@ -274,7 +273,6 @@ router.post("/company/shortlist", ...companyOnly, async (req, res): Promise<void
         eq(companyTalentConsentsTable.companyUserId, user.id),
         eq(companyTalentConsentsTable.status, "active"),
         gt(companyTalentConsentsTable.expiresAt, new Date()),
-        eq(memberProfilesTable.dataConsent, true),
       ),
     )
     .leftJoin(readinessDiagnosticsTable, eq(readinessDiagnosticsTable.memberUserId, memberProfilesTable.userId))

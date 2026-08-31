@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CompanyConsentHistoryEntry } from './companyConsentHistoryEntry';
 import type { CompanyTalentConsentStatus } from './companyTalentConsentStatus';
 
 export interface CompanyTalentConsent {
@@ -17,7 +18,11 @@ export interface CompanyTalentConsent {
   /** @nullable */
   grantedAt: Date | null;
   /** @nullable */
+  deniedAt: Date | null;
+  /** @nullable */
   revokedAt: Date | null;
+  /** @nullable */
+  expiredAt: Date | null;
   /** @nullable */
   expiresAt: Date | null;
   consentVersion: number;
@@ -26,4 +31,5 @@ export interface CompanyTalentConsent {
   /** @nullable */
   decisionNote: string | null;
   updatedAt: Date;
+  history: CompanyConsentHistoryEntry[];
 }

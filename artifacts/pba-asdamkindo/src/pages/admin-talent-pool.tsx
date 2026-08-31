@@ -7,6 +7,7 @@ import {
   useOverrideAdminTalentConsent,
   GetAdminTalentPoolAvailability,
   GetAdminTalentPoolConsent,
+  GetAdminTalentPoolExpiry,
   type GetAdminTalentPoolParams
 } from '@workspace/api-client-react';
 import { QueryState } from '@/components/ui-kit';
@@ -29,6 +30,7 @@ export function AdminTalentPoolPage() {
   const [search, setSearch] = useState('');
   const [availability, setAvailability] = useState<GetAdminTalentPoolAvailability | ''>('');
   const [consent, setConsent] = useState<GetAdminTalentPoolConsent | ''>('');
+  const [expiry, setExpiry] = useState<GetAdminTalentPoolExpiry>('all');
   const [page, setPage] = useState(1);
 
   const debouncedSearch = useDebounce(search, 400);
@@ -36,12 +38,13 @@ export function AdminTalentPoolPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, availability, consent]);
+  }, [debouncedSearch, availability, consent, expiry]);
 
   const params: GetAdminTalentPoolParams = { page };
   if (debouncedSearch) params.search = debouncedSearch;
   if (availability) params.availability = availability;
   if (consent) params.consent = consent;
+  params.expiry = expiry;
 
   const { data: pageData, isLoading, isError, refetch } = useGetAdminTalentPool(params, {
     query: { queryKey: getGetAdminTalentPoolQueryKey(params) }
@@ -52,24 +55,39 @@ export function AdminTalentPoolPage() {
   const handleRevoke = (id: string) => {
     const note = prompt('Alasan pencabutan:');
     if (note === null) return;
+    if (note.trim().length < 3) {
+      alert('Alasan pencabutan minimal 3 karakter.');
+      return;
+    }
 
     overrideConsent.mutate({ id, data: { action: 'revoke', note } }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetAdminTalentPoolQueryKey(params) });
-      }
+      },
+      onError: () => alert('Pencabutan consent gagal. Muat ulang data lalu coba kembali.')
     });
   };
 
   const handleSetExpiry = (id: string) => {
     const rawDate = prompt('Atur tanggal kedaluwarsa baru (YYYY-MM-DD):');
     if (!rawDate) return;
-    const expiresAt = new Date(rawDate).toISOString();
+    const parsedDate = new Date(`${rawDate}T23:59:59`);
+    if (Number.isNaN(parsedDate.getTime()) || parsedDate <= new Date()) {
+      alert('Tanggal kedaluwarsa harus valid dan berada di masa depan.');
+      return;
+    }
+    const expiresAt = parsedDate.toISOString();
     const note = prompt('Catatan perubahan:') || 'Update by Admin';
+    if (note.trim().length < 3) {
+      alert('Catatan perubahan minimal 3 karakter.');
+      return;
+    }
 
     overrideConsent.mutate({ id, data: { action: 'set_expiry', expiresAt, note } }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetAdminTalentPoolQueryKey(params) });
-      }
+      },
+      onError: () => alert('Perubahan tanggal kedaluwarsa gagal. Muat ulang data lalu coba kembali.')
     });
   };
 
@@ -86,7 +104,7 @@ export function AdminTalentPoolPage() {
         <SettingsCard />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="relative">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -107,6 +125,17 @@ export function AdminTalentPoolPage() {
             <option value="available">Tersedia</option>
             <option value="open_to_offer">Terbuka (Pasif)</option>
             <option value="unavailable">Tidak Tersedia</option>
+          </select>
+        </div>
+        <div>
+          <select
+            value={expiry}
+            onChange={e => setExpiry(e.target.value as GetAdminTalentPoolExpiry)}
+            className="w-full rounded-lg border border-border bg-card py-2.5 px-3 text-sm focus:border-primary focus:outline-none appearance-none"
+          >
+            <option value="all">Semua Masa Berlaku</option>
+            <option value="next_30_days">Berakhir dalam 30 Hari</option>
+            <option value="expired">Sudah Kedaluwarsa</option>
           </select>
         </div>
         <div>
@@ -260,13 +289,17 @@ function SettingsCard() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const days = parseInt(duration, 10);
-    if (isNaN(days) || days < 1) return;
+    if (isNaN(days) || days < 1 || days > 365) {
+      alert('Durasi harus antara 1 dan 365 hari.');
+      return;
+    }
 
     updateSettings.mutate({ data: { defaultDurationDays: days, note: 'Updated via Admin Portal' } }, {
       onSuccess: () => {
         setIsEditing(false);
         queryClient.invalidateQueries({ queryKey: ['admin-consent-settings'] });
-      }
+      },
+      onError: () => alert('Pengaturan durasi gagal disimpan. Coba kembali.')
     });
   };
 

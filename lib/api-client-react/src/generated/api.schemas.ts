@@ -296,6 +296,20 @@ export const CompanyTalentConsentStatus = {
   expired: 'expired',
 } as const;
 
+export interface CompanyConsentHistoryEntry {
+  /** @minimum 1 */
+  consentVersion: number;
+  action: string;
+  /** @nullable */
+  fromStatus: string | null;
+  /** @nullable */
+  toStatus: string | null;
+  /** @nullable */
+  note: string | null;
+  actorRole: string;
+  createdAt: string;
+}
+
 export interface CompanyTalentConsent {
   id: string;
   companyId: string;
@@ -306,7 +320,11 @@ export interface CompanyTalentConsent {
   /** @nullable */
   grantedAt: string | null;
   /** @nullable */
+  deniedAt: string | null;
+  /** @nullable */
   revokedAt: string | null;
+  /** @nullable */
+  expiredAt: string | null;
   /** @nullable */
   expiresAt: string | null;
   consentVersion: number;
@@ -315,6 +333,7 @@ export interface CompanyTalentConsent {
   /** @nullable */
   decisionNote: string | null;
   updatedAt: string;
+  history: CompanyConsentHistoryEntry[];
 }
 
 export interface TalentConsentSettings {
@@ -529,7 +548,11 @@ export interface AdminTalentConsent {
   /** @nullable */
   grantedAt: string | null;
   /** @nullable */
+  deniedAt: string | null;
+  /** @nullable */
   revokedAt: string | null;
+  /** @nullable */
+  expiredAt: string | null;
   /** @nullable */
   expiresAt: string | null;
   consentVersion: number;
@@ -636,6 +659,14 @@ export interface CompanyConsentRequest {
   /** @nullable */
   requestNote: string | null;
   updatedAt: string;
+}
+
+export interface CompanyConsentRequestPage {
+  items: CompanyConsentRequest[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
 }
 
 export type MemberDiagnosticInputAnswers = {[key: string]: number};
@@ -1275,6 +1306,7 @@ search?: string;
 availability?: GetAdminTalentPoolAvailability;
 consent?: GetAdminTalentPoolConsent;
 companyId?: string;
+expiry?: GetAdminTalentPoolExpiry;
 location?: string;
 /**
  * @minimum 1
@@ -1308,6 +1340,15 @@ export const GetAdminTalentPoolConsent = {
   expired: 'expired',
 } as const;
 
+export type GetAdminTalentPoolExpiry = typeof GetAdminTalentPoolExpiry[keyof typeof GetAdminTalentPoolExpiry];
+
+
+export const GetAdminTalentPoolExpiry = {
+  all: 'all',
+  next_30_days: 'next_30_days',
+  expired: 'expired',
+} as const;
+
 export type GetCompanyTalentPoolParams = {
 search?: string;
 availability?: GetCompanyTalentPoolAvailability;
@@ -1330,6 +1371,31 @@ export const GetCompanyTalentPoolAvailability = {
   available: 'available',
   open_to_offer: 'open_to_offer',
   unavailable: 'unavailable',
+} as const;
+
+export type ListCompanyConsentRequestsParams = {
+status?: ListCompanyConsentRequestsStatus;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+};
+
+export type ListCompanyConsentRequestsStatus = typeof ListCompanyConsentRequestsStatus[keyof typeof ListCompanyConsentRequestsStatus];
+
+
+export const ListCompanyConsentRequestsStatus = {
+  all: 'all',
+  requested: 'requested',
+  active: 'active',
+  denied: 'denied',
+  revoked: 'revoked',
+  expired: 'expired',
 } as const;
 
 export type ListCompanyTalentPoolParams = {

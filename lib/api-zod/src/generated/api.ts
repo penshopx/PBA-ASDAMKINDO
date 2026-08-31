@@ -285,6 +285,7 @@ export const UpdateMemberEvidenceResponse = zod.object({
 /**
  * @summary Get the signed-in member Professional Passport
  */
+
 export const getMemberPassportResponseConsentSettingsDefaultDurationDaysMax = 365;
 
 
@@ -309,12 +310,23 @@ export const GetMemberPassportResponse = zod.object({
   "status": zod.enum(['requested', 'active', 'denied', 'revoked', 'expired']),
   "requestedAt": zod.coerce.date(),
   "grantedAt": zod.coerce.date().nullable(),
+  "deniedAt": zod.coerce.date().nullable(),
   "revokedAt": zod.coerce.date().nullable(),
+  "expiredAt": zod.coerce.date().nullable(),
   "expiresAt": zod.coerce.date().nullable(),
   "consentVersion": zod.int(),
   "requestNote": zod.string().nullable(),
   "decisionNote": zod.string().nullable(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "history": zod.array(zod.object({
+  "consentVersion": zod.int().min(1),
+  "action": zod.string(),
+  "fromStatus": zod.string().nullable(),
+  "toStatus": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "actorRole": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
 })),
   "consentSettings": zod.object({
   "defaultDurationDays": zod.int().min(1).max(getMemberPassportResponseConsentSettingsDefaultDurationDaysMax),
@@ -360,6 +372,7 @@ export const UpdateMemberPassportBody = zod.object({
   "availabilityStatus": zod.enum(['available', 'open_to_offer', 'unavailable']).optional()
 })
 
+
 export const updateMemberPassportResponseConsentSettingsDefaultDurationDaysMax = 365;
 
 
@@ -384,12 +397,23 @@ export const UpdateMemberPassportResponse = zod.object({
   "status": zod.enum(['requested', 'active', 'denied', 'revoked', 'expired']),
   "requestedAt": zod.coerce.date(),
   "grantedAt": zod.coerce.date().nullable(),
+  "deniedAt": zod.coerce.date().nullable(),
   "revokedAt": zod.coerce.date().nullable(),
+  "expiredAt": zod.coerce.date().nullable(),
   "expiresAt": zod.coerce.date().nullable(),
   "consentVersion": zod.int(),
   "requestNote": zod.string().nullable(),
   "decisionNote": zod.string().nullable(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "history": zod.array(zod.object({
+  "consentVersion": zod.int().min(1),
+  "action": zod.string(),
+  "fromStatus": zod.string().nullable(),
+  "toStatus": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "actorRole": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
 })),
   "consentSettings": zod.object({
   "defaultDurationDays": zod.int().min(1).max(updateMemberPassportResponseConsentSettingsDefaultDurationDaysMax),
@@ -412,6 +436,9 @@ export const GrantMemberCompanyConsentBody = zod.object({
   "note": zod.string().max(grantMemberCompanyConsentBodyNoteMax).optional()
 })
 
+
+
+
 export const GrantMemberCompanyConsentResponse = zod.object({
   "id": zod.string(),
   "companyId": zod.string(),
@@ -420,12 +447,23 @@ export const GrantMemberCompanyConsentResponse = zod.object({
   "status": zod.enum(['requested', 'active', 'denied', 'revoked', 'expired']),
   "requestedAt": zod.coerce.date(),
   "grantedAt": zod.coerce.date().nullable(),
+  "deniedAt": zod.coerce.date().nullable(),
   "revokedAt": zod.coerce.date().nullable(),
+  "expiredAt": zod.coerce.date().nullable(),
   "expiresAt": zod.coerce.date().nullable(),
   "consentVersion": zod.int(),
   "requestNote": zod.string().nullable(),
   "decisionNote": zod.string().nullable(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "history": zod.array(zod.object({
+  "consentVersion": zod.int().min(1),
+  "action": zod.string(),
+  "fromStatus": zod.string().nullable(),
+  "toStatus": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "actorRole": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 
@@ -445,6 +483,9 @@ export const UpdateMemberCompanyConsentBody = zod.object({
   "note": zod.string().max(updateMemberCompanyConsentBodyNoteMax).optional()
 })
 
+
+
+
 export const UpdateMemberCompanyConsentResponse = zod.object({
   "id": zod.string(),
   "companyId": zod.string(),
@@ -453,12 +494,23 @@ export const UpdateMemberCompanyConsentResponse = zod.object({
   "status": zod.enum(['requested', 'active', 'denied', 'revoked', 'expired']),
   "requestedAt": zod.coerce.date(),
   "grantedAt": zod.coerce.date().nullable(),
+  "deniedAt": zod.coerce.date().nullable(),
   "revokedAt": zod.coerce.date().nullable(),
+  "expiredAt": zod.coerce.date().nullable(),
   "expiresAt": zod.coerce.date().nullable(),
   "consentVersion": zod.int(),
   "requestNote": zod.string().nullable(),
   "decisionNote": zod.string().nullable(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "history": zod.array(zod.object({
+  "consentVersion": zod.int().min(1),
+  "action": zod.string(),
+  "fromStatus": zod.string().nullable(),
+  "toStatus": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "actorRole": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 
@@ -502,6 +554,7 @@ export const GetPublicPassportResponse = zod.object({
  * @summary Filter member passports for Admin PBA
  */
 export const getAdminTalentPoolQueryConsentDefault = `all`;
+export const getAdminTalentPoolQueryExpiryDefault = `all`;
 export const getAdminTalentPoolQueryPageDefault = 1;
 
 export const getAdminTalentPoolQueryPageSizeDefault = 20;
@@ -514,6 +567,7 @@ export const GetAdminTalentPoolQueryParams = zod.object({
   "availability": zod.enum(['available', 'open_to_offer', 'unavailable']).optional(),
   "consent": zod.enum(['all', 'requested', 'active', 'denied', 'revoked', 'expired']).default(getAdminTalentPoolQueryConsentDefault),
   "companyId": zod.coerce.string().optional(),
+  "expiry": zod.enum(['all', 'next_30_days', 'expired']).default(getAdminTalentPoolQueryExpiryDefault),
   "location": zod.coerce.string().optional(),
   "page": zod.coerce.number().int().min(1).default(getAdminTalentPoolQueryPageDefault),
   "pageSize": zod.coerce.number().int().min(1).max(getAdminTalentPoolQueryPageSizeMax).default(getAdminTalentPoolQueryPageSizeDefault)
@@ -528,7 +582,9 @@ export const GetAdminTalentPoolResponse = zod.object({
   "companyName": zod.string(),
   "status": zod.enum(['requested', 'active', 'denied', 'revoked', 'expired']),
   "grantedAt": zod.coerce.date().nullable(),
+  "deniedAt": zod.coerce.date().nullable(),
   "revokedAt": zod.coerce.date().nullable(),
+  "expiredAt": zod.coerce.date().nullable(),
   "expiresAt": zod.coerce.date().nullable(),
   "consentVersion": zod.int(),
   "grantedBy": zod.string().nullable(),
@@ -570,7 +626,9 @@ export const OverrideAdminTalentConsentResponse = zod.object({
   "companyName": zod.string(),
   "status": zod.enum(['requested', 'active', 'denied', 'revoked', 'expired']),
   "grantedAt": zod.coerce.date().nullable(),
+  "deniedAt": zod.coerce.date().nullable(),
   "revokedAt": zod.coerce.date().nullable(),
+  "expiredAt": zod.coerce.date().nullable(),
   "expiresAt": zod.coerce.date().nullable(),
   "consentVersion": zod.int(),
   "grantedBy": zod.string().nullable(),
@@ -663,7 +721,22 @@ export const GetCompanyTalentPoolResponse = zod.object({
 /**
  * @summary List consent requests made by the current company
  */
-export const ListCompanyConsentRequestsResponseItem = zod.object({
+export const listCompanyConsentRequestsQueryStatusDefault = `all`;
+export const listCompanyConsentRequestsQueryPageDefault = 1;
+
+export const listCompanyConsentRequestsQueryPageSizeDefault = 20;
+export const listCompanyConsentRequestsQueryPageSizeMax = 100;
+
+
+
+export const ListCompanyConsentRequestsQueryParams = zod.object({
+  "status": zod.enum(['all', 'requested', 'active', 'denied', 'revoked', 'expired']).default(listCompanyConsentRequestsQueryStatusDefault),
+  "page": zod.coerce.number().int().min(1).default(listCompanyConsentRequestsQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(listCompanyConsentRequestsQueryPageSizeMax).default(listCompanyConsentRequestsQueryPageSizeDefault)
+})
+
+export const ListCompanyConsentRequestsResponse = zod.object({
+  "items": zod.array(zod.object({
   "id": zod.string(),
   "passportSlug": zod.string(),
   "status": zod.enum(['requested', 'active', 'denied', 'revoked', 'expired']),
@@ -673,8 +746,12 @@ export const ListCompanyConsentRequestsResponseItem = zod.object({
   "consentVersion": zod.int(),
   "requestNote": zod.string().nullable(),
   "updatedAt": zod.coerce.date()
+})),
+  "page": zod.int(),
+  "pageSize": zod.int(),
+  "total": zod.int(),
+  "totalPages": zod.int()
 })
-export const ListCompanyConsentRequestsResponse = zod.array(ListCompanyConsentRequestsResponseItem)
 
 
 /**

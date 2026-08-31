@@ -17,7 +17,11 @@ export interface AdminTalentConsent {
   /** @nullable */
   grantedAt: Date | null;
   /** @nullable */
+  deniedAt: Date | null;
+  /** @nullable */
   revokedAt: Date | null;
+  /** @nullable */
+  expiredAt: Date | null;
   /** @nullable */
   expiresAt: Date | null;
   consentVersion: number;

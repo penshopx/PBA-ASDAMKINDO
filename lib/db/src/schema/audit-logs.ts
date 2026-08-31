@@ -1,11 +1,11 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 
 export const auditLogsTable = pgTable("audit_logs", {
   id: text("id").primaryKey(),
-  actorUserId: text("actor_user_id").notNull().references(() => usersTable.id),
+  actorUserId: text("actor_user_id").references(() => usersTable.id),
   actorRole: text("actor_role").notNull(),
   action: text("action").notNull(),
   entityType: text("entity_type").notNull(),
@@ -13,6 +13,7 @@ export const auditLogsTable = pgTable("audit_logs", {
   fromStatus: text("from_status"),
   toStatus: text("to_status"),
   note: text("note"),
+  metadata: jsonb("metadata").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

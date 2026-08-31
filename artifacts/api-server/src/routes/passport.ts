@@ -1,22 +1,23 @@
 import { randomUUID } from "node:crypto";
-import { and, count, desc, eq, gt, ilike, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   GetAdminTalentConsentSettingsResponse, GetAdminTalentPoolQueryParams, GetAdminTalentPoolResponse,
   GetCompanyTalentPoolQueryParams, GetCompanyTalentPoolResponse, GetMemberPassportResponse,
   GetPublicPassportParams, GetPublicPassportResponse, GrantMemberCompanyConsentBody,
-  GrantMemberCompanyConsentResponse, ListCompanyConsentRequestsResponse, ListMemberCompaniesResponse,
+  GrantMemberCompanyConsentResponse, ListCompanyConsentRequestsQueryParams, ListCompanyConsentRequestsResponse,
+  ListMemberCompaniesResponse,
   OverrideAdminTalentConsentBody, OverrideAdminTalentConsentParams, OverrideAdminTalentConsentResponse,
   RequestCompanyTalentConsentBody, RequestCompanyTalentConsentResponse, UpdateAdminTalentConsentSettingsBody,
   UpdateAdminTalentConsentSettingsResponse, UpdateMemberCompanyConsentBody, UpdateMemberCompanyConsentParams,
   UpdateMemberCompanyConsentResponse, UpdateMemberPassportBody, UpdateMemberPassportResponse,
 } from "@workspace/api-zod";
 import {
-  companyProfilesTable, companyTalentConsentsTable, db, memberEvidenceTable, memberProfilesTable,
+  auditLogsTable, companyProfilesTable, companyTalentConsentsTable, db, memberEvidenceTable, memberProfilesTable,
   notificationsTable, professionalPassportsTable, talentConsentSettingsTable, usersTable,
 } from "@workspace/db";
 import { getAuthenticatedUser, requireRole, requireUser } from "../lib/auth";
-import { consentExpiry, expireCompanyTalentConsents, getTalentConsentSettings, recordConsentAudit } from "../lib/talent-consent";
+import { consentExpiry, expireCompanyTalentConsent, expireCompanyTalentConsents, getTalentConsentSettings, lockCompanyTalentConsentPair, recordConsentAudit } from "../lib/talent-consent";
 
 const router: IRouter = Router();
 const memberOnly = [requireUser, requireRole("member")];
@@ -35,12 +36,33 @@ async function ensureMemberPassport(user: ReturnType<typeof getAuthenticatedUser
   return created;
 }
 const settingsResponse = (s: Awaited<ReturnType<typeof getTalentConsentSettings>>) => ({ defaultDurationDays: s.defaultDurationDays, updatedAt: s.updatedAt });
-function memberConsent(c: typeof companyTalentConsentsTable.$inferSelect, company: typeof companyProfilesTable.$inferSelect) {
-  return { id: c.id, companyId: c.companyUserId, companyName: company.companyName, companyType: company.companyType, status: c.status as "requested" | "active" | "denied" | "revoked" | "expired", requestedAt: c.requestedAt, grantedAt: c.grantedAt, revokedAt: c.revokedAt, expiresAt: c.expiresAt, consentVersion: c.consentVersion, requestNote: c.requestNote, decisionNote: c.decisionNote, updatedAt: c.updatedAt };
+type ConsentHistoryEntry = {
+  consentVersion: number;
+  action: string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  note: string | null;
+  actorRole: string;
+  createdAt: Date;
+};
+function historyEntry(log: Omit<ConsentHistoryEntry, "consentVersion"> & { metadata: unknown }): ConsentHistoryEntry {
+  const metadata = log.metadata && typeof log.metadata === "object" ? log.metadata as Record<string, unknown> : {};
+  return { ...log, consentVersion: typeof metadata.consentVersion === "number" ? metadata.consentVersion : 1 };
+}
+function memberConsent(c: typeof companyTalentConsentsTable.$inferSelect, company: typeof companyProfilesTable.$inferSelect, history: ConsentHistoryEntry[] = []) {
+  return { id: c.id, companyId: c.companyUserId, companyName: company.companyName, companyType: company.companyType, status: c.status as "requested" | "active" | "denied" | "revoked" | "expired", requestedAt: c.requestedAt, grantedAt: c.grantedAt, deniedAt: c.deniedAt, revokedAt: c.revokedAt, expiredAt: c.expiredAt, expiresAt: c.expiresAt, consentVersion: c.consentVersion, requestNote: c.requestNote, decisionNote: c.decisionNote, updatedAt: c.updatedAt, history };
 }
 async function memberPassportResponse(passport: typeof professionalPassportsTable.$inferSelect) {
   const [settings, rows] = await Promise.all([getTalentConsentSettings(), db.select({ consent: companyTalentConsentsTable, company: companyProfilesTable }).from(companyTalentConsentsTable).innerJoin(companyProfilesTable, eq(companyTalentConsentsTable.companyUserId, companyProfilesTable.userId)).where(eq(companyTalentConsentsTable.memberUserId, passport.memberUserId)).orderBy(desc(companyTalentConsentsTable.updatedAt))]);
-  return { ...passport, preferredRoles: asStrings(passport.preferredRoles), preferredLocations: asStrings(passport.preferredLocations), preferredWorkModes: asStrings(passport.preferredWorkModes), publicUrl: publicPath(passport.slug), consents: rows.map((r) => memberConsent(r.consent, r.company)), consentSettings: settingsResponse(settings) };
+  const ids = rows.map((row) => row.consent.id);
+  const logs = ids.length ? await db.select({ entityId: auditLogsTable.entityId, action: auditLogsTable.action, fromStatus: auditLogsTable.fromStatus, toStatus: auditLogsTable.toStatus, note: auditLogsTable.note, actorRole: auditLogsTable.actorRole, createdAt: auditLogsTable.createdAt, metadata: auditLogsTable.metadata }).from(auditLogsTable).where(and(eq(auditLogsTable.entityType, "company_talent_consent"), inArray(auditLogsTable.entityId, ids))).orderBy(desc(auditLogsTable.createdAt)) : [];
+  const history = new Map<string, ConsentHistoryEntry[]>();
+  for (const log of logs) history.set(log.entityId, [...(history.get(log.entityId) ?? []), historyEntry(log)].sort((a, b) => b.consentVersion - a.consentVersion));
+  return { ...passport, preferredRoles: asStrings(passport.preferredRoles), preferredLocations: asStrings(passport.preferredLocations), preferredWorkModes: asStrings(passport.preferredWorkModes), publicUrl: publicPath(passport.slug), consents: rows.map((r) => memberConsent(r.consent, r.company, history.get(r.consent.id) ?? [])), consentSettings: settingsResponse(settings) };
+}
+async function consentHistoryFor(id: string) {
+  const logs = await db.select({ action: auditLogsTable.action, fromStatus: auditLogsTable.fromStatus, toStatus: auditLogsTable.toStatus, note: auditLogsTable.note, actorRole: auditLogsTable.actorRole, createdAt: auditLogsTable.createdAt, metadata: auditLogsTable.metadata }).from(auditLogsTable).where(and(eq(auditLogsTable.entityType, "company_talent_consent"), eq(auditLogsTable.entityId, id))).orderBy(desc(auditLogsTable.createdAt));
+  return logs.map(historyEntry).sort((a, b) => b.consentVersion - a.consentVersion);
 }
 async function notify(executor: any, userId: string, title: string, description: string, key: string) {
   await executor.insert(notificationsTable).values({ id: `notification-${randomUUID()}`, userId, title, description, type: "consent", dedupeKey: key });
@@ -75,21 +97,43 @@ router.post("/member/passport/consents", ...memberOnly, async (req, res): Promis
   const member = getAuthenticatedUser(req); const company = await companyForId(body.data.companyId); if (!company) { res.status(404).json({ error: "Perusahaan tidak ditemukan." }); return; }
   const settings = await getTalentConsentSettings(); const now = new Date();
   const consent = await db.transaction(async tx => {
-    const [created] = await tx.insert(companyTalentConsentsTable).values({ id: randomUUID(), memberUserId: member.id, companyUserId: company.userId, status: "active", grantedAt: now, expiresAt: consentExpiry(settings.defaultDurationDays, now), grantedBy: member.id, requestNote: body.data.note ?? null, decisionNote: body.data.note ?? null }).onConflictDoUpdate({ target: [companyTalentConsentsTable.memberUserId, companyTalentConsentsTable.companyUserId], set: { status: "active", grantedAt: now, revokedAt: null, expiresAt: consentExpiry(settings.defaultDurationDays, now), grantedBy: member.id, decisionNote: body.data.note ?? null, consentVersion: sql`${companyTalentConsentsTable.consentVersion} + 1`, updatedAt: now } }).returning();
-    await recordConsentAudit(tx, member, { action: "talent_consent.granted", entityId: created.id, toStatus: "active", note: body.data.note }); await notify(tx, company.userId, "Consent Talent Pool diberikan", "Seorang anggota memberikan akses Talent Pool kepada perusahaan Anda.", `consent-granted:${created.id}:v${created.consentVersion}`); return created;
+    await lockCompanyTalentConsentPair(tx, member.id, company.userId);
+    let [current] = await tx.select().from(companyTalentConsentsTable).where(and(eq(companyTalentConsentsTable.memberUserId, member.id), eq(companyTalentConsentsTable.companyUserId, company.userId))).limit(1).for("update");
+    if (current) current = await expireCompanyTalentConsent(tx, current, now);
+    if (current?.status === "active") return current;
+    const [created] = current
+      ? await tx.update(companyTalentConsentsTable).set({ status: "active", grantedAt: now, deniedAt: null, revokedAt: null, expiredAt: null, expiresAt: consentExpiry(settings.defaultDurationDays, now), grantedBy: member.id, revokedBy: null, decisionNote: body.data.note ?? null, consentVersion: current.consentVersion + 1, updatedAt: now }).where(and(eq(companyTalentConsentsTable.id, current.id), eq(companyTalentConsentsTable.consentVersion, current.consentVersion))).returning()
+      : await tx.insert(companyTalentConsentsTable).values({ id: randomUUID(), memberUserId: member.id, companyUserId: company.userId, status: "active", grantedAt: now, expiresAt: consentExpiry(settings.defaultDurationDays, now), grantedBy: member.id, requestNote: body.data.note ?? null, decisionNote: body.data.note ?? null }).returning();
+    if (!created) throw new Error("Consent berubah secara bersamaan.");
+    await recordConsentAudit(tx, member, { action: "talent_consent.granted", entityId: created.id, fromStatus: current?.status, toStatus: "active", note: body.data.note, consentVersion: created.consentVersion }); await notify(tx, company.userId, "Consent Talent Pool diberikan", "Seorang anggota memberikan akses Talent Pool kepada perusahaan Anda.", `consent-granted:${created.id}:v${created.consentVersion}`); return created;
   });
-  res.status(201).json(GrantMemberCompanyConsentResponse.parse(memberConsent(consent, company)));
+  res.status(201).json(GrantMemberCompanyConsentResponse.parse(memberConsent(consent, company, await consentHistoryFor(consent.id))));
 });
 router.patch("/member/passport/consents/:id", ...memberOnly, async (req, res): Promise<void> => {
   const params = UpdateMemberCompanyConsentParams.safeParse(req.params), body = UpdateMemberCompanyConsentBody.safeParse(req.body); if (!params.success || !body.success) { res.status(400).json({ error: "Consent tidak valid." }); return; }
-  const member = getAuthenticatedUser(req); const [old] = await db.select().from(companyTalentConsentsTable).where(and(eq(companyTalentConsentsTable.id, params.data.id), eq(companyTalentConsentsTable.memberUserId, member.id))).limit(1); if (!old) { res.status(404).json({ error: "Consent tidak ditemukan." }); return; }
-  const company = await companyForId(old.companyUserId); if (!company) throw new Error("Profil perusahaan tidak ditemukan."); const now = new Date(); const settings = await getTalentConsentSettings();
+  const member = getAuthenticatedUser(req); const [found] = await db.select().from(companyTalentConsentsTable).where(and(eq(companyTalentConsentsTable.id, params.data.id), eq(companyTalentConsentsTable.memberUserId, member.id))).limit(1); if (!found) { res.status(404).json({ error: "Consent tidak ditemukan." }); return; }
+  const company = await companyForId(found.companyUserId); if (!company) throw new Error("Profil perusahaan tidak ditemukan."); const now = new Date(); const settings = await getTalentConsentSettings();
   const status = body.data.action === "grant" ? "active" : body.data.action === "deny" ? "denied" : "revoked";
-  const updated = await db.transaction(async tx => {
-    const [changed] = await tx.update(companyTalentConsentsTable).set({ status, grantedAt: status === "active" ? now : old.grantedAt, revokedAt: status === "active" ? null : now, expiresAt: status === "active" ? consentExpiry(settings.defaultDurationDays, now) : old.expiresAt, grantedBy: status === "active" ? member.id : old.grantedBy, revokedBy: status === "active" ? null : member.id, decisionNote: body.data.note ?? null, consentVersion: old.consentVersion + 1, updatedAt: now }).where(eq(companyTalentConsentsTable.id, old.id)).returning();
-    await recordConsentAudit(tx, member, { action: `talent_consent.${status}`, entityId: old.id, fromStatus: old.status, toStatus: status, note: body.data.note }); await notify(tx, company.userId, "Status consent diperbarui", `Consent Talent Pool anggota telah ${status}.`, `consent-${status}:${old.id}:v${changed.consentVersion}`); return changed;
+  const outcome = await db.transaction(async tx => {
+    await lockCompanyTalentConsentPair(tx, member.id, found.companyUserId);
+    let [current] = await tx.select().from(companyTalentConsentsTable).where(and(eq(companyTalentConsentsTable.id, found.id), eq(companyTalentConsentsTable.memberUserId, member.id))).limit(1).for("update");
+    if (!current) return { kind: "missing" as const };
+    current = await expireCompanyTalentConsent(tx, current, now);
+    if ((current.status === status && (status !== "active" || (current.expiresAt && current.expiresAt > now))) || (status === "revoked" && current.status === "expired")) return { kind: "ok" as const, consent: current };
+    const validTransition = status === "active"
+      ? ["requested", "denied", "revoked", "expired"].includes(current.status)
+      : status === "denied"
+        ? current.status === "requested"
+        : current.status === "active";
+    if (!validTransition) return { kind: "invalid" as const };
+    const [changed] = await tx.update(companyTalentConsentsTable).set({ status, grantedAt: status === "active" ? now : current.grantedAt, deniedAt: status === "denied" ? now : status === "active" ? null : current.deniedAt, revokedAt: status === "revoked" ? now : status === "active" ? null : current.revokedAt, expiredAt: status === "active" ? null : current.expiredAt, expiresAt: status === "active" ? consentExpiry(settings.defaultDurationDays, now) : current.expiresAt, grantedBy: status === "active" ? member.id : current.grantedBy, revokedBy: status === "revoked" ? member.id : status === "active" ? null : current.revokedBy, decisionNote: body.data.note ?? null, consentVersion: current.consentVersion + 1, updatedAt: now }).where(and(eq(companyTalentConsentsTable.id, current.id), eq(companyTalentConsentsTable.consentVersion, current.consentVersion))).returning();
+    if (!changed) return { kind: "conflict" as const };
+    await recordConsentAudit(tx, member, { action: `talent_consent.${status}`, entityId: current.id, fromStatus: current.status, toStatus: status, note: body.data.note, consentVersion: changed.consentVersion }); await notify(tx, company.userId, "Status consent diperbarui", `Consent Talent Pool anggota telah ${status}.`, `consent-${status}:${current.id}:v${changed.consentVersion}`); return { kind: "ok" as const, consent: changed };
   });
-  res.json(UpdateMemberCompanyConsentResponse.parse(memberConsent(updated, company)));
+  if (outcome.kind === "missing") { res.status(404).json({ error: "Consent tidak ditemukan." }); return; }
+  if (outcome.kind === "invalid") { res.status(409).json({ error: "Perubahan status consent tidak diizinkan." }); return; }
+  if (outcome.kind === "conflict") { res.status(409).json({ error: "Consent berubah secara bersamaan. Muat ulang dan coba lagi." }); return; }
+  res.json(UpdateMemberCompanyConsentResponse.parse(memberConsent(outcome.consent, company, await consentHistoryFor(outcome.consent.id))));
 });
 
 router.get("/passport/:slug", async (req, res): Promise<void> => {
@@ -103,7 +147,7 @@ router.get("/passport/:slug", async (req, res): Promise<void> => {
 router.get("/company/talent-pool", ...companyOnly, async (req, res): Promise<void> => {
   const query = GetCompanyTalentPoolQueryParams.safeParse(req.query); if (!query.success) { res.status(400).json({ error: "Filter Talent Pool tidak valid." }); return; } await expireCompanyTalentConsents();
   const user = getAuthenticatedUser(req), q = query.data;
-  const filters = and(eq(companyTalentConsentsTable.companyUserId, user.id), eq(companyTalentConsentsTable.status, "active"), gt(companyTalentConsentsTable.expiresAt, new Date()), eq(memberProfilesTable.dataConsent, true), q.availability ? eq(professionalPassportsTable.availabilityStatus, q.availability) : undefined, q.search ? or(ilike(usersTable.name, `%${q.search}%`), ilike(professionalPassportsTable.headline, `%${q.search}%`), ilike(memberProfilesTable.expertise, `%${q.search}%`)) : undefined, q.location ? or(ilike(memberProfilesTable.domicile, `%${q.location}%`), sql`${professionalPassportsTable.preferredLocations}::text ILIKE ${`%${q.location}%`}`) : undefined);
+  const filters = and(eq(companyTalentConsentsTable.companyUserId, user.id), eq(companyTalentConsentsTable.status, "active"), gt(companyTalentConsentsTable.expiresAt, new Date()), q.availability ? eq(professionalPassportsTable.availabilityStatus, q.availability) : undefined, q.search ? or(ilike(usersTable.name, `%${q.search}%`), ilike(professionalPassportsTable.headline, `%${q.search}%`), ilike(memberProfilesTable.expertise, `%${q.search}%`)) : undefined, q.location ? or(ilike(memberProfilesTable.domicile, `%${q.location}%`), sql`${professionalPassportsTable.preferredLocations}::text ILIKE ${`%${q.location}%`}`) : undefined);
   const [totalRows, rows] = await Promise.all([
     db.select({ value: count() }).from(companyTalentConsentsTable).innerJoin(professionalPassportsTable, eq(companyTalentConsentsTable.memberUserId, professionalPassportsTable.memberUserId)).innerJoin(usersTable, eq(usersTable.id, professionalPassportsTable.memberUserId)).leftJoin(memberProfilesTable, eq(memberProfilesTable.userId, usersTable.id)).where(filters),
     db.select({ passport: professionalPassportsTable, user: usersTable, profile: memberProfilesTable, consent: companyTalentConsentsTable }).from(companyTalentConsentsTable).innerJoin(professionalPassportsTable, eq(companyTalentConsentsTable.memberUserId, professionalPassportsTable.memberUserId)).innerJoin(usersTable, eq(usersTable.id, professionalPassportsTable.memberUserId)).leftJoin(memberProfilesTable, eq(memberProfilesTable.userId, usersTable.id)).where(filters).orderBy(desc(professionalPassportsTable.updatedAt)).limit(q.pageSize).offset((q.page - 1) * q.pageSize),
@@ -115,28 +159,41 @@ function requestResponse(c: typeof companyTalentConsentsTable.$inferSelect, slug
   return { id: c.id, passportSlug: slug, status: c.status as "requested" | "active" | "denied" | "revoked" | "expired", requestedAt: c.requestedAt, grantedAt: c.grantedAt, expiresAt: c.expiresAt, consentVersion: c.consentVersion, requestNote: c.requestNote, updatedAt: c.updatedAt };
 }
 router.get("/company/talent-pool/consent-requests", ...companyOnly, async (req, res) => {
-  await expireCompanyTalentConsents(); const user = getAuthenticatedUser(req);
-  const rows = await db.select({ consent: companyTalentConsentsTable, slug: professionalPassportsTable.slug }).from(companyTalentConsentsTable).innerJoin(professionalPassportsTable, eq(companyTalentConsentsTable.memberUserId, professionalPassportsTable.memberUserId)).where(eq(companyTalentConsentsTable.companyUserId, user.id)).orderBy(desc(companyTalentConsentsTable.updatedAt));
-  res.json(ListCompanyConsentRequestsResponse.parse(rows.map(r => requestResponse(r.consent, r.slug))));
+  const query = ListCompanyConsentRequestsQueryParams.safeParse(req.query);
+  if (!query.success) { res.status(400).json({ error: "Filter permintaan consent tidak valid." }); return; }
+  await expireCompanyTalentConsents(); const user = getAuthenticatedUser(req), q = query.data;
+  const filters = and(eq(companyTalentConsentsTable.companyUserId, user.id), q.status === "all" ? undefined : eq(companyTalentConsentsTable.status, q.status));
+  const [totalRows, rows] = await Promise.all([
+    db.select({ value: count() }).from(companyTalentConsentsTable).where(filters),
+    db.select({ consent: companyTalentConsentsTable, slug: professionalPassportsTable.slug }).from(companyTalentConsentsTable).innerJoin(professionalPassportsTable, eq(companyTalentConsentsTable.memberUserId, professionalPassportsTable.memberUserId)).where(filters).orderBy(desc(companyTalentConsentsTable.updatedAt)).limit(q.pageSize).offset((q.page - 1) * q.pageSize),
+  ]);
+  const total = Number(totalRows[0]?.value ?? 0);
+  res.json(ListCompanyConsentRequestsResponse.parse({ items: rows.map(r => requestResponse(r.consent, r.slug)), page: q.page, pageSize: q.pageSize, total, totalPages: Math.ceil(total / q.pageSize) }));
 });
 router.post("/company/talent-pool/consent-requests", ...companyOnly, async (req, res): Promise<void> => {
   const body = RequestCompanyTalentConsentBody.safeParse(req.body); if (!body.success) { res.status(400).json({ error: "Permintaan consent tidak valid." }); return; }
-  const company = getAuthenticatedUser(req); const [row] = await db.select({ passport: professionalPassportsTable }).from(professionalPassportsTable).innerJoin(usersTable, eq(professionalPassportsTable.memberUserId, usersTable.id)).where(and(eq(professionalPassportsTable.slug, body.data.passportSlug), eq(usersTable.role, "member"))).limit(1);
+  const company = getAuthenticatedUser(req); const [row] = await db.select({ passport: professionalPassportsTable }).from(professionalPassportsTable).innerJoin(usersTable, eq(professionalPassportsTable.memberUserId, usersTable.id)).where(and(eq(professionalPassportsTable.slug, body.data.passportSlug), eq(professionalPassportsTable.isPublic, true), eq(usersTable.role, "member"))).limit(1);
   if (!row) { res.status(404).json({ error: "Passport tidak ditemukan." }); return; }
-  const [existing] = await db.select().from(companyTalentConsentsTable).where(and(eq(companyTalentConsentsTable.memberUserId, row.passport.memberUserId), eq(companyTalentConsentsTable.companyUserId, company.id))).limit(1);
-  if (existing?.status === "active") { res.status(201).json(RequestCompanyTalentConsentResponse.parse(requestResponse(existing, row.passport.slug))); return; }
   const now = new Date(); const consent = await db.transaction(async tx => {
-    const [created] = await tx.insert(companyTalentConsentsTable).values({ id: randomUUID(), memberUserId: row.passport.memberUserId, companyUserId: company.id, status: "requested", requestedAt: now, requestNote: body.data.note ?? null }).onConflictDoUpdate({ target: [companyTalentConsentsTable.memberUserId, companyTalentConsentsTable.companyUserId], set: { status: "requested", requestedAt: now, grantedAt: null, revokedAt: null, expiresAt: null, requestNote: body.data.note ?? null, decisionNote: null, consentVersion: sql`${companyTalentConsentsTable.consentVersion} + 1`, updatedAt: now } }).returning();
-    await recordConsentAudit(tx, company, { action: "talent_consent.requested", entityId: created.id, toStatus: "requested", note: body.data.note }); await notify(tx, created.memberUserId, "Permintaan akses Talent Pool", "Sebuah perusahaan meminta akses ke Professional Passport Anda.", `consent-request:${created.id}:v${created.consentVersion}`); return created;
+    await lockCompanyTalentConsentPair(tx, row.passport.memberUserId, company.id);
+    let [current] = await tx.select().from(companyTalentConsentsTable).where(and(eq(companyTalentConsentsTable.memberUserId, row.passport.memberUserId), eq(companyTalentConsentsTable.companyUserId, company.id))).limit(1).for("update");
+    if (current) current = await expireCompanyTalentConsent(tx, current, now);
+    if (current?.status === "active" || current?.status === "requested") return current;
+    const [created] = current
+      ? await tx.update(companyTalentConsentsTable).set({ status: "requested", requestedAt: now, grantedAt: null, deniedAt: null, revokedAt: null, expiredAt: null, expiresAt: null, grantedBy: null, revokedBy: null, requestNote: body.data.note ?? null, decisionNote: null, consentVersion: current.consentVersion + 1, updatedAt: now }).where(and(eq(companyTalentConsentsTable.id, current.id), eq(companyTalentConsentsTable.consentVersion, current.consentVersion))).returning()
+      : await tx.insert(companyTalentConsentsTable).values({ id: randomUUID(), memberUserId: row.passport.memberUserId, companyUserId: company.id, status: "requested", requestedAt: now, requestNote: body.data.note ?? null }).returning();
+    if (!created) throw new Error("Consent berubah secara bersamaan.");
+    await recordConsentAudit(tx, company, { action: "talent_consent.requested", entityId: created.id, fromStatus: current?.status, toStatus: "requested", note: body.data.note, consentVersion: created.consentVersion }); await notify(tx, created.memberUserId, "Permintaan akses Talent Pool", "Sebuah perusahaan meminta akses ke Professional Passport Anda.", `consent-request:${created.id}:v${created.consentVersion}`); return created;
   });
   res.status(201).json(RequestCompanyTalentConsentResponse.parse(requestResponse(consent, row.passport.slug)));
 });
 function adminConsent(c: typeof companyTalentConsentsTable.$inferSelect, memberName: string, companyName: string) {
-  return { id: c.id, memberUserId: c.memberUserId, memberName, companyUserId: c.companyUserId, companyName, status: c.status as "requested" | "active" | "denied" | "revoked" | "expired", grantedAt: c.grantedAt, revokedAt: c.revokedAt, expiresAt: c.expiresAt, consentVersion: c.consentVersion, grantedBy: c.grantedBy, revokedBy: c.revokedBy, requestNote: c.requestNote, decisionNote: c.decisionNote, updatedAt: c.updatedAt };
+  return { id: c.id, memberUserId: c.memberUserId, memberName, companyUserId: c.companyUserId, companyName, status: c.status as "requested" | "active" | "denied" | "revoked" | "expired", grantedAt: c.grantedAt, deniedAt: c.deniedAt, revokedAt: c.revokedAt, expiredAt: c.expiredAt, expiresAt: c.expiresAt, consentVersion: c.consentVersion, grantedBy: c.grantedBy, revokedBy: c.revokedBy, requestNote: c.requestNote, decisionNote: c.decisionNote, updatedAt: c.updatedAt };
 }
 router.get("/admin/talent-pool", ...adminOnly, async (req, res): Promise<void> => {
   const query = GetAdminTalentPoolQueryParams.safeParse(req.query); if (!query.success) { res.status(400).json({ error: "Filter Talent Pool tidak valid." }); return; } await expireCompanyTalentConsents(); const q = query.data;
-  const filters = and(q.consent !== "all" ? eq(companyTalentConsentsTable.status, q.consent) : undefined, q.companyId ? eq(companyTalentConsentsTable.companyUserId, q.companyId) : undefined, q.availability ? eq(professionalPassportsTable.availabilityStatus, q.availability) : undefined, q.search ? or(ilike(usersTable.name, `%${q.search}%`), ilike(professionalPassportsTable.headline, `%${q.search}%`), ilike(memberProfilesTable.expertise, `%${q.search}%`)) : undefined, q.location ? or(ilike(memberProfilesTable.domicile, `%${q.location}%`), sql`${professionalPassportsTable.preferredLocations}::text ILIKE ${`%${q.location}%`}`) : undefined);
+  const now = new Date();
+  const filters = and(q.consent !== "all" ? eq(companyTalentConsentsTable.status, q.consent) : undefined, q.companyId ? eq(companyTalentConsentsTable.companyUserId, q.companyId) : undefined, q.expiry === "next_30_days" ? and(eq(companyTalentConsentsTable.status, "active"), gt(companyTalentConsentsTable.expiresAt, now), lte(companyTalentConsentsTable.expiresAt, new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000))) : q.expiry === "expired" ? eq(companyTalentConsentsTable.status, "expired") : undefined, q.availability ? eq(professionalPassportsTable.availabilityStatus, q.availability) : undefined, q.search ? or(ilike(usersTable.name, `%${q.search}%`), ilike(companyProfilesTable.companyName, `%${q.search}%`), ilike(professionalPassportsTable.headline, `%${q.search}%`), ilike(memberProfilesTable.expertise, `%${q.search}%`)) : undefined, q.location ? or(ilike(memberProfilesTable.domicile, `%${q.location}%`), sql`${professionalPassportsTable.preferredLocations}::text ILIKE ${`%${q.location}%`}`) : undefined);
   const [totalRows, rows] = await Promise.all([
     db.select({ value: count() }).from(companyTalentConsentsTable).innerJoin(usersTable, eq(companyTalentConsentsTable.memberUserId, usersTable.id)).innerJoin(companyProfilesTable, eq(companyTalentConsentsTable.companyUserId, companyProfilesTable.userId)).leftJoin(professionalPassportsTable, eq(professionalPassportsTable.memberUserId, usersTable.id)).leftJoin(memberProfilesTable, eq(memberProfilesTable.userId, usersTable.id)).where(filters),
     db.select({ consent: companyTalentConsentsTable, memberName: usersTable.name, companyName: companyProfilesTable.companyName }).from(companyTalentConsentsTable).innerJoin(usersTable, eq(companyTalentConsentsTable.memberUserId, usersTable.id)).innerJoin(companyProfilesTable, eq(companyTalentConsentsTable.companyUserId, companyProfilesTable.userId)).leftJoin(professionalPassportsTable, eq(professionalPassportsTable.memberUserId, usersTable.id)).leftJoin(memberProfilesTable, eq(memberProfilesTable.userId, usersTable.id)).where(filters).orderBy(desc(companyTalentConsentsTable.updatedAt)).limit(q.pageSize).offset((q.page - 1) * q.pageSize),
@@ -153,14 +210,23 @@ router.patch("/admin/talent-pool/settings", ...adminOnly, async (req, res): Prom
 });
 router.patch("/admin/talent-pool/consents/:id", ...adminOnly, async (req, res): Promise<void> => {
   const params = OverrideAdminTalentConsentParams.safeParse(req.params), body = OverrideAdminTalentConsentBody.safeParse(req.body); if (!params.success || !body.success || (body.data.action === "set_expiry" && !body.data.expiresAt)) { res.status(400).json({ error: "Override consent tidak valid." }); return; }
-  await expireCompanyTalentConsents();
-  const actor = getAuthenticatedUser(req); const [old] = await db.select().from(companyTalentConsentsTable).where(eq(companyTalentConsentsTable.id, params.data.id)).limit(1); if (!old) { res.status(404).json({ error: "Consent tidak ditemukan." }); return; } const now = new Date(), revoke = body.data.action === "revoke";
-  if (!revoke && (old.status !== "active" || !body.data.expiresAt || body.data.expiresAt <= now)) { res.status(400).json({ error: "Masa berlaku hanya dapat diubah untuk consent aktif dengan tanggal masa depan." }); return; }
-  const [member, company] = await Promise.all([db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, old.memberUserId)).limit(1), db.select({ name: companyProfilesTable.companyName }).from(companyProfilesTable).where(eq(companyProfilesTable.userId, old.companyUserId)).limit(1)]);
-  const updated = await db.transaction(async tx => {
-    const [changed] = await tx.update(companyTalentConsentsTable).set({ status: revoke ? "revoked" : old.status, revokedAt: revoke ? now : old.revokedAt, revokedBy: revoke ? actor.id : old.revokedBy, expiresAt: revoke ? old.expiresAt : body.data.expiresAt!, decisionNote: body.data.note, consentVersion: old.consentVersion + 1, updatedAt: now }).where(eq(companyTalentConsentsTable.id, old.id)).returning();
-    await recordConsentAudit(tx, actor, { action: revoke ? "talent_consent.admin_revoked" : "talent_consent.expiry_overridden", entityId: old.id, fromStatus: old.status, toStatus: changed.status, note: body.data.note }); await notify(tx, old.memberUserId, "Consent Talent Pool diperbarui", "Admin memperbarui status atau masa berlaku consent Anda.", `consent-admin:${old.id}:v${changed.consentVersion}:member`); await notify(tx, old.companyUserId, "Consent Talent Pool diperbarui", "Admin memperbarui status atau masa berlaku akses Talent Pool.", `consent-admin:${old.id}:v${changed.consentVersion}:company`); return changed;
+  const actor = getAuthenticatedUser(req); const [found] = await db.select().from(companyTalentConsentsTable).where(eq(companyTalentConsentsTable.id, params.data.id)).limit(1); if (!found) { res.status(404).json({ error: "Consent tidak ditemukan." }); return; } const now = new Date(), revoke = body.data.action === "revoke";
+  const [member, company] = await Promise.all([db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, found.memberUserId)).limit(1), db.select({ name: companyProfilesTable.companyName }).from(companyProfilesTable).where(eq(companyProfilesTable.userId, found.companyUserId)).limit(1)]);
+  const outcome = await db.transaction(async tx => {
+    await lockCompanyTalentConsentPair(tx, found.memberUserId, found.companyUserId);
+    let [current] = await tx.select().from(companyTalentConsentsTable).where(eq(companyTalentConsentsTable.id, found.id)).limit(1).for("update");
+    if (!current) return { kind: "missing" as const };
+    current = await expireCompanyTalentConsent(tx, current, now);
+    if (revoke && (current.status === "revoked" || current.status === "expired")) return { kind: "ok" as const, consent: current };
+    if (!revoke && (current.status !== "active" || !body.data.expiresAt || body.data.expiresAt <= now)) return { kind: "invalid" as const };
+    if (!revoke && current.expiresAt?.getTime() === body.data.expiresAt!.getTime()) return { kind: "ok" as const, consent: current };
+    const [changed] = await tx.update(companyTalentConsentsTable).set({ status: revoke ? "revoked" : current.status, revokedAt: revoke ? now : current.revokedAt, revokedBy: revoke ? actor.id : current.revokedBy, expiresAt: revoke ? current.expiresAt : body.data.expiresAt!, decisionNote: body.data.note, consentVersion: current.consentVersion + 1, updatedAt: now }).where(and(eq(companyTalentConsentsTable.id, current.id), eq(companyTalentConsentsTable.consentVersion, current.consentVersion))).returning();
+    if (!changed) return { kind: "conflict" as const };
+    await recordConsentAudit(tx, actor, { action: revoke ? "talent_consent.admin_revoked" : "talent_consent.expiry_overridden", entityId: current.id, fromStatus: current.status, toStatus: changed.status, note: body.data.note, consentVersion: changed.consentVersion }); await notify(tx, current.memberUserId, "Consent Talent Pool diperbarui", "Admin memperbarui status atau masa berlaku consent Anda.", `consent-admin:${current.id}:v${changed.consentVersion}:member`); await notify(tx, current.companyUserId, "Consent Talent Pool diperbarui", "Admin memperbarui status atau masa berlaku akses Talent Pool.", `consent-admin:${current.id}:v${changed.consentVersion}:company`); return { kind: "ok" as const, consent: changed };
   });
-  res.json(OverrideAdminTalentConsentResponse.parse(adminConsent(updated, member[0]?.name ?? "", company[0]?.name ?? "")));
+  if (outcome.kind === "missing") { res.status(404).json({ error: "Consent tidak ditemukan." }); return; }
+  if (outcome.kind === "invalid") { res.status(400).json({ error: "Masa berlaku hanya dapat diubah untuk consent aktif dengan tanggal masa depan." }); return; }
+  if (outcome.kind === "conflict") { res.status(409).json({ error: "Consent berubah secara bersamaan. Muat ulang dan coba lagi." }); return; }
+  res.json(OverrideAdminTalentConsentResponse.parse(adminConsent(outcome.consent, member[0]?.name ?? "", company[0]?.name ?? "")));
 });
 export default router;

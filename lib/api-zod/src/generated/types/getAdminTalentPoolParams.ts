@@ -7,12 +7,14 @@
  */
 import type { GetAdminTalentPoolAvailability } from './getAdminTalentPoolAvailability';
 import type { GetAdminTalentPoolConsent } from './getAdminTalentPoolConsent';
+import type { GetAdminTalentPoolExpiry } from './getAdminTalentPoolExpiry';
 
 export type GetAdminTalentPoolParams = {
 search?: string;
 availability?: GetAdminTalentPoolAvailability;
 consent?: GetAdminTalentPoolConsent;
 companyId?: string;
+expiry?: GetAdminTalentPoolExpiry;
 location?: string;
 /**
  * @minimum 1

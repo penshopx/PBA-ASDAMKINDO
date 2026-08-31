@@ -28,6 +28,7 @@ import type {
   AuditLog,
   CompanyConsentRequest,
   CompanyConsentRequestInput,
+  CompanyConsentRequestPage,
   CompanyDashboard,
   CompanyDirectoryEntry,
   CompanyMatching,
@@ -46,6 +47,7 @@ import type {
   GetAdminTalentPoolParams,
   GetCompanyTalentPoolParams,
   HealthStatus,
+  ListCompanyConsentRequestsParams,
   ListCompanyTalentPoolParams,
   ListProgramsParams,
   Matching,
@@ -1603,20 +1605,27 @@ export function useGetCompanyTalentPool<TData = Awaited<ReturnType<typeof getCom
 
 
 
-export const getListCompanyConsentRequestsUrl = () => {
+export const getListCompanyConsentRequestsUrl = (params?: ListCompanyConsentRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/company/talent-pool/consent-requests`
+  return stringifiedParams.length > 0 ? `/api/company/talent-pool/consent-requests?${stringifiedParams}` : `/api/company/talent-pool/consent-requests`
 }
 
 /**
  * @summary List consent requests made by the current company
  */
-export const listCompanyConsentRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyConsentRequest[]> => {
+export const listCompanyConsentRequests = async (params?: ListCompanyConsentRequestsParams, options?: Parameters<typeof customFetch>[1]): Promise<CompanyConsentRequestPage> => {
 
-  return customFetch<CompanyConsentRequest[]>(getListCompanyConsentRequestsUrl(),
+  return customFetch<CompanyConsentRequestPage>(getListCompanyConsentRequestsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1629,23 +1638,23 @@ export const listCompanyConsentRequests = async ( options?: Parameters<typeof cu
 
 
 
-export const getListCompanyConsentRequestsQueryKey = () => {
+export const getListCompanyConsentRequestsQueryKey = (params?: ListCompanyConsentRequestsParams,) => {
     return [
-    `/api/company/talent-pool/consent-requests`
+    `/api/company/talent-pool/consent-requests`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListCompanyConsentRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListCompanyConsentRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError = ErrorType<unknown>>(params?: ListCompanyConsentRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListCompanyConsentRequestsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyConsentRequestsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyConsentRequests>>> = ({ signal }) => listCompanyConsentRequests({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyConsentRequests>>> = ({ signal }) => listCompanyConsentRequests(params, { signal, ...requestOptions });
 
 
 
@@ -1663,11 +1672,11 @@ export type ListCompanyConsentRequestsQueryError = ErrorType<unknown>
  */
 
 export function useListCompanyConsentRequests<TData = Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListCompanyConsentRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListCompanyConsentRequestsQueryOptions(options)
+  const queryOptions = getListCompanyConsentRequestsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { expireCompanyTalentConsents } from "./lib/talent-consent";
 
 const rawPort = process.env["PORT"];
 
@@ -23,3 +24,8 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
 });
+
+const expiryTimer = setInterval(() => {
+  void expireCompanyTalentConsents().catch((err) => logger.error({ err }, "Failed to expire company talent consents"));
+}, 60_000);
+expiryTimer.unref();

@@ -359,7 +359,25 @@ function CompanyConsentsSection({ consents }: { consents: any[] }) {
                   }>{consent.status.toUpperCase()}</strong></p>
                   {consent.status === 'active' && consent.grantedAt && <p>Diberikan: {format(new Date(consent.grantedAt), 'd MMM yyyy', { locale: dateLocaleId })}</p>}
                   {consent.status === 'requested' && <p>Diminta: {format(new Date(consent.requestedAt), 'd MMM yyyy', { locale: dateLocaleId })}</p>}
+                  {consent.deniedAt && <p>Ditolak: {format(new Date(consent.deniedAt), 'd MMM yyyy', { locale: dateLocaleId })}</p>}
+                  {consent.revokedAt && <p>Dicabut: {format(new Date(consent.revokedAt), 'd MMM yyyy', { locale: dateLocaleId })}</p>}
+                  {consent.expiredAt && <p>Berakhir: {format(new Date(consent.expiredAt), 'd MMM yyyy', { locale: dateLocaleId })}</p>}
                   {consent.expiresAt && <p>Kedaluwarsa: {format(new Date(consent.expiresAt), 'd MMM yyyy', { locale: dateLocaleId })}</p>}
+                  <p>Versi consent: v{consent.consentVersion}</p>
+                  {consent.history?.length > 0 && (
+                    <details className="pt-1">
+                      <summary className="cursor-pointer font-bold text-foreground">Lihat riwayat status ({consent.history.length})</summary>
+                      <ol className="mt-2 space-y-2 border-l border-border pl-3">
+                        {consent.history.map((entry: any, index: number) => (
+                          <li key={`${entry.action}-${entry.createdAt}-${index}`}>
+                            <span className="font-semibold text-foreground">v{entry.consentVersion} · {entry.toStatus || entry.action}</span>
+                            {' · '}{format(new Date(entry.createdAt), 'd MMM yyyy, HH:mm', { locale: dateLocaleId })}
+                            {entry.note && <span className="block">{entry.note}</span>}
+                          </li>
+                        ))}
+                      </ol>
+                    </details>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -392,6 +410,15 @@ function CompanyConsentsSection({ consents }: { consents: any[] }) {
                     className="rounded-lg bg-destructive/10 text-destructive px-3 py-1.5 text-xs font-bold hover:bg-destructive/20 disabled:opacity-50"
                   >
                     Cabut Akses
+                  </button>
+                )}
+                {['denied', 'revoked', 'expired'].includes(consent.status) && (
+                  <button
+                    onClick={() => handleUpdate(consent.id, 'grant')}
+                    disabled={updateConsent.isPending}
+                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    Aktifkan Kembali
                   </button>
                 )}
               </div>
