@@ -41,6 +41,9 @@ export const saveMemberOnboardingBodyPhoneMin = 8;
 
 export const saveMemberOnboardingBodyDomicileMin = 2;
 
+export const saveMemberOnboardingBodySkkLevelMin = 0;
+export const saveMemberOnboardingBodySkkLevelMax = 9;
+
 export const saveMemberOnboardingBodyExperienceYearsMin = 0;
 export const saveMemberOnboardingBodyExperienceYearsMax = 80;
 
@@ -51,6 +54,8 @@ export const SaveMemberOnboardingBody = zod.object({
   "phone": zod.string().min(saveMemberOnboardingBodyPhoneMin),
   "domicile": zod.string().min(saveMemberOnboardingBodyDomicileMin),
   "education": zod.string(),
+  "jobTitle": zod.string().optional(),
+  "skkLevel": zod.int().min(saveMemberOnboardingBodySkkLevelMin).max(saveMemberOnboardingBodySkkLevelMax).optional(),
   "expertise": zod.string(),
   "experienceYears": zod.number().min(saveMemberOnboardingBodyExperienceYearsMin).max(saveMemberOnboardingBodyExperienceYearsMax),
   "primaryGoal": zod.enum(['skk', 'competency', 'job', 'career']),
@@ -165,7 +170,6 @@ export const GetMemberJourneyResponse = zod.object({
   "id": zod.string(),
   "requirement": zod.string(),
   "companyName": zod.string(),
-  "candidateUserId": zod.string().nullable(),
   "candidateName": zod.string(),
   "score": zod.number(),
   "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),
@@ -814,6 +818,7 @@ export const ListCompanyRequirementsResponseItem = zod.object({
   "description": zod.string(),
   "location": zod.string(),
   "competencies": zod.array(zod.string()),
+  "minimumSkkLevel": zod.number(),
   "minimumExperience": zod.number(),
   "headcount": zod.number(),
   "deadline": zod.coerce.date(),
@@ -834,6 +839,11 @@ export const createCompanyRequirementBodyLocationMin = 2;
 
 
 
+export const createCompanyRequirementBodyCompetenciesItemRegExp = new RegExp('\\S');
+
+export const createCompanyRequirementBodyMinimumSkkLevelMin = 0;
+export const createCompanyRequirementBodyMinimumSkkLevelMax = 9;
+
 export const createCompanyRequirementBodyMinimumExperienceMin = 0;
 export const createCompanyRequirementBodyMinimumExperienceMax = 80;
 
@@ -846,7 +856,8 @@ export const CreateCompanyRequirementBody = zod.object({
   "title": zod.string().min(createCompanyRequirementBodyTitleMin),
   "description": zod.string(),
   "location": zod.string().min(createCompanyRequirementBodyLocationMin),
-  "competencies": zod.array(zod.string().min(1)).min(1),
+  "competencies": zod.array(zod.string().min(1).regex(createCompanyRequirementBodyCompetenciesItemRegExp)).min(1),
+  "minimumSkkLevel": zod.number().min(createCompanyRequirementBodyMinimumSkkLevelMin).max(createCompanyRequirementBodyMinimumSkkLevelMax).optional(),
   "minimumExperience": zod.number().min(createCompanyRequirementBodyMinimumExperienceMin).max(createCompanyRequirementBodyMinimumExperienceMax),
   "headcount": zod.number().min(1).max(createCompanyRequirementBodyHeadcountMax),
   "deadline": zod.coerce.date(),
@@ -860,6 +871,7 @@ export const CreateCompanyRequirementResponse = zod.object({
   "description": zod.string(),
   "location": zod.string(),
   "competencies": zod.array(zod.string()),
+  "minimumSkkLevel": zod.number(),
   "minimumExperience": zod.number(),
   "headcount": zod.number(),
   "deadline": zod.coerce.date(),
@@ -883,6 +895,11 @@ export const updateCompanyRequirementBodyLocationMin = 2;
 
 
 
+export const updateCompanyRequirementBodyCompetenciesItemRegExp = new RegExp('\\S');
+
+export const updateCompanyRequirementBodyMinimumSkkLevelMin = 0;
+export const updateCompanyRequirementBodyMinimumSkkLevelMax = 9;
+
 export const updateCompanyRequirementBodyMinimumExperienceMin = 0;
 export const updateCompanyRequirementBodyMinimumExperienceMax = 80;
 
@@ -895,7 +912,8 @@ export const UpdateCompanyRequirementBody = zod.object({
   "title": zod.string().min(updateCompanyRequirementBodyTitleMin).optional(),
   "description": zod.string().optional(),
   "location": zod.string().min(updateCompanyRequirementBodyLocationMin).optional(),
-  "competencies": zod.array(zod.string().min(1)).min(1).optional(),
+  "competencies": zod.array(zod.string().min(1).regex(updateCompanyRequirementBodyCompetenciesItemRegExp)).min(1).optional(),
+  "minimumSkkLevel": zod.number().min(updateCompanyRequirementBodyMinimumSkkLevelMin).max(updateCompanyRequirementBodyMinimumSkkLevelMax).optional(),
   "minimumExperience": zod.number().min(updateCompanyRequirementBodyMinimumExperienceMin).max(updateCompanyRequirementBodyMinimumExperienceMax).optional(),
   "headcount": zod.number().min(1).max(updateCompanyRequirementBodyHeadcountMax).optional(),
   "deadline": zod.coerce.date().optional(),
@@ -909,6 +927,7 @@ export const UpdateCompanyRequirementResponse = zod.object({
   "description": zod.string(),
   "location": zod.string(),
   "competencies": zod.array(zod.string()),
+  "minimumSkkLevel": zod.number(),
   "minimumExperience": zod.number(),
   "headcount": zod.number(),
   "deadline": zod.coerce.date(),
@@ -922,24 +941,203 @@ export const UpdateCompanyRequirementResponse = zod.object({
 /**
  * @summary List consented members ranked against a company requirement
  */
+export const listCompanyTalentPoolQueryMinScoreDefault = 0;
+export const listCompanyTalentPoolQueryMinScoreMin = 0;
+export const listCompanyTalentPoolQueryMinScoreMax = 100;
+
+export const listCompanyTalentPoolQuerySkkLevelMin = 0;
+export const listCompanyTalentPoolQuerySkkLevelMax = 9;
+
+export const listCompanyTalentPoolQueryExperienceMinMin = 0;
+export const listCompanyTalentPoolQueryExperienceMinMax = 80;
+
+export const listCompanyTalentPoolQueryRefreshDefault = false;
+export const listCompanyTalentPoolQueryPageDefault = 1;
+
+export const listCompanyTalentPoolQueryPageSizeDefault = 20;
+export const listCompanyTalentPoolQueryPageSizeMax = 100;
+
+
+
 export const ListCompanyTalentPoolQueryParams = zod.object({
-  "requirementId": zod.coerce.string()
+  "requirementId": zod.coerce.string(),
+  "search": zod.coerce.string().optional(),
+  "minScore": zod.coerce.number().int().min(listCompanyTalentPoolQueryMinScoreMin).max(listCompanyTalentPoolQueryMinScoreMax).default(listCompanyTalentPoolQueryMinScoreDefault),
+  "location": zod.coerce.string().optional(),
+  "skkLevel": zod.coerce.number().int().min(listCompanyTalentPoolQuerySkkLevelMin).max(listCompanyTalentPoolQuerySkkLevelMax).optional(),
+  "experienceMin": zod.coerce.number().int().min(listCompanyTalentPoolQueryExperienceMinMin).max(listCompanyTalentPoolQueryExperienceMinMax).optional(),
+  "availability": zod.enum(['available', 'open_to_offer', 'unavailable']).optional(),
+  "verificationStatus": zod.enum(['verified', 'pending', 'unverified']).optional(),
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']).optional(),
+  "refresh": zod.coerce.boolean().default(listCompanyTalentPoolQueryRefreshDefault),
+  "page": zod.coerce.number().int().min(1).default(listCompanyTalentPoolQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(listCompanyTalentPoolQueryPageSizeMax).default(listCompanyTalentPoolQueryPageSizeDefault)
 })
 
-export const ListCompanyTalentPoolResponseItem = zod.object({
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownJobTitleMin = 0;
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownJobTitleMax = 25;
+
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownSkkLevelMin = 0;
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownSkkLevelMax = 20;
+
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownRequiredCompetenciesMin = 0;
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownRequiredCompetenciesMax = 20;
+
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownExperienceMin = 0;
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownExperienceMax = 15;
+
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownLocationMin = 0;
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownLocationMax = 10;
+
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownAvailabilityMin = 0;
+export const listCompanyTalentPoolResponseItemsItemScoreBreakdownAvailabilityMax = 10;
+
+
+
+export const ListCompanyTalentPoolResponse = zod.object({
+  "items": zod.array(zod.object({
   "candidateId": zod.string(),
   "name": zod.string(),
   "domicile": zod.string(),
+  "jobTitle": zod.string(),
   "expertise": zod.string(),
+  "skkLevel": zod.number(),
   "experienceYears": zod.number(),
+  "availabilityStatus": zod.enum(['available', 'open_to_offer', 'unavailable']),
+  "verificationStatus": zod.enum(['verified', 'pending', 'unverified']),
   "readinessScore": zod.number(),
   "readinessLabel": zod.string(),
   "score": zod.number(),
   "matchReasons": zod.array(zod.string()),
+  "matchedCompetencies": zod.array(zod.string()),
+  "unmetCompetencies": zod.array(zod.string()),
+  "scoreBreakdown": zod.object({
+  "jobTitle": zod.int().min(listCompanyTalentPoolResponseItemsItemScoreBreakdownJobTitleMin).max(listCompanyTalentPoolResponseItemsItemScoreBreakdownJobTitleMax),
+  "skkLevel": zod.int().min(listCompanyTalentPoolResponseItemsItemScoreBreakdownSkkLevelMin).max(listCompanyTalentPoolResponseItemsItemScoreBreakdownSkkLevelMax),
+  "requiredCompetencies": zod.int().min(listCompanyTalentPoolResponseItemsItemScoreBreakdownRequiredCompetenciesMin).max(listCompanyTalentPoolResponseItemsItemScoreBreakdownRequiredCompetenciesMax),
+  "experience": zod.int().min(listCompanyTalentPoolResponseItemsItemScoreBreakdownExperienceMin).max(listCompanyTalentPoolResponseItemsItemScoreBreakdownExperienceMax),
+  "location": zod.int().min(listCompanyTalentPoolResponseItemsItemScoreBreakdownLocationMin).max(listCompanyTalentPoolResponseItemsItemScoreBreakdownLocationMax),
+  "availability": zod.int().min(listCompanyTalentPoolResponseItemsItemScoreBreakdownAvailabilityMin).max(listCompanyTalentPoolResponseItemsItemScoreBreakdownAvailabilityMax)
+}),
   "matchingId": zod.string().nullable(),
   "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined'])
+})),
+  "page": zod.int(),
+  "pageSize": zod.int(),
+  "total": zod.int(),
+  "totalPages": zod.int()
 })
-export const ListCompanyTalentPoolResponse = zod.array(ListCompanyTalentPoolResponseItem)
+
+
+/**
+ * @summary Review consented matching candidates across company requirements
+ */
+export const listAdminMatchingsQueryMinScoreDefault = 0;
+export const listAdminMatchingsQueryMinScoreMin = 0;
+export const listAdminMatchingsQueryMinScoreMax = 100;
+
+export const listAdminMatchingsQuerySkkLevelMin = 0;
+export const listAdminMatchingsQuerySkkLevelMax = 9;
+
+export const listAdminMatchingsQueryExperienceMinMin = 0;
+export const listAdminMatchingsQueryExperienceMinMax = 80;
+
+export const listAdminMatchingsQueryRefreshDefault = false;
+export const listAdminMatchingsQueryPageDefault = 1;
+
+export const listAdminMatchingsQueryPageSizeDefault = 20;
+export const listAdminMatchingsQueryPageSizeMax = 100;
+
+
+
+export const ListAdminMatchingsQueryParams = zod.object({
+  "requirementId": zod.coerce.string().optional(),
+  "companyId": zod.coerce.string().optional(),
+  "search": zod.coerce.string().optional(),
+  "minScore": zod.coerce.number().int().min(listAdminMatchingsQueryMinScoreMin).max(listAdminMatchingsQueryMinScoreMax).default(listAdminMatchingsQueryMinScoreDefault),
+  "location": zod.coerce.string().optional(),
+  "skkLevel": zod.coerce.number().int().min(listAdminMatchingsQuerySkkLevelMin).max(listAdminMatchingsQuerySkkLevelMax).optional(),
+  "experienceMin": zod.coerce.number().int().min(listAdminMatchingsQueryExperienceMinMin).max(listAdminMatchingsQueryExperienceMinMax).optional(),
+  "availability": zod.enum(['available', 'open_to_offer', 'unavailable']).optional(),
+  "verificationStatus": zod.enum(['verified', 'pending', 'unverified']).optional(),
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']).optional(),
+  "refresh": zod.coerce.boolean().default(listAdminMatchingsQueryRefreshDefault),
+  "page": zod.coerce.number().int().min(1).default(listAdminMatchingsQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(listAdminMatchingsQueryPageSizeMax).default(listAdminMatchingsQueryPageSizeDefault)
+})
+
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownJobTitleMin = 0;
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownJobTitleMax = 25;
+
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownSkkLevelMin = 0;
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownSkkLevelMax = 20;
+
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownRequiredCompetenciesMin = 0;
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownRequiredCompetenciesMax = 20;
+
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownExperienceMin = 0;
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownExperienceMax = 15;
+
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownLocationMin = 0;
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownLocationMax = 10;
+
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownAvailabilityMin = 0;
+export const listAdminMatchingsResponseItemsItemOneScoreBreakdownAvailabilityMax = 10;
+
+
+
+export const ListAdminMatchingsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "candidateId": zod.string(),
+  "name": zod.string(),
+  "domicile": zod.string(),
+  "jobTitle": zod.string(),
+  "expertise": zod.string(),
+  "skkLevel": zod.number(),
+  "experienceYears": zod.number(),
+  "availabilityStatus": zod.enum(['available', 'open_to_offer', 'unavailable']),
+  "verificationStatus": zod.enum(['verified', 'pending', 'unverified']),
+  "readinessScore": zod.number(),
+  "readinessLabel": zod.string(),
+  "score": zod.number(),
+  "matchReasons": zod.array(zod.string()),
+  "matchedCompetencies": zod.array(zod.string()),
+  "unmetCompetencies": zod.array(zod.string()),
+  "scoreBreakdown": zod.object({
+  "jobTitle": zod.int().min(listAdminMatchingsResponseItemsItemOneScoreBreakdownJobTitleMin).max(listAdminMatchingsResponseItemsItemOneScoreBreakdownJobTitleMax),
+  "skkLevel": zod.int().min(listAdminMatchingsResponseItemsItemOneScoreBreakdownSkkLevelMin).max(listAdminMatchingsResponseItemsItemOneScoreBreakdownSkkLevelMax),
+  "requiredCompetencies": zod.int().min(listAdminMatchingsResponseItemsItemOneScoreBreakdownRequiredCompetenciesMin).max(listAdminMatchingsResponseItemsItemOneScoreBreakdownRequiredCompetenciesMax),
+  "experience": zod.int().min(listAdminMatchingsResponseItemsItemOneScoreBreakdownExperienceMin).max(listAdminMatchingsResponseItemsItemOneScoreBreakdownExperienceMax),
+  "location": zod.int().min(listAdminMatchingsResponseItemsItemOneScoreBreakdownLocationMin).max(listAdminMatchingsResponseItemsItemOneScoreBreakdownLocationMax),
+  "availability": zod.int().min(listAdminMatchingsResponseItemsItemOneScoreBreakdownAvailabilityMin).max(listAdminMatchingsResponseItemsItemOneScoreBreakdownAvailabilityMax)
+}),
+  "matchingId": zod.string().nullable(),
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined'])
+}).and(zod.object({
+  "requirementId": zod.string(),
+  "requirementTitle": zod.string(),
+  "companyName": zod.string()
+}))),
+  "page": zod.int(),
+  "pageSize": zod.int(),
+  "total": zod.int(),
+  "totalPages": zod.int()
+})
+
+
+/**
+ * @summary List active internal shortlist items still covered by candidate consent
+ */
+export const ListCompanyShortlistResponseItem = zod.object({
+  "id": zod.string(),
+  "requirement": zod.string(),
+  "companyName": zod.string(),
+  "candidateName": zod.string(),
+  "score": zod.number(),
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),
+  "updatedAt": zod.coerce.date()
+})
+export const ListCompanyShortlistResponse = zod.array(ListCompanyShortlistResponseItem)
 
 
 /**
@@ -1150,7 +1348,6 @@ export const GetAdminOperationsResponse = zod.object({
   "id": zod.string(),
   "requirement": zod.string(),
   "companyName": zod.string(),
-  "candidateUserId": zod.string().nullable(),
   "candidateName": zod.string(),
   "score": zod.number(),
   "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),
@@ -1387,7 +1584,6 @@ export const UpdateAdminMatchingResponse = zod.object({
   "id": zod.string(),
   "requirement": zod.string(),
   "companyName": zod.string(),
-  "candidateUserId": zod.string().nullable(),
   "candidateName": zod.string(),
   "score": zod.number(),
   "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),

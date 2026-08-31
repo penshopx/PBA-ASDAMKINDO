@@ -15,6 +15,12 @@ export interface MemberOnboardingInput {
   /** @minLength 2 */
   domicile: string;
   education: string;
+  jobTitle?: string;
+  /**
+     * @minimum 0
+     * @maximum 9
+     */
+  skkLevel?: number;
   expertise: string;
   /**
      * @minimum 0

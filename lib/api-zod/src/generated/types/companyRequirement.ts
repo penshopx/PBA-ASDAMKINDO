@@ -15,6 +15,7 @@ export interface CompanyRequirement {
   description: string;
   location: string;
   competencies: string[];
+  minimumSkkLevel: number;
   minimumExperience: number;
   headcount: number;
   deadline: Date;

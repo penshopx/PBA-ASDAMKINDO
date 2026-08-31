@@ -734,22 +734,180 @@ paths:
           required: true
           schema:
             type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: minScore
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 0
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: skkLevel
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 9
+        - name: experienceMin
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 80
+        - name: availability
+          in: query
+          schema:
+            type: string
+            enum: [available, open_to_offer, unavailable]
+        - name: verificationStatus
+          in: query
+          schema:
+            type: string
+            enum: [verified, pending, unverified]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [new, review, shortlisted, interview, placed, declined]
+        - name: refresh
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
       responses:
         "200":
           description: Ranked talent pool
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/TalentPoolCandidate"
+                $ref: "#/components/schemas/TalentPoolMatchesPage"
         "404":
           description: Requirement not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/matchings:
+    get:
+      operationId: listAdminMatchings
+      tags: [admin]
+      summary: Review consented matching candidates across company requirements
+      parameters:
+        - name: requirementId
+          in: query
+          schema:
+            type: string
+        - name: companyId
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: minScore
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 0
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: skkLevel
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 9
+        - name: experienceMin
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 80
+        - name: availability
+          in: query
+          schema:
+            type: string
+            enum: [available, open_to_offer, unavailable]
+        - name: verificationStatus
+          in: query
+          schema:
+            type: string
+            enum: [verified, pending, unverified]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [new, review, shortlisted, interview, placed, declined]
+        - name: refresh
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Matching candidates visible to Admin PBA
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMatchingPage"
+        "400":
+          description: Invalid matching filters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /company/shortlist:
+    get:
+      operationId: listCompanyShortlist
+      tags: [company]
+      summary: List active internal shortlist items still covered by candidate consent
+      responses:
+        "200":
+          description: Active shortlist
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyMatching"
     post:
       operationId: createCompanyShortlist
       tags: [company]
@@ -1182,6 +1340,12 @@ components:
           minLength: 2
         education:
           type: string
+        jobTitle:
+          type: string
+        skkLevel:
+          type: integer
+          minimum: 0
+          maximum: 9
         expertise:
           type: string
         experienceYears:
@@ -1962,6 +2126,8 @@ components:
           type: array
           items:
             type: string
+        minimumSkkLevel:
+          type: number
         minimumExperience:
           type: number
         headcount:
@@ -1980,7 +2146,7 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [id, kind, title, description, location, competencies, minimumExperience, headcount, deadline, status, candidateCount, createdAt, updatedAt]
+      required: [id, kind, title, description, location, competencies, minimumSkkLevel, minimumExperience, headcount, deadline, status, candidateCount, createdAt, updatedAt]
     CompanyRequirementInput:
       type: object
       properties:
@@ -2000,7 +2166,12 @@ components:
           items:
             type: string
             minLength: 1
+            pattern: '\S'
           minItems: 1
+        minimumSkkLevel:
+          type: number
+          minimum: 0
+          maximum: 9
         minimumExperience:
           type: number
           minimum: 0
@@ -2035,7 +2206,12 @@ components:
           items:
             type: string
             minLength: 1
+            pattern: '\S'
           minItems: 1
+        minimumSkkLevel:
+          type: number
+          minimum: 0
+          maximum: 9
         minimumExperience:
           type: number
           minimum: 0
@@ -2059,10 +2235,20 @@ components:
           type: string
         domicile:
           type: string
+        jobTitle:
+          type: string
         expertise:
           type: string
+        skkLevel:
+          type: number
         experienceYears:
           type: number
+        availabilityStatus:
+          type: string
+          enum: [available, open_to_offer, unavailable]
+        verificationStatus:
+          type: string
+          enum: [verified, pending, unverified]
         readinessScore:
           type: number
         readinessLabel:
@@ -2073,12 +2259,94 @@ components:
           type: array
           items:
             type: string
+        matchedCompetencies:
+          type: array
+          items:
+            type: string
+        unmetCompetencies:
+          type: array
+          items:
+            type: string
+        scoreBreakdown:
+          $ref: "#/components/schemas/MatchingScoreBreakdown"
         matchingId:
           type: ["string", "null"]
         status:
           type: string
           enum: [new, review, shortlisted, interview, placed, declined]
-      required: [candidateId, name, domicile, expertise, experienceYears, readinessScore, readinessLabel, score, matchReasons, matchingId, status]
+      required: [candidateId, name, domicile, jobTitle, expertise, skkLevel, experienceYears, availabilityStatus, verificationStatus, readinessScore, readinessLabel, score, matchReasons, matchedCompetencies, unmetCompetencies, scoreBreakdown, matchingId, status]
+    MatchingScoreBreakdown:
+      type: object
+      properties:
+        jobTitle:
+          type: integer
+          minimum: 0
+          maximum: 25
+        skkLevel:
+          type: integer
+          minimum: 0
+          maximum: 20
+        requiredCompetencies:
+          type: integer
+          minimum: 0
+          maximum: 20
+        experience:
+          type: integer
+          minimum: 0
+          maximum: 15
+        location:
+          type: integer
+          minimum: 0
+          maximum: 10
+        availability:
+          type: integer
+          minimum: 0
+          maximum: 10
+      required: [jobTitle, skkLevel, requiredCompetencies, experience, location, availability]
+    TalentPoolMatchesPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TalentPoolCandidate"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+      required: [items, page, pageSize, total, totalPages]
+    AdminMatchingCandidate:
+      allOf:
+        - $ref: "#/components/schemas/TalentPoolCandidate"
+        - type: object
+          properties:
+            requirementId:
+              type: string
+            requirementTitle:
+              type: string
+            companyName:
+              type: string
+          required: [requirementId, requirementTitle, companyName]
+    AdminMatchingPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminMatchingCandidate"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+      required: [items, page, pageSize, total, totalPages]
     CompanyShortlistInput:
       type: object
       properties:
@@ -2313,8 +2581,6 @@ components:
           type: string
         companyName:
           type: string
-        candidateUserId:
-          type: ["string", "null"]
         candidateName:
           type: string
         score:
@@ -2325,7 +2591,7 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [id, requirement, companyName, candidateUserId, candidateName, score, status, updatedAt]
+      required: [id, requirement, companyName, candidateName, score, status, updatedAt]
     CompanyMatching:
       type: object
       properties:

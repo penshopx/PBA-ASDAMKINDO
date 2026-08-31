@@ -53,6 +53,12 @@ export interface MemberOnboardingInput {
   /** @minLength 2 */
   domicile: string;
   education: string;
+  jobTitle?: string;
+  /**
+     * @minimum 0
+     * @maximum 9
+     */
+  skkLevel?: number;
   expertise: string;
   /**
      * @minimum 0
@@ -219,8 +225,6 @@ export interface Matching {
   id: string;
   requirement: string;
   companyName: string;
-  /** @nullable */
-  candidateUserId: string | null;
   candidateName: string;
   score: number;
   status: MatchingStatus;
@@ -777,6 +781,7 @@ export interface CompanyRequirement {
   description: string;
   location: string;
   competencies: string[];
+  minimumSkkLevel: number;
   minimumExperience: number;
   headcount: number;
   deadline: string;
@@ -813,8 +818,14 @@ export interface CompanyRequirementInput {
   /**
      * @minItems 1
      * @items.minLength 1
+     * @items.pattern \S
      */
   competencies: string[];
+  /**
+     * @minimum 0
+     * @maximum 9
+     */
+  minimumSkkLevel?: number;
   /**
      * @minimum 0
      * @maximum 80
@@ -856,8 +867,14 @@ export interface CompanyRequirementUpdate {
   /**
      * @minItems 1
      * @items.minLength 1
+     * @items.pattern \S
      */
   competencies?: string[];
+  /**
+     * @minimum 0
+     * @maximum 9
+     */
+  minimumSkkLevel?: number;
   /**
      * @minimum 0
      * @maximum 80
@@ -872,6 +889,24 @@ export interface CompanyRequirementUpdate {
   status?: CompanyRequirementUpdateStatus;
 }
 
+export type TalentPoolCandidateAvailabilityStatus = typeof TalentPoolCandidateAvailabilityStatus[keyof typeof TalentPoolCandidateAvailabilityStatus];
+
+
+export const TalentPoolCandidateAvailabilityStatus = {
+  available: 'available',
+  open_to_offer: 'open_to_offer',
+  unavailable: 'unavailable',
+} as const;
+
+export type TalentPoolCandidateVerificationStatus = typeof TalentPoolCandidateVerificationStatus[keyof typeof TalentPoolCandidateVerificationStatus];
+
+
+export const TalentPoolCandidateVerificationStatus = {
+  verified: 'verified',
+  pending: 'pending',
+  unverified: 'unverified',
+} as const;
+
 export type TalentPoolCandidateStatus = typeof TalentPoolCandidateStatus[keyof typeof TalentPoolCandidateStatus];
 
 
@@ -884,19 +919,81 @@ export const TalentPoolCandidateStatus = {
   declined: 'declined',
 } as const;
 
+export interface MatchingScoreBreakdown {
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  jobTitle: number;
+  /**
+     * @minimum 0
+     * @maximum 20
+     */
+  skkLevel: number;
+  /**
+     * @minimum 0
+     * @maximum 20
+     */
+  requiredCompetencies: number;
+  /**
+     * @minimum 0
+     * @maximum 15
+     */
+  experience: number;
+  /**
+     * @minimum 0
+     * @maximum 10
+     */
+  location: number;
+  /**
+     * @minimum 0
+     * @maximum 10
+     */
+  availability: number;
+}
+
 export interface TalentPoolCandidate {
   candidateId: string;
   name: string;
   domicile: string;
+  jobTitle: string;
   expertise: string;
+  skkLevel: number;
   experienceYears: number;
+  availabilityStatus: TalentPoolCandidateAvailabilityStatus;
+  verificationStatus: TalentPoolCandidateVerificationStatus;
   readinessScore: number;
   readinessLabel: string;
   score: number;
   matchReasons: string[];
+  matchedCompetencies: string[];
+  unmetCompetencies: string[];
+  scoreBreakdown: MatchingScoreBreakdown;
   /** @nullable */
   matchingId: string | null;
   status: TalentPoolCandidateStatus;
+}
+
+export interface TalentPoolMatchesPage {
+  items: TalentPoolCandidate[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export type AdminMatchingCandidate = TalentPoolCandidate & {
+  requirementId: string;
+  requirementTitle: string;
+  companyName: string;
+};
+
+export interface AdminMatchingPage {
+  items: AdminMatchingCandidate[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
 }
 
 export interface CompanyShortlistInput {
@@ -1400,7 +1497,132 @@ export const ListCompanyConsentRequestsStatus = {
 
 export type ListCompanyTalentPoolParams = {
 requirementId: string;
+search?: string;
+/**
+ * @minimum 0
+ * @maximum 100
+ */
+minScore?: number;
+location?: string;
+/**
+ * @minimum 0
+ * @maximum 9
+ */
+skkLevel?: number;
+/**
+ * @minimum 0
+ * @maximum 80
+ */
+experienceMin?: number;
+availability?: ListCompanyTalentPoolAvailability;
+verificationStatus?: ListCompanyTalentPoolVerificationStatus;
+status?: ListCompanyTalentPoolStatus;
+refresh?: boolean;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
 };
+
+export type ListCompanyTalentPoolAvailability = typeof ListCompanyTalentPoolAvailability[keyof typeof ListCompanyTalentPoolAvailability];
+
+
+export const ListCompanyTalentPoolAvailability = {
+  available: 'available',
+  open_to_offer: 'open_to_offer',
+  unavailable: 'unavailable',
+} as const;
+
+export type ListCompanyTalentPoolVerificationStatus = typeof ListCompanyTalentPoolVerificationStatus[keyof typeof ListCompanyTalentPoolVerificationStatus];
+
+
+export const ListCompanyTalentPoolVerificationStatus = {
+  verified: 'verified',
+  pending: 'pending',
+  unverified: 'unverified',
+} as const;
+
+export type ListCompanyTalentPoolStatus = typeof ListCompanyTalentPoolStatus[keyof typeof ListCompanyTalentPoolStatus];
+
+
+export const ListCompanyTalentPoolStatus = {
+  new: 'new',
+  review: 'review',
+  shortlisted: 'shortlisted',
+  interview: 'interview',
+  placed: 'placed',
+  declined: 'declined',
+} as const;
+
+export type ListAdminMatchingsParams = {
+requirementId?: string;
+companyId?: string;
+search?: string;
+/**
+ * @minimum 0
+ * @maximum 100
+ */
+minScore?: number;
+location?: string;
+/**
+ * @minimum 0
+ * @maximum 9
+ */
+skkLevel?: number;
+/**
+ * @minimum 0
+ * @maximum 80
+ */
+experienceMin?: number;
+availability?: ListAdminMatchingsAvailability;
+verificationStatus?: ListAdminMatchingsVerificationStatus;
+status?: ListAdminMatchingsStatus;
+refresh?: boolean;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+};
+
+export type ListAdminMatchingsAvailability = typeof ListAdminMatchingsAvailability[keyof typeof ListAdminMatchingsAvailability];
+
+
+export const ListAdminMatchingsAvailability = {
+  available: 'available',
+  open_to_offer: 'open_to_offer',
+  unavailable: 'unavailable',
+} as const;
+
+export type ListAdminMatchingsVerificationStatus = typeof ListAdminMatchingsVerificationStatus[keyof typeof ListAdminMatchingsVerificationStatus];
+
+
+export const ListAdminMatchingsVerificationStatus = {
+  verified: 'verified',
+  pending: 'pending',
+  unverified: 'unverified',
+} as const;
+
+export type ListAdminMatchingsStatus = typeof ListAdminMatchingsStatus[keyof typeof ListAdminMatchingsStatus];
+
+
+export const ListAdminMatchingsStatus = {
+  new: 'new',
+  review: 'review',
+  shortlisted: 'shortlisted',
+  interview: 'interview',
+  placed: 'placed',
+  declined: 'declined',
+} as const;
 
 export type ListProgramsParams = {
 category?: string;

@@ -11,6 +11,7 @@ export const companyRequirementsTable = pgTable("company_requirements", {
   description: text("description").notNull().default(""),
   location: text("location").notNull(),
   competencies: text("competencies").array().notNull().default([]),
+  minimumSkkLevel: integer("minimum_skk_level").notNull().default(0),
   minimumExperience: integer("minimum_experience").notNull().default(0),
   headcount: integer("headcount").notNull().default(1),
   deadline: date("deadline", { mode: "string" }).notNull(),

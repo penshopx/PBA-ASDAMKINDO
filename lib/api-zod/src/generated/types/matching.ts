@@ -11,8 +11,6 @@ export interface Matching {
   id: string;
   requirement: string;
   companyName: string;
-  /** @nullable */
-  candidateUserId: string | null;
   candidateName: string;
   score: number;
   status: MatchingStatus;

@@ -5,7 +5,40 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListCompanyTalentPoolAvailability } from './listCompanyTalentPoolAvailability';
+import type { ListCompanyTalentPoolStatus } from './listCompanyTalentPoolStatus';
+import type { ListCompanyTalentPoolVerificationStatus } from './listCompanyTalentPoolVerificationStatus';
 
 export type ListCompanyTalentPoolParams = {
 requirementId: string;
+search?: string;
+/**
+ * @minimum 0
+ * @maximum 100
+ */
+minScore?: number;
+location?: string;
+/**
+ * @minimum 0
+ * @maximum 9
+ */
+skkLevel?: number;
+/**
+ * @minimum 0
+ * @maximum 80
+ */
+experienceMin?: number;
+availability?: ListCompanyTalentPoolAvailability;
+verificationStatus?: ListCompanyTalentPoolVerificationStatus;
+status?: ListCompanyTalentPoolStatus;
+refresh?: boolean;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
 };

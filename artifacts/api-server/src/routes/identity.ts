@@ -51,12 +51,16 @@ router.post("/onboarding/member", requireUser, async (req, res): Promise<void> =
         id: `${user.id}-profile`,
         userId: user.id,
         ...parsed.data,
+        jobTitle: parsed.data.jobTitle ?? "",
+        skkLevel: Math.round(parsed.data.skkLevel ?? 0),
         experienceYears: Math.round(parsed.data.experienceYears),
       })
       .onConflictDoUpdate({
         target: memberProfilesTable.userId,
         set: {
           ...parsed.data,
+          jobTitle: parsed.data.jobTitle ?? "",
+          skkLevel: Math.round(parsed.data.skkLevel ?? 0),
           experienceYears: Math.round(parsed.data.experienceYears),
           updatedAt: new Date(),
         },

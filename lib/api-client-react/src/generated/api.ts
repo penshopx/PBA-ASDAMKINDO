@@ -21,6 +21,7 @@ import type {
 
 import type {
   AdminDashboard,
+  AdminMatchingPage,
   AdminOperations,
   AdminTalentConsent,
   AdminTalentConsentOverride,
@@ -47,6 +48,7 @@ import type {
   GetAdminTalentPoolParams,
   GetCompanyTalentPoolParams,
   HealthStatus,
+  ListAdminMatchingsParams,
   ListCompanyConsentRequestsParams,
   ListCompanyTalentPoolParams,
   ListProgramsParams,
@@ -71,7 +73,7 @@ import type {
   ReadinessDiagnostic,
   TalentConsentSettings,
   TalentConsentSettingsUpdate,
-  TalentPoolCandidate,
+  TalentPoolMatchesPage,
   Transaction,
   TransactionReconciliationResolution,
   TransactionUpdate,
@@ -2075,9 +2077,9 @@ export const getListCompanyTalentPoolUrl = (params: ListCompanyTalentPoolParams,
 /**
  * @summary List consented members ranked against a company requirement
  */
-export const listCompanyTalentPool = async (params: ListCompanyTalentPoolParams, options?: Parameters<typeof customFetch>[1]): Promise<TalentPoolCandidate[]> => {
+export const listCompanyTalentPool = async (params: ListCompanyTalentPoolParams, options?: Parameters<typeof customFetch>[1]): Promise<TalentPoolMatchesPage> => {
 
-  return customFetch<TalentPoolCandidate[]>(getListCompanyTalentPoolUrl(params),
+  return customFetch<TalentPoolMatchesPage>(getListCompanyTalentPoolUrl(params),
   {
     ...options,
     method: 'GET'
@@ -2129,6 +2131,167 @@ export function useListCompanyTalentPool<TData = Awaited<ReturnType<typeof listC
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListCompanyTalentPoolQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminMatchingsUrl = (params?: ListAdminMatchingsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/matchings?${stringifiedParams}` : `/api/admin/matchings`
+}
+
+/**
+ * @summary Review consented matching candidates across company requirements
+ */
+export const listAdminMatchings = async (params?: ListAdminMatchingsParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminMatchingPage> => {
+
+  return customFetch<AdminMatchingPage>(getListAdminMatchingsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminMatchingsQueryKey = (params?: ListAdminMatchingsParams,) => {
+    return [
+    `/api/admin/matchings`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminMatchingsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminMatchings>>, TError = ErrorType<ErrorResponse>>(params?: ListAdminMatchingsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminMatchings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminMatchingsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminMatchings>>> = ({ signal }) => listAdminMatchings(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminMatchings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminMatchingsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminMatchings>>>
+export type ListAdminMatchingsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Review consented matching candidates across company requirements
+ */
+
+export function useListAdminMatchings<TData = Awaited<ReturnType<typeof listAdminMatchings>>, TError = ErrorType<ErrorResponse>>(
+ params?: ListAdminMatchingsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminMatchings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminMatchingsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCompanyShortlistUrl = () => {
+
+
+
+
+  return `/api/company/shortlist`
+}
+
+/**
+ * @summary List active internal shortlist items still covered by candidate consent
+ */
+export const listCompanyShortlist = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyMatching[]> => {
+
+  return customFetch<CompanyMatching[]>(getListCompanyShortlistUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompanyShortlistQueryKey = () => {
+    return [
+    `/api/company/shortlist`
+    ] as const;
+    }
+
+
+export const getListCompanyShortlistQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyShortlist>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyShortlist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyShortlistQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyShortlist>>> = ({ signal }) => listCompanyShortlist({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyShortlist>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompanyShortlistQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanyShortlist>>>
+export type ListCompanyShortlistQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List active internal shortlist items still covered by candidate consent
+ */
+
+export function useListCompanyShortlist<TData = Awaited<ReturnType<typeof listCompanyShortlist>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyShortlist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompanyShortlistQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

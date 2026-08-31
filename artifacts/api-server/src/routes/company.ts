@@ -7,6 +7,7 @@ import {
   CreateCompanyShortlistBody,
   CreateCompanyShortlistResponse,
   ListCompanyRequirementsResponse,
+  ListCompanyShortlistResponse,
   ListCompanyTalentPoolQueryParams,
   ListCompanyTalentPoolResponse,
   UpdateCompanyRequirementBody,
@@ -20,6 +21,7 @@ import {
   companyProfilesTable,
   companyRequirementsTable,
   companyTalentConsentsTable,
+  auditLogsTable,
   db,
   matchingsTable,
   memberProfilesTable,
@@ -30,6 +32,7 @@ import {
 } from "@workspace/db";
 import { getAuthenticatedUser, requireRole, requireUser } from "../lib/auth";
 import { expireCompanyTalentConsents } from "../lib/talent-consent";
+import { listTalentMatches, scoreCandidate } from "../lib/talent-matching";
 
 const router: IRouter = Router();
 const companyOnly = [requireUser, requireRole("company")];
@@ -45,6 +48,7 @@ function requirementInput(values: {
   description: string;
   location: string;
   competencies: string[];
+  minimumSkkLevel?: number;
   minimumExperience: number;
   headcount: number;
   deadline: Date;
@@ -52,6 +56,8 @@ function requirementInput(values: {
 }) {
   return {
     ...values,
+    competencies: values.competencies.map((competency) => competency.trim()).filter(Boolean),
+    minimumSkkLevel: values.minimumSkkLevel ?? 0,
     deadline: calendarDate(values.deadline),
   };
 }
@@ -60,7 +66,26 @@ async function requirementResponse(requirement: typeof companyRequirementsTable.
   const [{ value }] = await db
     .select({ value: count(matchingsTable.id) })
     .from(matchingsTable)
-    .where(eq(matchingsTable.requirementId, requirement.id));
+    .innerJoin(
+      companyTalentConsentsTable,
+      and(
+        eq(companyTalentConsentsTable.memberUserId, matchingsTable.candidateUserId),
+        eq(companyTalentConsentsTable.companyUserId, requirement.companyUserId),
+        eq(companyTalentConsentsTable.status, "active"),
+        gt(companyTalentConsentsTable.expiresAt, new Date()),
+      ),
+    )
+    .innerJoin(
+      memberProfilesTable,
+      and(
+        eq(memberProfilesTable.userId, matchingsTable.candidateUserId),
+        eq(memberProfilesTable.dataConsent, true),
+      ),
+    )
+    .where(and(
+      eq(matchingsTable.requirementId, requirement.id),
+      eq(matchingsTable.companyUserId, requirement.companyUserId),
+    ));
   return {
     ...requirement,
     candidateCount: Number(value ?? 0),
@@ -79,44 +104,29 @@ function matchingResponse(matching: typeof matchingsTable.$inferSelect) {
   };
 }
 
-function readinessLabel(score: number): string {
-  return score >= 80 ? "Sangat siap" : score >= 60 ? "Cukup siap" : score > 0 ? "Perlu diperkuat" : "Belum dinilai";
-}
-
-function normalize(value: string): string {
-  return value.trim().toLocaleLowerCase("id-ID");
-}
-
-function scoreCandidate(
-  requirement: typeof companyRequirementsTable.$inferSelect,
-  profile: typeof memberProfilesTable.$inferSelect,
-  readinessScore: number,
+async function recordMatchingAudit(
+  actor: ReturnType<typeof getAuthenticatedUser>,
+  requirementId: string,
+  refreshed: boolean,
+  page: number,
 ) {
-  const expertise = normalize(profile.expertise);
-  const competencies = requirement.competencies.map(normalize).filter(Boolean);
-  const matchedCompetencies = competencies.filter((competency) => expertise.includes(competency));
-  const competencyScore = competencies.length ? (matchedCompetencies.length / competencies.length) * 50 : 0;
-  const experienceMatch = profile.experienceYears >= requirement.minimumExperience;
-  const locationMatch =
-    normalize(profile.domicile).includes(normalize(requirement.location)) ||
-    normalize(requirement.location).includes(normalize(profile.domicile));
-  const score = Math.round(
-    competencyScore +
-      (experienceMatch ? 20 : Math.min(20, (profile.experienceYears / Math.max(requirement.minimumExperience, 1)) * 20)) +
-      (locationMatch ? 15 : 0) +
-      Math.min(15, readinessScore * 0.15),
+  const actions = ["matching.generated", "matching.viewed", ...(refreshed ? ["matching.refreshed"] : [])];
+  await db.insert(auditLogsTable).values(
+    actions.map((action) => ({
+      id: randomUUID(),
+      actorUserId: actor.id,
+      actorRole: actor.role,
+      action,
+      entityType: "company_requirement",
+      entityId: requirementId,
+      metadata: { page },
+    })),
   );
-  const matchReasons = matchedCompetencies.length
-    ? [`Kompetensi relevan: ${matchedCompetencies.join(", ")}`]
-    : ["Profil kompetensi tersedia untuk ditinjau"];
-  if (experienceMatch) matchReasons.push(`Pengalaman ${profile.experienceYears} tahun memenuhi minimum`);
-  if (locationMatch) matchReasons.push(`Domisili sesuai area ${requirement.location}`);
-  if (readinessScore >= 60) matchReasons.push(`Readiness score ${readinessScore} menunjukkan kesiapan yang baik`);
-  return { score: Math.min(100, score), matchReasons };
 }
 
 router.get("/company/requirements", ...companyOnly, async (req, res): Promise<void> => {
   const user = getAuthenticatedUser(req);
+  await expireCompanyTalentConsents();
   const requirements = await db
     .select()
     .from(companyRequirementsTable)
@@ -167,7 +177,10 @@ router.patch("/company/requirements/:id", ...companyOnly, async (req, res): Prom
       ...(body.data.title === undefined ? {} : { title: body.data.title }),
       ...(body.data.description === undefined ? {} : { description: body.data.description }),
       ...(body.data.location === undefined ? {} : { location: body.data.location }),
-      ...(body.data.competencies === undefined ? {} : { competencies: body.data.competencies }),
+      ...(body.data.competencies === undefined
+        ? {}
+        : { competencies: body.data.competencies.map((competency) => competency.trim()).filter(Boolean) }),
+      ...(body.data.minimumSkkLevel === undefined ? {} : { minimumSkkLevel: body.data.minimumSkkLevel }),
       ...(body.data.minimumExperience === undefined ? {} : { minimumExperience: body.data.minimumExperience }),
       ...(body.data.headcount === undefined ? {} : { headcount: body.data.headcount }),
       ...(body.data.deadline === undefined ? {} : { deadline: calendarDate(body.data.deadline) }),
@@ -196,56 +209,49 @@ router.get("/company/talent-pool/matches", ...companyOnly, async (req, res): Pro
     res.status(404).json({ error: "Kebutuhan tidak ditemukan." });
     return;
   }
+  const page = await listTalentMatches({
+    requirementId: requirement.id,
+    companyId: user.id,
+    search: query.data.search,
+    minScore: query.data.minScore,
+    location: query.data.location,
+    skkLevel: query.data.skkLevel,
+    experienceMin: query.data.experienceMin,
+    availability: query.data.availability,
+    verificationStatus: query.data.verificationStatus,
+    status: query.data.status,
+    page: query.data.page,
+    pageSize: query.data.pageSize,
+  });
+  await recordMatchingAudit(user, requirement.id, query.data.refresh, query.data.page);
+  res.json(ListCompanyTalentPoolResponse.parse(page));
+});
+
+router.get("/company/shortlist", ...companyOnly, async (req, res): Promise<void> => {
+  const user = getAuthenticatedUser(req);
+  await expireCompanyTalentConsents();
   const rows = await db
-    .select({
-      user: usersTable,
-      profile: memberProfilesTable,
-      passport: professionalPassportsTable,
-      diagnostic: readinessDiagnosticsTable,
-      matching: matchingsTable,
-    })
-    .from(memberProfilesTable)
-    .innerJoin(usersTable, and(eq(memberProfilesTable.userId, usersTable.id), eq(usersTable.role, "member")))
-    .innerJoin(professionalPassportsTable, eq(professionalPassportsTable.memberUserId, memberProfilesTable.userId))
+    .select({ matching: matchingsTable })
+    .from(matchingsTable)
     .innerJoin(
       companyTalentConsentsTable,
       and(
-        eq(companyTalentConsentsTable.memberUserId, memberProfilesTable.userId),
+        eq(companyTalentConsentsTable.memberUserId, matchingsTable.candidateUserId),
         eq(companyTalentConsentsTable.companyUserId, user.id),
         eq(companyTalentConsentsTable.status, "active"),
         gt(companyTalentConsentsTable.expiresAt, new Date()),
       ),
     )
-    .leftJoin(readinessDiagnosticsTable, eq(readinessDiagnosticsTable.memberUserId, memberProfilesTable.userId))
-    .leftJoin(
-      matchingsTable,
+    .innerJoin(
+      memberProfilesTable,
       and(
-        eq(matchingsTable.requirementId, requirement.id),
-        eq(matchingsTable.candidateUserId, memberProfilesTable.userId),
-        eq(matchingsTable.companyUserId, user.id),
+        eq(memberProfilesTable.userId, matchingsTable.candidateUserId),
+        eq(memberProfilesTable.dataConsent, true),
       ),
     )
-    .where(eq(usersTable.role, "member"));
-  const candidates = rows
-    .map(({ user: member, profile, passport, diagnostic, matching }) => {
-      const readinessScore = diagnostic?.score ?? 0;
-      const scored = scoreCandidate(requirement, profile, readinessScore);
-      return {
-        candidateId: passport.id,
-        name: member.name,
-        domicile: profile.domicile,
-        expertise: profile.expertise,
-        experienceYears: profile.experienceYears,
-        readinessScore,
-        readinessLabel: readinessLabel(readinessScore),
-        score: scored.score,
-        matchReasons: scored.matchReasons,
-        matchingId: matching?.id ?? null,
-        status: matching?.status ?? "new",
-      };
-    })
-    .sort((a, b) => b.score - a.score || b.readinessScore - a.readinessScore);
-  res.json(ListCompanyTalentPoolResponse.parse(candidates));
+    .where(eq(matchingsTable.companyUserId, user.id))
+    .orderBy(desc(matchingsTable.updatedAt));
+  res.json(ListCompanyShortlistResponse.parse(rows.map(({ matching }) => matchingResponse(matching))));
 });
 
 router.post("/company/shortlist", ...companyOnly, async (req, res): Promise<void> => {
@@ -262,7 +268,12 @@ router.post("/company/shortlist", ...companyOnly, async (req, res): Promise<void
     .where(and(eq(companyRequirementsTable.id, body.data.requirementId), eq(companyRequirementsTable.companyUserId, user.id)))
     .limit(1);
   const [candidate] = await db
-    .select({ user: usersTable, profile: memberProfilesTable, diagnostic: readinessDiagnosticsTable })
+    .select({
+      user: usersTable,
+      profile: memberProfilesTable,
+      passport: professionalPassportsTable,
+      diagnostic: readinessDiagnosticsTable,
+    })
     .from(professionalPassportsTable)
     .innerJoin(memberProfilesTable, eq(memberProfilesTable.userId, professionalPassportsTable.memberUserId))
     .innerJoin(usersTable, and(eq(memberProfilesTable.userId, usersTable.id), eq(usersTable.role, "member")))
@@ -276,7 +287,10 @@ router.post("/company/shortlist", ...companyOnly, async (req, res): Promise<void
       ),
     )
     .leftJoin(readinessDiagnosticsTable, eq(readinessDiagnosticsTable.memberUserId, memberProfilesTable.userId))
-    .where(eq(professionalPassportsTable.id, body.data.candidateId))
+    .where(and(
+      eq(professionalPassportsTable.id, body.data.candidateId),
+      eq(memberProfilesTable.dataConsent, true),
+    ))
     .limit(1);
   if (!requirement || !candidate) {
     res.status(404).json({ error: "Kebutuhan atau kandidat tidak ditemukan." });
@@ -297,7 +311,7 @@ router.post("/company/shortlist", ...companyOnly, async (req, res): Promise<void
     res.json(CreateCompanyShortlistResponse.parse(matchingResponse(existing)));
     return;
   }
-  const score = scoreCandidate(requirement, candidate.profile, candidate.diagnostic?.score ?? 0);
+  const score = scoreCandidate(requirement, candidate.profile, candidate.passport);
   const [companyProfile] = await db.select().from(companyProfilesTable).where(eq(companyProfilesTable.userId, user.id)).limit(1);
   const [created] = await db.transaction(async (tx) => {
     const [matching] = await tx
@@ -357,12 +371,17 @@ router.patch("/company/shortlist/:id", ...companyOnly, async (req, res): Promise
     const [activeConsent] = await db
       .select({ id: companyTalentConsentsTable.id })
       .from(companyTalentConsentsTable)
+      .innerJoin(
+        memberProfilesTable,
+        eq(memberProfilesTable.userId, companyTalentConsentsTable.memberUserId),
+      )
       .where(
         and(
           eq(companyTalentConsentsTable.memberUserId, existing.candidateUserId),
           eq(companyTalentConsentsTable.companyUserId, user.id),
           eq(companyTalentConsentsTable.status, "active"),
           gt(companyTalentConsentsTable.expiresAt, new Date()),
+          eq(memberProfilesTable.dataConsent, true),
         ),
       )
       .limit(1);

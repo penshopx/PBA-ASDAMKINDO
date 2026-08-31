@@ -10,6 +10,7 @@ import {
   companyTalentConsentsTable,
   db,
   matchingsTable,
+  memberEvidenceTable,
   memberProfilesTable,
   notificationsTable,
   professionalPassportsTable,
@@ -21,6 +22,7 @@ import {
 import type { AuthenticatedRequest } from "../src/lib/auth";
 import companyRouter from "../src/routes/company";
 import passportRouter from "../src/routes/passport";
+import adminRouter from "../src/routes/admin";
 
 const suffix = randomUUID();
 const adminId = `security-admin-${suffix}`;
@@ -50,7 +52,7 @@ app.use(async (req: Request, _res: Response, next: NextFunction) => {
   authenticated.currentUser = requestActor;
   next();
 });
-app.use("/api", passportRouter, companyRouter);
+app.use("/api", passportRouter, companyRouter, adminRouter);
 
 const server = app.listen(0);
 await new Promise<void>((resolve) => server.once("listening", resolve));
@@ -167,7 +169,9 @@ try {
         phone: "0811111111",
         domicile: "Jakarta",
         education: "S1 Teknik Informatika",
+        jobTitle: "Security Engineer",
         expertise: "TypeScript, Security",
+        skkLevel: 7,
         experienceYears: 8,
         primaryGoal: "competency",
         dataConsent: true,
@@ -178,7 +182,9 @@ try {
         phone: "0812222222",
         domicile: "Bandung",
         education: "S1 Sistem Informasi",
+        jobTitle: "Junior TypeScript Engineer",
         expertise: "TypeScript",
+        skkLevel: 3,
         experienceYears: 2,
         primaryGoal: "competency",
         dataConsent: true,
@@ -189,7 +195,9 @@ try {
         phone: "0813333333",
         domicile: "Jakarta",
         education: "S1 Teknik Informatika",
+        jobTitle: "Security Engineer",
         expertise: "TypeScript, Security",
+        skkLevel: 7,
         experienceYears: 8,
         primaryGoal: "competency",
         dataConsent: false,
@@ -203,6 +211,9 @@ try {
         slug: `strong-security-${suffix}`,
         isPublic: true,
         headline: "Senior TypeScript Security Engineer",
+        preferredRoles: ["Security Engineer"],
+        preferredLocations: ["Jakarta"],
+        availabilityStatus: "available",
       },
       {
         id: partialPassportId,
@@ -210,6 +221,9 @@ try {
         slug: `partial-security-${suffix}`,
         isPublic: true,
         headline: "TypeScript Engineer",
+        preferredRoles: ["Frontend Engineer"],
+        preferredLocations: ["Surabaya"],
+        availabilityStatus: "open_to_offer",
       },
       {
         id: privatePassportId,
@@ -217,6 +231,9 @@ try {
         slug: `private-security-${suffix}`,
         isPublic: false,
         headline: "Private Security Engineer",
+        preferredRoles: ["Security Engineer"],
+        preferredLocations: ["Jakarta"],
+        availabilityStatus: "available",
       },
     ]);
 
@@ -244,15 +261,33 @@ try {
       },
     ]);
 
+    await tx.insert(memberEvidenceTable).values([
+      {
+        id: `security-evidence-strong-${suffix}`,
+        memberUserId: strongMemberId,
+        evidenceType: "certificate",
+        title: "SKK Security Engineer",
+        status: "verified",
+      },
+      {
+        id: `security-evidence-partial-${suffix}`,
+        memberUserId: partialMemberId,
+        evidenceType: "certificate",
+        title: "Sertifikat TypeScript",
+        status: "submitted",
+      },
+    ]);
+
     await tx.insert(companyRequirementsTable).values([
       {
         id: requirementAId,
         companyUserId: companyAId,
         kind: "talent",
-        title: "Kebutuhan Security Company A",
+        title: "Security Engineer",
         description: "Kebutuhan privat untuk pengujian isolasi.",
         location: "Jakarta",
         competencies: ["TypeScript", "Security"],
+        minimumSkkLevel: 6,
         minimumExperience: 5,
         headcount: 1,
         deadline: "2026-12-31",
@@ -266,6 +301,7 @@ try {
         description: "Tidak boleh terbaca oleh Company A.",
         location: "Bandung",
         competencies: ["Audit"],
+        minimumSkkLevel: 4,
         minimumExperience: 3,
         headcount: 1,
         deadline: "2026-12-31",
@@ -347,6 +383,23 @@ try {
   result = await request(`/company/talent-pool/matches?requirementId=${requirementBId}`);
   assert.equal(result.response.status, 404);
 
+  result = await request("/company/requirements", {
+    method: "POST",
+    body: JSON.stringify({
+      kind: "talent",
+      title: "Kebutuhan tidak valid",
+      description: "Kompetensi whitespace harus ditolak.",
+      location: "Jakarta",
+      competencies: ["TypeScript", "   "],
+      minimumSkkLevel: 0,
+      minimumExperience: 0,
+      headcount: 1,
+      deadline: "2026-12-31",
+      status: "open",
+    }),
+  });
+  assert.equal(result.response.status, 400);
+
   result = await request(`/company/shortlist/${matchingBId}`, {
     method: "PATCH",
     body: JSON.stringify({ status: "placed", note: "Akses lintas perusahaan" }),
@@ -357,44 +410,96 @@ try {
   assert.equal(result.response.status, 200);
   assert.deepEqual(
     result.body.items.map((candidate: { id: string }) => candidate.id).sort(),
-    [strongPassportId, partialPassportId, privatePassportId].sort(),
+    [strongPassportId, partialPassportId].sort(),
   );
-  const privateCandidateSummary = result.body.items.find((candidate: { id: string }) => candidate.id === privatePassportId);
-  assert.equal(privateCandidateSummary.publicUrl, null);
-  assert.equal("email" in privateCandidateSummary, false);
-  assert.equal("phone" in privateCandidateSummary, false);
-  assert.equal("memberUserId" in privateCandidateSummary, false);
-  assert.equal("clerkUserId" in privateCandidateSummary, false);
-  assert.equal("consentVersion" in privateCandidateSummary, false);
+  assert.equal(result.body.items.some((candidate: { id: string }) => candidate.id === privatePassportId), false);
 
   result = await request(`/company/talent-pool/matches?requirementId=${requirementAId}`);
   assert.equal(result.response.status, 200);
   assert.deepEqual(
-    result.body.map((candidate: { candidateId: string }) => candidate.candidateId).sort(),
-    [strongPassportId, partialPassportId, privatePassportId].sort(),
+    result.body.items.map((candidate: { candidateId: string }) => candidate.candidateId).sort(),
+    [strongPassportId, partialPassportId].sort(),
   );
-  const strongCandidate = result.body.find((candidate: { candidateId: string }) => candidate.candidateId === strongPassportId) as {
+  assert.equal(result.body.page, 1);
+  assert.equal(result.body.pageSize, 20);
+  assert.equal(result.body.total, 2);
+  const strongCandidate = result.body.items.find((candidate: { candidateId: string }) => candidate.candidateId === strongPassportId) as {
     candidateId: string;
     score: number;
     readinessScore: number;
     matchReasons: string[];
+    verificationStatus: string;
+    scoreBreakdown: Record<string, number>;
+    matchedCompetencies: string[];
+    unmetCompetencies: string[];
   };
-  const partialCandidate = result.body.find((candidate: { candidateId: string }) => candidate.candidateId === partialPassportId) as {
+  const partialCandidate = result.body.items.find((candidate: { candidateId: string }) => candidate.candidateId === partialPassportId) as {
     candidateId: string;
     score: number;
     readinessScore: number;
+    verificationStatus: string;
   };
   assert.equal(strongCandidate.candidateId, strongPassportId);
   assert.equal(strongCandidate.readinessScore, 90);
-  assert.equal(strongCandidate.score, 99);
-  assert.match(strongCandidate.matchReasons.join(" | "), /Kompetensi relevan: typescript, security/);
+  assert.equal(strongCandidate.score, 100);
+  assert.deepEqual(strongCandidate.scoreBreakdown, {
+    jobTitle: 25,
+    skkLevel: 20,
+    requiredCompetencies: 20,
+    experience: 15,
+    location: 10,
+    availability: 10,
+  });
+  assert.deepEqual(strongCandidate.matchedCompetencies, ["TypeScript", "Security"]);
+  assert.deepEqual(strongCandidate.unmetCompetencies, []);
+  assert.equal(strongCandidate.verificationStatus, "verified");
+  assert.match(strongCandidate.matchReasons.join(" | "), /Jabatan Security Engineer selaras/);
+  assert.match(strongCandidate.matchReasons.join(" | "), /SKK jenjang 7 memenuhi minimum 6/);
+  assert.match(strongCandidate.matchReasons.join(" | "), /2 dari 2 kompetensi wajib cocok/);
   assert.match(strongCandidate.matchReasons.join(" | "), /Pengalaman 8 tahun memenuhi minimum/);
-  assert.match(strongCandidate.matchReasons.join(" | "), /Domisili sesuai area Jakarta/);
-  assert.match(strongCandidate.matchReasons.join(" | "), /Readiness score 90/);
+  assert.match(strongCandidate.matchReasons.join(" | "), /preferensi relokasi selaras dengan Jakarta/);
   assert.equal(partialCandidate.candidateId, partialPassportId);
   assert.equal(partialCandidate.readinessScore, 40);
-  assert.equal(partialCandidate.score, 39);
-  assert.equal(result.body.some((candidate: { candidateId: string }) => candidate.candidateId === privatePassportId), true);
+  assert.equal(partialCandidate.score, 33);
+  assert.equal(partialCandidate.verificationStatus, "pending");
+  assert.equal(result.body.items.some((candidate: { candidateId: string }) => candidate.candidateId === privatePassportId), false);
+  assert.equal(["email", "phone", "memberUserId", "clerkUserId", "companyUserId", "consentVersion"].some((key) => key in strongCandidate), false);
+
+  result = await request(`/company/talent-pool/matches?requirementId=${requirementAId}&minScore=90&page=1&pageSize=1&refresh=true`);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.total, 1);
+  assert.deepEqual(result.body.items.map((candidate: { candidateId: string }) => candidate.candidateId), [strongPassportId]);
+  const matchingAudits = await db
+    .select()
+    .from(auditLogsTable)
+    .where(and(
+      eq(auditLogsTable.actorUserId, companyAId),
+      eq(auditLogsTable.entityId, requirementAId),
+      inArray(auditLogsTable.action, ["matching.generated", "matching.viewed", "matching.refreshed"]),
+    ));
+  assert.equal(matchingAudits.some((audit) => audit.action === "matching.generated"), true);
+  assert.equal(matchingAudits.some((audit) => audit.action === "matching.viewed"), true);
+  assert.equal(matchingAudits.some((audit) => audit.action === "matching.refreshed"), true);
+
+  result = await request(`/company/talent-pool/matches?requirementId=${requirementAId}&location=Bandung&skkLevel=3&experienceMin=2&availability=open_to_offer&verificationStatus=pending`);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.total, 1);
+  assert.equal(result.body.items[0].candidateId, partialPassportId);
+
+  await db
+    .update(companyRequirementsTable)
+    .set({ competencies: ["TypeScript", "Security", "   "] })
+    .where(eq(companyRequirementsTable.id, requirementAId));
+  result = await request(`/company/talent-pool/matches?requirementId=${requirementAId}&minScore=100`);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.total, 1);
+  assert.equal(result.body.items[0].candidateId, strongPassportId);
+  assert.equal(result.body.items[0].score, 100);
+  assert.equal(result.body.items[0].scoreBreakdown.requiredCompetencies, 20);
+  await db
+    .update(companyRequirementsTable)
+    .set({ competencies: ["TypeScript", "Security"] })
+    .where(eq(companyRequirementsTable.id, requirementAId));
 
   result = await request("/company/shortlist", {
     method: "POST",
@@ -403,6 +508,9 @@ try {
   assert.equal(result.response.status, 201);
   assert.equal(result.body.status, "shortlisted");
   const matchingAId = result.body.id as string;
+  result = await request("/company/shortlist");
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.some((matching: { id: string }) => matching.id === matchingAId), true);
 
   let recruitmentNotifications = await db
     .select()
@@ -428,6 +536,25 @@ try {
   assert.equal(recruitmentNotifications.some((notification) => notification.userId === strongMemberId && notification.title === "Status peluang diperbarui" && notification.description.includes("interview")), true);
 
   actor = await loadUser(adminId);
+  result = await request(`/admin/matchings?requirementId=${requirementAId}&minScore=90&page=1&pageSize=10&refresh=true`);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.total, 1);
+  assert.equal(result.body.items[0].candidateId, strongPassportId);
+  assert.equal(result.body.items[0].requirementId, requirementAId);
+  assert.equal(result.body.items[0].requirementTitle, "Security Engineer");
+  assert.equal(result.body.items[0].companyName, "PT Company A");
+  assert.equal(["memberUserId", "clerkUserId", "companyUserId", "consentVersion"].some((key) => key in result.body.items[0]), false);
+  result = await request(`/admin/matchings/${matchingAId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "review", note: "Tinjauan admin yang aman" }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal("candidateUserId" in result.body, false);
+  result = await request("/admin/operations");
+  assert.equal(result.response.status, 200);
+  const activeAdminMatching = result.body.matchings.find((matching: { id: string }) => matching.id === matchingAId);
+  assert.ok(activeAdminMatching);
+  assert.equal("candidateUserId" in activeAdminMatching, false);
   result = await request("/admin/talent-pool/settings");
   assert.equal(result.response.status, 200);
   const currentDuration = result.body.defaultDurationDays as number;
@@ -473,6 +600,9 @@ try {
   result = await request("/company/talent-pool");
   assert.equal(result.response.status, 200);
   assert.equal(result.body.items.some((candidate: { id: string }) => candidate.id === partialPassportId), false);
+  result = await request(`/company/talent-pool/matches?requirementId=${requirementAId}`);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.items.some((candidate: { candidateId: string }) => candidate.candidateId === partialPassportId), false);
   const [expiredConsent] = await db.select().from(companyTalentConsentsTable).where(eq(companyTalentConsentsTable.id, partialConsentAId)).limit(1);
   assert.equal(expiredConsent.status, "expired");
   assert.ok(expiredConsent.expiredAt);
@@ -560,6 +690,22 @@ try {
   result = await request("/company/talent-pool");
   assert.equal(result.response.status, 200);
   assert.equal(result.body.items.some((candidate: { id: string }) => candidate.id === strongPassportId), false);
+  result = await request(`/company/talent-pool/matches?requirementId=${requirementAId}`);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.items.some((candidate: { candidateId: string }) => candidate.candidateId === strongPassportId), false);
+  result = await request("/company/shortlist");
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.some((matching: { id: string }) => matching.id === matchingAId), false);
+
+  actor = await loadUser(adminId);
+  result = await request("/admin/operations");
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.matchings.some((matching: { id: string }) => matching.id === matchingAId), false);
+  result = await request(`/admin/matchings/${matchingAId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "interview", note: "Tidak boleh setelah revoke" }),
+  });
+  assert.equal(result.response.status, 404);
 
   actor = await loadUser(companyBId);
   result = await request("/company/talent-pool");
@@ -586,6 +732,7 @@ try {
     }
     await tx.delete(matchingsTable).where(inArray(matchingsTable.companyUserId, [companyAId, companyBId]));
     await tx.delete(companyTalentConsentsTable).where(inArray(companyTalentConsentsTable.companyUserId, [companyAId, companyBId]));
+    await tx.delete(memberEvidenceTable).where(inArray(memberEvidenceTable.memberUserId, [strongMemberId, partialMemberId, privateMemberId]));
     await tx.delete(readinessDiagnosticsTable).where(inArray(readinessDiagnosticsTable.memberUserId, [strongMemberId, partialMemberId, privateMemberId]));
     await tx.delete(professionalPassportsTable).where(inArray(professionalPassportsTable.memberUserId, [strongMemberId, partialMemberId, privateMemberId]));
     await tx.delete(memberProfilesTable).where(inArray(memberProfilesTable.userId, [strongMemberId, partialMemberId, privateMemberId]));

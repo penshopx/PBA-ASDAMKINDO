@@ -5,18 +5,28 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MatchingScoreBreakdown } from './matchingScoreBreakdown';
+import type { TalentPoolCandidateAvailabilityStatus } from './talentPoolCandidateAvailabilityStatus';
 import type { TalentPoolCandidateStatus } from './talentPoolCandidateStatus';
+import type { TalentPoolCandidateVerificationStatus } from './talentPoolCandidateVerificationStatus';
 
 export interface TalentPoolCandidate {
   candidateId: string;
   name: string;
   domicile: string;
+  jobTitle: string;
   expertise: string;
+  skkLevel: number;
   experienceYears: number;
+  availabilityStatus: TalentPoolCandidateAvailabilityStatus;
+  verificationStatus: TalentPoolCandidateVerificationStatus;
   readinessScore: number;
   readinessLabel: string;
   score: number;
   matchReasons: string[];
+  matchedCompetencies: string[];
+  unmetCompetencies: string[];
+  scoreBreakdown: MatchingScoreBreakdown;
   /** @nullable */
   matchingId: string | null;
   status: TalentPoolCandidateStatus;

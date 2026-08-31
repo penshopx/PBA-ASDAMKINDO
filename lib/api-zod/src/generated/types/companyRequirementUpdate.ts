@@ -18,8 +18,14 @@ export interface CompanyRequirementUpdate {
   /**
      * @minItems 1
      * @items.minLength 1
+     * @items.pattern \S
      */
   competencies?: string[];
+  /**
+     * @minimum 0
+     * @maximum 9
+     */
+  minimumSkkLevel?: number;
   /**
      * @minimum 0
      * @maximum 80

@@ -2,14 +2,18 @@ import {
   ArrowRight,
   AlertTriangle,
   BookOpen,
+  Check,
   CheckCircle2,
   ChevronDown,
   ClipboardCheck,
   FileCheck2,
   LockKeyhole,
+  MapPin,
   Plus,
   ReceiptText,
+  Search,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Timer,
   UsersRound,
@@ -28,6 +32,9 @@ import {
   useUpdateAdminProgram,
   useUpdateAdminTransaction,
   useResolveAdminTransactionReconciliation,
+  useListAdminMatchings,
+  getListAdminMatchingsQueryKey,
+  listAdminMatchings,
 } from "@workspace/api-client-react";
 import type {
   AdminOperations,
@@ -36,9 +43,11 @@ import type {
   ProgramInput,
   Transaction,
   Verification,
+  AdminMatchingCandidate,
 } from "@workspace/api-client-react";
 import { QueryState } from "@/components/ui-kit";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
 
 type Tab = "verifications" | "programs" | "pipeline" | "revenue" | "audit";
 
@@ -144,7 +153,13 @@ export function AdminOperations() {
     <QueryState loading={query.isLoading} error={query.isError} retry={() => query.refetch()}>
       {data && <><SummaryStrip summary={data.summary} /><div className="mt-7 grid gap-6 lg:grid-cols-[220px_1fr]">
         <nav className="flex gap-1 overflow-auto rounded-2xl border border-border bg-card p-2 lg:block lg:h-fit lg:space-y-1" aria-label="Menu operasi">{tabs.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setTab(id)} className={`flex min-w-max items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold lg:w-full ${tab === id ? "bg-sidebar text-sidebar-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} data-testid={`tab-admin-${id}`}><Icon size={17} /><span>{label}</span>{id === "verifications" && data.summary.pendingVerifications > 0 && <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground">{data.summary.pendingVerifications}</span>}</button>)}</nav>
-        <section className="min-w-0">{tab === "verifications" && <VerificationQueue items={data.verifications} mutation={review} />} {tab === "programs" && <ProgramWorkspace data={data} showForm={showProgramForm} setShowForm={setShowProgramForm} createMutation={createProgram} updateMutation={updateProgram} updateEnrollment={updateEnrollment} />} {tab === "pipeline" && <PipelineWorkspace items={data.matchings} mutation={updateMatching} />} {tab === "revenue" && <RevenueWorkspace items={data.transactions} canManage={data.permissions.canManageTransactions} mutation={updateTransaction} resolveMutation={resolveReconciliation} />} {tab === "audit" && <AuditWorkspace items={data.auditLogs} canView={data.permissions.canViewAudit} />}</section>
+        <section className="min-w-0">
+          {tab === "verifications" && <VerificationQueue items={data.verifications} mutation={review} />}
+          {tab === "programs" && <ProgramWorkspace data={data} showForm={showProgramForm} setShowForm={setShowProgramForm} createMutation={createProgram} updateMutation={updateProgram} updateEnrollment={updateEnrollment} />}
+          {tab === "pipeline" && <PipelineWorkspace mutation={updateMatching} />}
+          {tab === "revenue" && <RevenueWorkspace items={data.transactions} canManage={data.permissions.canManageTransactions} mutation={updateTransaction} resolveMutation={resolveReconciliation} />}
+          {tab === "audit" && <AuditWorkspace items={data.auditLogs} canView={data.permissions.canViewAudit} />}
+        </section>
       </div></>}
     </QueryState>
   </div>;
@@ -191,9 +206,340 @@ function EnrollmentQueue({ items, mutation }: { items: Enrollment[]; mutation: R
   return <div className="rounded-2xl border border-border bg-card p-5 sm:p-7"><SectionHeader eyebrow="Enrollment & completion" title="Kehadiran dan penyelesaian belajar" copy="Setiap perubahan status tercatat sebagai aktivitas audit." />{items.length === 0 ? <Empty label="Belum ada enrollment" /> : <div className="mt-5 divide-y divide-border">{items.map((item) => <div key={item.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><strong className="text-sm">{item.memberName}</strong><p className="mt-1 text-xs text-muted-foreground">{item.programName} · dibuat {formatDate(item.createdAt)}</p></div><StatusBadge status={item.status} /><select value={item.status} onChange={(event) => mutation.mutate({ id: item.id, data: { status: event.target.value as Enrollment["status"], note: "Status diperbarui oleh Admin PBA." } })} className="rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-bold" aria-label={`Status enrollment ${item.memberName}`}><option value="pending">Menunggu</option><option value="enrolled">Terdaftar</option><option value="completed">Selesai</option><option value="cancelled">Dibatalkan</option></select></div>)}</div>}</div>;
 }
 
-function PipelineWorkspace({ items, mutation }: { items: Matching[]; mutation: ReturnType<typeof useUpdateAdminMatching> }) {
-  const counts = useMemo(() => items.reduce<Record<string, number>>((acc, item) => { acc[item.status] = (acc[item.status] ?? 0) + 1; return acc; }, {}), [items]);
-  return <div className="rounded-2xl border border-border bg-card p-5 sm:p-7"><SectionHeader eyebrow="Opportunity pipeline" title="Matching, shortlist, hingga placement" copy={`${items.length} kandidat dalam pipeline · ${counts.placed ?? 0} sudah ditempatkan`} />{items.length === 0 ? <Empty label="Belum ada matching" /> : <div className="mt-5 space-y-3">{items.map((item) => <div key={item.id} className="rounded-xl border border-border p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="text-sm">{item.candidateName}</strong><StatusBadge status={item.status} /></div><p className="mt-1 text-xs text-muted-foreground">{item.requirement} · {item.companyName} · kecocokan {item.score}%</p></div><select value={item.status} onChange={(event) => mutation.mutate({ id: item.id, data: { status: event.target.value as Matching["status"], note: "Pipeline diperbarui oleh Admin PBA." } })} className="rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-bold" aria-label={`Status matching ${item.candidateName}`}><option value="new">Baru</option><option value="shortlisted">Shortlist</option><option value="interview">Interview</option><option value="placed">Ditempatkan</option><option value="declined">Tidak lanjut</option></select></div></div>)}</div>}</div>;
+function AdminMatchingCard({ item, mutation, onSuccess }: { item: AdminMatchingCandidate; mutation: ReturnType<typeof useUpdateAdminMatching>; onSuccess: () => void }) {
+  const pending = mutation.isPending;
+
+  const changeStatus = (status: string) => {
+    if (!item.matchingId) return;
+    mutation.mutate(
+      { id: item.matchingId, data: { status: status as any, note: "Status diperbarui oleh Admin PBA." } },
+      { onSuccess }
+    );
+  };
+
+  return (
+    <article className="rounded-2xl border border-border bg-card p-5 transition-transform hover:-translate-y-0.5 hover:shadow-sm">
+      <div className="flex items-start gap-4 border-b border-border pb-4 mb-4">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-sm font-bold text-primary">
+          {item.companyName.slice(0, 1).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
+            {item.companyName}
+          </p>
+          <h3 className="text-sm font-bold leading-tight">{item.requirementTitle}</h3>
+        </div>
+        <StatusBadge status={item.status} />
+      </div>
+
+      <div className="flex items-start gap-4">
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-sidebar text-lg font-bold text-primary">
+          {item.name.slice(0, 1).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-bold">{item.name}</h3>
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <MapPin size={13} /> {item.domicile}
+            </span>
+            <span>{item.experienceYears} tahun pengalaman</span>
+            <span>{item.expertise}</span>
+            {item.jobTitle && <span>• {item.jobTitle}</span>}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-bold">
+            <span className={`px-2 py-0.5 rounded-full ${item.skkLevel > 0 ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground"}`}>
+              SKK Level {item.skkLevel}
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-sidebar/10 text-sidebar">
+              {item.availabilityStatus.replace(/_/g, " ")}
+            </span>
+            <span className={`px-2 py-0.5 rounded-full ${item.verificationStatus === "verified" ? "bg-primary/20 text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+              Verifikasi: {item.verificationStatus}
+            </span>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="font-mono text-3xl font-bold text-accent">
+            {item.score}
+            <span className="text-lg text-muted-foreground">/100</span>
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Match Score</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 sm:grid-cols-6 gap-2 text-center divide-x divide-border border-y border-border py-3">
+        <div className="px-2">
+          <p className="text-[10px] text-muted-foreground uppercase mb-1">Job Title</p>
+          <p className="font-mono font-bold text-sm">
+            {item.scoreBreakdown?.jobTitle ?? 0}
+            <span className="text-[10px] text-muted-foreground">/25</span>
+          </p>
+        </div>
+        <div className="px-2">
+          <p className="text-[10px] text-muted-foreground uppercase mb-1">SKK Level</p>
+          <p className="font-mono font-bold text-sm">
+            {item.scoreBreakdown?.skkLevel ?? 0}
+            <span className="text-[10px] text-muted-foreground">/20</span>
+          </p>
+        </div>
+        <div className="px-2">
+          <p className="text-[10px] text-muted-foreground uppercase mb-1">Kompetensi</p>
+          <p className="font-mono font-bold text-sm">
+            {item.scoreBreakdown?.requiredCompetencies ?? 0}
+            <span className="text-[10px] text-muted-foreground">/20</span>
+          </p>
+        </div>
+        <div className="px-2">
+          <p className="text-[10px] text-muted-foreground uppercase mb-1">Pengalaman</p>
+          <p className="font-mono font-bold text-sm">
+            {item.scoreBreakdown?.experience ?? 0}
+            <span className="text-[10px] text-muted-foreground">/15</span>
+          </p>
+        </div>
+        <div className="px-2">
+          <p className="text-[10px] text-muted-foreground uppercase mb-1">Lokasi</p>
+          <p className="font-mono font-bold text-sm">
+            {item.scoreBreakdown?.location ?? 0}
+            <span className="text-[10px] text-muted-foreground">/10</span>
+          </p>
+        </div>
+        <div className="px-2">
+          <p className="text-[10px] text-muted-foreground uppercase mb-1">Kesiapan</p>
+          <p className="font-mono font-bold text-sm">
+            {item.scoreBreakdown?.availability ?? 0}
+            <span className="text-[10px] text-muted-foreground">/10</span>
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid sm:grid-cols-2 gap-4">
+        <div>
+          <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
+            <Check size={14} className="text-accent" /> Kompetensi Terpenuhi
+          </p>
+          {item.matchedCompetencies && item.matchedCompetencies.length > 0 ? (
+            <ul className="flex flex-wrap gap-1.5">
+              {item.matchedCompetencies.map((c) => (
+                <li key={c} className="bg-accent/10 text-accent px-2 py-0.5 rounded text-[11px] font-semibold">
+                  {c}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">-</p>
+          )}
+        </div>
+        <div>
+          <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
+            <X size={14} className="text-destructive" /> Belum Terpenuhi
+          </p>
+          {item.unmetCompetencies && item.unmetCompetencies.length > 0 ? (
+            <ul className="flex flex-wrap gap-1.5">
+              {item.unmetCompetencies.map((c) => (
+                <li key={c} className="bg-destructive/10 text-destructive px-2 py-0.5 rounded text-[11px] font-semibold">
+                  {c}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">-</p>
+          )}
+        </div>
+      </div>
+
+      {item.matchReasons && item.matchReasons.length > 0 && (
+        <div className="mt-4 rounded-xl border border-border bg-background p-4">
+          <p className="eyebrow text-accent">Mengapa cocok</p>
+          <ul className="mt-3 space-y-2">
+            {item.matchReasons.map((reason, i) => (
+              <li key={i} className="flex gap-2 text-sm leading-relaxed">
+                <Check className="mt-0.5 shrink-0 text-accent" size={15} />
+                {reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
+        <span className="text-xs text-muted-foreground">
+          {item.matchingId ? "Tersimpan dalam pipeline" : "Belum masuk shortlist"}
+        </span>
+
+        {item.matchingId && (
+          <select
+            value={item.status}
+            disabled={pending}
+            onChange={(e) => changeStatus(e.target.value)}
+            className="h-9 rounded-lg border border-border bg-background px-3 text-xs font-bold outline-none"
+          >
+            <option value="new">Baru</option>
+            <option value="review">Ditinjau</option>
+            <option value="shortlisted">Shortlist</option>
+            <option value="interview">Interview</option>
+            <option value="placed">Ditempatkan</option>
+            <option value="declined">Tidak dilanjutkan</option>
+          </select>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function PipelineWorkspace({ mutation }: { mutation: ReturnType<typeof useUpdateAdminMatching> }) {
+  const queryClient = useQueryClient();
+  const [draftFilters, setDraftFilters] = useState({ search: "", status: "all", minScore: "", location: "", skkLevel: "", experienceMin: "", availability: "", verificationStatus: "" });
+  const [filters, setFilters] = useState(draftFilters);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [refreshing, setRefreshing] = useState(false);
+
+  const queryParams = {
+    page,
+    pageSize,
+    search: filters.search || undefined,
+    status: filters.status !== "all" ? (filters.status as any) : undefined,
+    minScore: filters.minScore ? Number(filters.minScore) : undefined,
+    location: filters.location || undefined,
+    skkLevel: filters.skkLevel ? Number(filters.skkLevel) : undefined,
+    experienceMin: filters.experienceMin ? Number(filters.experienceMin) : undefined,
+    availability: (filters.availability || undefined) as any,
+    verificationStatus: (filters.verificationStatus || undefined) as any,
+  };
+
+  const matchingsQuery = useListAdminMatchings(queryParams, {
+    query: {
+      queryKey: getListAdminMatchingsQueryKey(queryParams),
+      refetchOnMount: "always",
+    }
+  });
+
+  const pageData = matchingsQuery.data;
+  const items = pageData?.items ?? [];
+
+  const handleRefresh = async (params = queryParams) => {
+    setRefreshing(true);
+    try {
+      const refreshed = await listAdminMatchings({ ...params, refresh: true });
+      queryClient.setQueryData(getListAdminMatchingsQueryKey(params), refreshed);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const applyFilters = () => {
+    const nextFilters = { ...draftFilters };
+    const nextParams = {
+      ...queryParams,
+      page: 1,
+      search: nextFilters.search || undefined,
+      status: nextFilters.status !== "all" ? (nextFilters.status as typeof queryParams.status) : undefined,
+      minScore: nextFilters.minScore ? Number(nextFilters.minScore) : undefined,
+      location: nextFilters.location || undefined,
+      skkLevel: nextFilters.skkLevel ? Number(nextFilters.skkLevel) : undefined,
+      experienceMin: nextFilters.experienceMin ? Number(nextFilters.experienceMin) : undefined,
+      availability: (nextFilters.availability || undefined) as typeof queryParams.availability,
+      verificationStatus: (nextFilters.verificationStatus || undefined) as typeof queryParams.verificationStatus,
+    };
+    setFilters(nextFilters);
+    setPage(1);
+    void handleRefresh(nextParams);
+  };
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 sm:p-7">
+      <SectionHeader eyebrow="Opportunity pipeline" title="Matching, shortlist, hingga placement" copy="Tinjau semua kecocokan lintas kebutuhan perusahaan dari satu tampilan terpusat." />
+
+      <div className="bg-muted/30 border border-border p-4 rounded-xl mt-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label>
+            <span className="text-xs font-bold mb-1 block">Pencarian</span>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 text-muted-foreground" size={14} />
+              <Input value={draftFilters.search} onChange={e => setDraftFilters({...draftFilters, search: e.target.value})} placeholder="Nama, keahlian..." className="pl-8 h-9 text-sm" />
+            </div>
+          </label>
+          <label>
+            <span className="text-xs font-bold mb-1 block">Status Kandidat</span>
+            <select value={draftFilters.status} onChange={e => setDraftFilters({...draftFilters, status: e.target.value})} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none">
+              <option value="all">Semua status</option>
+              <option value="new">Baru</option>
+              <option value="review">Ditinjau</option>
+              <option value="shortlisted">Shortlist</option>
+              <option value="interview">Interview</option>
+              <option value="placed">Ditempatkan</option>
+              <option value="declined">Tidak dilanjutkan</option>
+            </select>
+          </label>
+          <label>
+            <span className="text-xs font-bold mb-1 block">Lokasi</span>
+            <Input value={draftFilters.location} onChange={e => setDraftFilters({...draftFilters, location: e.target.value})} placeholder="Kota/Provinsi" className="h-9 text-sm" />
+          </label>
+          <label>
+            <span className="text-xs font-bold mb-1 block">Verifikasi</span>
+            <select value={draftFilters.verificationStatus} onChange={e => setDraftFilters({...draftFilters, verificationStatus: e.target.value})} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none">
+              <option value="">Semua</option>
+              <option value="verified">Terverifikasi</option>
+              <option value="pending">Menunggu</option>
+              <option value="unverified">Belum verifikasi</option>
+            </select>
+          </label>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-4 pt-4 border-t border-border">
+          <label>
+            <span className="text-xs font-bold mb-1 block">Min Score (0-100)</span>
+            <Input type="number" min={0} max={100} value={draftFilters.minScore} onChange={e => setDraftFilters({...draftFilters, minScore: e.target.value})} placeholder="0" className="h-9 text-sm" />
+          </label>
+          <label>
+            <span className="text-xs font-bold mb-1 block">Min Level SKK (1-9)</span>
+            <Input type="number" min={0} max={9} value={draftFilters.skkLevel} onChange={e => setDraftFilters({...draftFilters, skkLevel: e.target.value})} placeholder="0" className="h-9 text-sm" />
+          </label>
+          <label>
+            <span className="text-xs font-bold mb-1 block">Min Pengalaman (Tahun)</span>
+            <Input type="number" min={0} value={draftFilters.experienceMin} onChange={e => setDraftFilters({...draftFilters, experienceMin: e.target.value})} placeholder="0" className="h-9 text-sm" />
+          </label>
+          <label>
+            <span className="text-xs font-bold mb-1 block">Ketersediaan</span>
+            <select value={draftFilters.availability} onChange={e => setDraftFilters({...draftFilters, availability: e.target.value})} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none">
+              <option value="">Semua</option>
+              <option value="available">Tersedia</option>
+              <option value="open_to_offer">Terbuka penawaran</option>
+              <option value="unavailable">Tidak tersedia</option>
+            </select>
+          </label>
+        </div>
+        <div className="mt-5 flex justify-end">
+          <button onClick={applyFilters} disabled={refreshing} className="h-9 px-6 bg-primary text-primary-foreground text-sm font-bold rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50">
+            <SlidersHorizontal size={14} className={refreshing ? "animate-pulse" : ""} />
+            {refreshing ? "Memuat..." : "Terapkan Filter & Refresh"}
+          </button>
+        </div>
+      </div>
+
+      <QueryState loading={matchingsQuery.isLoading} error={matchingsQuery.isError} retry={handleRefresh}>
+        {items.length === 0 ? <Empty label="Belum ada matching yang sesuai kriteria filter" /> : (
+          <div className="mt-6 space-y-6">
+            {items.map(item => (
+              <AdminMatchingCard
+                key={item.matchingId ?? item.candidateId}
+                item={item}
+                mutation={mutation}
+                onSuccess={() => queryClient.invalidateQueries({ queryKey: ["/api/admin/matchings"] })}
+              />
+            ))}
+          </div>
+        )}
+
+        {pageData && pageData.totalPages > 1 && (
+           <div className="flex justify-center items-center gap-4 mt-8 pt-6 border-t border-border">
+             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="h-9 px-4 border border-border rounded-lg text-sm font-bold hover:bg-muted disabled:opacity-50">Sebelumnya</button>
+             <span className="text-sm font-bold">Halaman {pageData.page} dari {pageData.totalPages}</span>
+             <button onClick={() => setPage(p => Math.min(pageData.totalPages, p + 1))} disabled={page === pageData.totalPages} className="h-9 px-4 border border-border rounded-lg text-sm font-bold hover:bg-muted disabled:opacity-50">Berikutnya</button>
+           </div>
+        )}
+      </QueryState>
+    </div>
+  );
 }
 
 function RevenueWorkspace({ items, canManage, mutation, resolveMutation }: {

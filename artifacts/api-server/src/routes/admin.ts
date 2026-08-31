@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateAdminProgramBody,
@@ -8,6 +8,8 @@ import {
   DecideVerificationParams,
   DecideVerificationResponse,
   GetAdminOperationsResponse,
+  ListAdminMatchingsQueryParams,
+  ListAdminMatchingsResponse,
   ListAdminAuditLogsResponse,
   ResolveAdminTransactionReconciliationBody,
   ResolveAdminTransactionReconciliationParams,
@@ -27,16 +29,20 @@ import {
 } from "@workspace/api-zod";
 import {
   auditLogsTable,
+  companyTalentConsentsTable,
   db,
   enrollmentsTable,
   matchingsTable,
   memberEvidenceTable,
+  memberProfilesTable,
   programsTable,
   transactionsTable,
   usersTable,
   verificationsTable,
 } from "@workspace/db";
 import { getAuthenticatedUser, requireRole, requireUser } from "../lib/auth";
+import { expireCompanyTalentConsents } from "../lib/talent-consent";
+import { listTalentMatches } from "../lib/talent-matching";
 import { getVerificationSla, syncVerificationSlaReminders } from "../lib/verification-sla";
 
 const router: IRouter = Router();
@@ -54,6 +60,8 @@ function programResponse(program: typeof programsTable.$inferSelect, enrollmentC
     capacity: program.capacity,
     enrolledCount: enrollmentCount,
     completedCount: completionCount,
+    enrollmentCount,
+    completionCount,
   };
 }
 
@@ -157,14 +165,73 @@ async function getAuditLogs(includeLogs: boolean) {
   }));
 }
 
+router.get("/admin/matchings", requireUser, requireRole(...adminRoles), async (req, res): Promise<void> => {
+  const query = ListAdminMatchingsQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: "Filter matching tidak valid." });
+    return;
+  }
+  const actor = getAuthenticatedUser(req);
+  await expireCompanyTalentConsents();
+  const page = await listTalentMatches({
+    requirementId: query.data.requirementId,
+    companyId: query.data.companyId,
+    search: query.data.search,
+    minScore: query.data.minScore,
+    location: query.data.location,
+    skkLevel: query.data.skkLevel,
+    experienceMin: query.data.experienceMin,
+    availability: query.data.availability,
+    verificationStatus: query.data.verificationStatus,
+    status: query.data.status,
+    page: query.data.page,
+    pageSize: query.data.pageSize,
+  });
+  const entityId = query.data.requirementId ?? query.data.companyId ?? "cross-requirement";
+  const actions = ["matching.generated", "matching.viewed", ...(query.data.refresh ? ["matching.refreshed"] : [])];
+  await Promise.all(
+    actions.map((action) =>
+      recordAudit(db, actor, {
+        action,
+        entityType: "matching_review",
+        entityId,
+        note: `Admin meninjau halaman ${query.data.page} hasil matching.`,
+      }),
+    ),
+  );
+  res.json(ListAdminMatchingsResponse.parse(page));
+});
+
 router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (req, res): Promise<void> => {
   const user = getAuthenticatedUser(req);
   await syncVerificationSlaReminders();
+  await expireCompanyTalentConsents();
   const [verifications, programs, enrollments, matchings, transactions, auditLogs] = await Promise.all([
     db.select().from(verificationsTable).orderBy(desc(verificationsTable.submittedAt)).limit(100),
     db.select().from(programsTable).orderBy(desc(programsTable.updatedAt)).limit(100),
     db.select().from(enrollmentsTable).orderBy(desc(enrollmentsTable.createdAt)).limit(100),
-    db.select().from(matchingsTable).orderBy(desc(matchingsTable.updatedAt)).limit(100),
+    db
+      .select({ matching: matchingsTable })
+      .from(matchingsTable)
+      .innerJoin(
+        companyTalentConsentsTable,
+        and(
+          eq(companyTalentConsentsTable.memberUserId, matchingsTable.candidateUserId),
+          eq(companyTalentConsentsTable.companyUserId, matchingsTable.companyUserId),
+          eq(companyTalentConsentsTable.status, "active"),
+          gt(companyTalentConsentsTable.expiresAt, new Date()),
+        ),
+      )
+      .innerJoin(
+        memberProfilesTable,
+        and(
+          eq(memberProfilesTable.userId, matchingsTable.candidateUserId),
+          eq(memberProfilesTable.dataConsent, true),
+        ),
+      )
+      .orderBy(desc(matchingsTable.updatedAt))
+      .limit(100)
+      .then((rows) => rows.map(({ matching }) => matching)),
     db.select().from(transactionsTable).orderBy(desc(transactionsTable.occurredAt)).limit(100),
     getAuditLogs(user.role === "super_admin"),
   ]);
@@ -466,7 +533,29 @@ router.patch(
       return;
     }
     const actor = getAuthenticatedUser(req);
-    const [existing] = await db.select().from(matchingsTable).where(eq(matchingsTable.id, params.data.id)).limit(1);
+    await expireCompanyTalentConsents();
+    const [row] = await db
+      .select({ matching: matchingsTable })
+      .from(matchingsTable)
+      .innerJoin(
+        companyTalentConsentsTable,
+        and(
+          eq(companyTalentConsentsTable.memberUserId, matchingsTable.candidateUserId),
+          eq(companyTalentConsentsTable.companyUserId, matchingsTable.companyUserId),
+          eq(companyTalentConsentsTable.status, "active"),
+          gt(companyTalentConsentsTable.expiresAt, new Date()),
+        ),
+      )
+      .innerJoin(
+        memberProfilesTable,
+        and(
+          eq(memberProfilesTable.userId, matchingsTable.candidateUserId),
+          eq(memberProfilesTable.dataConsent, true),
+        ),
+      )
+      .where(eq(matchingsTable.id, params.data.id))
+      .limit(1);
+    const existing = row?.matching;
     if (!existing) {
       res.status(404).json({ error: "Matching tidak ditemukan." });
       return;
