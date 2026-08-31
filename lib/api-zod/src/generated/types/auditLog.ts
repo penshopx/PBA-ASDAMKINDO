@@ -5,13 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { Role } from './role';
+import type { AuditLogActorRole } from './auditLogActorRole';
 
 export interface AuditLog {
   id: string;
-  actorUserId: string;
+  /** @nullable */
+  actorUserId: string | null;
   actorName: string;
-  actorRole: Role;
+  actorRole: AuditLogActorRole;
   action: string;
   entityType: string;
   entityId: string;

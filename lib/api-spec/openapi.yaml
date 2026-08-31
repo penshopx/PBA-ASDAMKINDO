@@ -2704,11 +2704,12 @@ components:
         id:
           type: string
         actorUserId:
-          type: string
+          type: ["string", "null"]
         actorName:
           type: string
         actorRole:
-          $ref: "#/components/schemas/Role"
+          type: string
+          enum: [member, company, admin, super_admin, system]
         action:
           type: string
         entityType:

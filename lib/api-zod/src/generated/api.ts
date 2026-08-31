@@ -1379,9 +1379,9 @@ export const GetAdminOperationsResponse = zod.object({
 })),
   "auditLogs": zod.array(zod.object({
   "id": zod.string(),
-  "actorUserId": zod.string(),
+  "actorUserId": zod.string().nullable(),
   "actorName": zod.string(),
-  "actorRole": zod.enum(['member', 'company', 'admin', 'super_admin']),
+  "actorRole": zod.enum(['member', 'company', 'admin', 'super_admin', 'system']),
   "action": zod.string(),
   "entityType": zod.string(),
   "entityId": zod.string(),
@@ -1398,9 +1398,9 @@ export const GetAdminOperationsResponse = zod.object({
  */
 export const ListAdminAuditLogsResponseItem = zod.object({
   "id": zod.string(),
-  "actorUserId": zod.string(),
+  "actorUserId": zod.string().nullable(),
   "actorName": zod.string(),
-  "actorRole": zod.enum(['member', 'company', 'admin', 'super_admin']),
+  "actorRole": zod.enum(['member', 'company', 'admin', 'super_admin', 'system']),
   "action": zod.string(),
   "entityType": zod.string(),
   "entityId": zod.string(),

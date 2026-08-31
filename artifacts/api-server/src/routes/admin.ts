@@ -53,11 +53,17 @@ function iso(value: Date | null): string | null {
   return value?.toISOString() ?? null;
 }
 
-function programResponse(program: typeof programsTable.$inferSelect, enrollmentCount = 0, completionCount = 0) {
+function programResponse(
+  program: typeof programsTable.$inferSelect,
+  enrollmentCount = 0,
+  completionCount = 0,
+) {
   return {
     ...program,
     price: Number(program.price),
     capacity: program.capacity,
+    enrollmentCount,
+    completionCount,
     enrolledCount: enrollmentCount,
     completedCount: completionCount,
     enrollmentCount,

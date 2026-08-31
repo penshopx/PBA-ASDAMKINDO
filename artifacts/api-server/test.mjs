@@ -6,10 +6,16 @@ import { rm } from "node:fs/promises";
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.resolve(artifactDir, ".test-dist");
 
-const requestedTests = process.argv.slice(2).filter((argument) => argument !== "--");
+const requestedTests = process.argv
+  .slice(2)
+  .filter((argument) => argument !== "--");
 const testFiles = requestedTests.length
   ? requestedTests
-  : ["member-journey.integration", "company-security.integration"];
+  : [
+      "member-journey.integration",
+      "company-security.integration",
+      "settlement-reconciliation.integration",
+    ];
 
 try {
   await rm(outDir, { recursive: true, force: true });

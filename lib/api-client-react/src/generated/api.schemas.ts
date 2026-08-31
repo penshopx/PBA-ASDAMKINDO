@@ -1326,11 +1326,23 @@ export interface TransactionReconciliationResolution {
   note: string;
 }
 
+export type AuditLogActorRole = typeof AuditLogActorRole[keyof typeof AuditLogActorRole];
+
+
+export const AuditLogActorRole = {
+  member: 'member',
+  company: 'company',
+  admin: 'admin',
+  super_admin: 'super_admin',
+  system: 'system',
+} as const;
+
 export interface AuditLog {
   id: string;
-  actorUserId: string;
+  /** @nullable */
+  actorUserId: string | null;
   actorName: string;
-  actorRole: Role;
+  actorRole: AuditLogActorRole;
   action: string;
   entityType: string;
   entityId: string;

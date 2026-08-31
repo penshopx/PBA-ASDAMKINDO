@@ -24,6 +24,7 @@ export * from './adminTalentConsentOverrideAction';
 export * from './adminTalentConsentPage';
 export * from './adminTalentConsentStatus';
 export * from './auditLog';
+export * from './auditLogActorRole';
 export * from './companyConsentHistoryEntry';
 export * from './companyConsentRequest';
 export * from './companyConsentRequestInput';
