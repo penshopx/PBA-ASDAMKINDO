@@ -2,9 +2,12 @@ import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
+import { companyRequirementsTable } from "./company-recruitment";
 
 export const matchingsTable = pgTable("matchings", {
   id: text("id").primaryKey(),
+  requirementId: text("requirement_id").references(() => companyRequirementsTable.id),
+  companyUserId: text("company_user_id").references(() => usersTable.id),
   requirement: text("requirement").notNull(),
   companyName: text("company_name").notNull(),
   candidateUserId: text("candidate_user_id").references(() => usersTable.id),

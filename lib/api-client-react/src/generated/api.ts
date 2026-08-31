@@ -26,6 +26,11 @@ import type {
   AuditLog,
   CompanyDashboard,
   CompanyOnboardingInput,
+  CompanyRequirement,
+  CompanyRequirementInput,
+  CompanyRequirementUpdate,
+  CompanyShortlistInput,
+  CompanyShortlistUpdate,
   CompanyTalentCandidate,
   CurrentUser,
   Enrollment,
@@ -34,6 +39,7 @@ import type {
   GetAdminTalentPoolParams,
   GetCompanyTalentPoolParams,
   HealthStatus,
+  ListCompanyTalentPoolParams,
   ListProgramsParams,
   Matching,
   MatchingUpdate,
@@ -54,6 +60,7 @@ import type {
   ProgramUpdate,
   PublicPassport,
   ReadinessDiagnostic,
+  TalentPoolCandidate,
   Transaction,
   TransactionUpdate,
   Verification,
@@ -1294,6 +1301,453 @@ export function useGetCompanyDashboard<TData = Awaited<ReturnType<typeof getComp
 
 
 
+export const getListCompanyRequirementsUrl = () => {
+
+
+
+
+  return `/api/company/requirements`
+}
+
+/**
+ * @summary List the current company's talent and training requirements
+ */
+export const listCompanyRequirements = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyRequirement[]> => {
+
+  return customFetch<CompanyRequirement[]>(getListCompanyRequirementsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompanyRequirementsQueryKey = () => {
+    return [
+    `/api/company/requirements`
+    ] as const;
+    }
+
+
+export const getListCompanyRequirementsQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyRequirements>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyRequirements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyRequirementsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyRequirements>>> = ({ signal }) => listCompanyRequirements({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyRequirements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompanyRequirementsQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanyRequirements>>>
+export type ListCompanyRequirementsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List the current company's talent and training requirements
+ */
+
+export function useListCompanyRequirements<TData = Awaited<ReturnType<typeof listCompanyRequirements>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyRequirements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompanyRequirementsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCompanyRequirementUrl = () => {
+
+
+
+
+  return `/api/company/requirements`
+}
+
+/**
+ * @summary Create a company talent or training requirement
+ */
+export const createCompanyRequirement = async (companyRequirementInput: CompanyRequirementInput, options?: Parameters<typeof customFetch>[1]): Promise<CompanyRequirement> => {
+
+  return customFetch<CompanyRequirement>(getCreateCompanyRequirementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(companyRequirementInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCompanyRequirementMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyRequirement>>, TError,{data: BodyType<CompanyRequirementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCompanyRequirement>>, TError,{data: BodyType<CompanyRequirementInput>}, TContext> => {
+
+const mutationKey = ['createCompanyRequirement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCompanyRequirement>>, {data: BodyType<CompanyRequirementInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCompanyRequirement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCompanyRequirementMutationResult = NonNullable<Awaited<ReturnType<typeof createCompanyRequirement>>>
+    export type CreateCompanyRequirementMutationBody = BodyType<CompanyRequirementInput>
+    export type CreateCompanyRequirementMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a company talent or training requirement
+ */
+export const useCreateCompanyRequirement = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyRequirement>>, TError,{data: BodyType<CompanyRequirementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCompanyRequirement>>,
+        TError,
+        {data: BodyType<CompanyRequirementInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCompanyRequirementMutationOptions(options));
+    }
+
+export const getUpdateCompanyRequirementUrl = (id: string,) => {
+
+
+
+
+  return `/api/company/requirements/${id}`
+}
+
+/**
+ * @summary Update a company requirement owned by the current company
+ */
+export const updateCompanyRequirement = async (id: string,
+    companyRequirementUpdate: CompanyRequirementUpdate, options?: Parameters<typeof customFetch>[1]): Promise<CompanyRequirement> => {
+
+  return customFetch<CompanyRequirement>(getUpdateCompanyRequirementUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(companyRequirementUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateCompanyRequirementMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyRequirement>>, TError,{id: string;data: BodyType<CompanyRequirementUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCompanyRequirement>>, TError,{id: string;data: BodyType<CompanyRequirementUpdate>}, TContext> => {
+
+const mutationKey = ['updateCompanyRequirement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCompanyRequirement>>, {id: string;data: BodyType<CompanyRequirementUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCompanyRequirement(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCompanyRequirementMutationResult = NonNullable<Awaited<ReturnType<typeof updateCompanyRequirement>>>
+    export type UpdateCompanyRequirementMutationBody = BodyType<CompanyRequirementUpdate>
+    export type UpdateCompanyRequirementMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a company requirement owned by the current company
+ */
+export const useUpdateCompanyRequirement = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyRequirement>>, TError,{id: string;data: BodyType<CompanyRequirementUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCompanyRequirement>>,
+        TError,
+        {id: string;data: BodyType<CompanyRequirementUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCompanyRequirementMutationOptions(options));
+    }
+
+export const getListCompanyTalentPoolUrl = (params: ListCompanyTalentPoolParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/company/talent-pool/matches?${stringifiedParams}` : `/api/company/talent-pool/matches`
+}
+
+/**
+ * @summary List consented members ranked against a company requirement
+ */
+export const listCompanyTalentPool = async (params: ListCompanyTalentPoolParams, options?: Parameters<typeof customFetch>[1]): Promise<TalentPoolCandidate[]> => {
+
+  return customFetch<TalentPoolCandidate[]>(getListCompanyTalentPoolUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompanyTalentPoolQueryKey = (params?: ListCompanyTalentPoolParams,) => {
+    return [
+    `/api/company/talent-pool/matches`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCompanyTalentPoolQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyTalentPool>>, TError = ErrorType<ErrorResponse>>(params: ListCompanyTalentPoolParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyTalentPool>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyTalentPoolQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyTalentPool>>> = ({ signal }) => listCompanyTalentPool(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyTalentPool>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompanyTalentPoolQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanyTalentPool>>>
+export type ListCompanyTalentPoolQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List consented members ranked against a company requirement
+ */
+
+export function useListCompanyTalentPool<TData = Awaited<ReturnType<typeof listCompanyTalentPool>>, TError = ErrorType<ErrorResponse>>(
+ params: ListCompanyTalentPoolParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyTalentPool>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompanyTalentPoolQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCompanyShortlistUrl = () => {
+
+
+
+
+  return `/api/company/shortlist`
+}
+
+/**
+ * @summary Save a consented candidate to the company's shortlist
+ */
+export const createCompanyShortlist = async (companyShortlistInput: CompanyShortlistInput, options?: Parameters<typeof customFetch>[1]): Promise<Matching> => {
+
+  return customFetch<Matching>(getCreateCompanyShortlistUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(companyShortlistInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCompanyShortlistMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyShortlist>>, TError,{data: BodyType<CompanyShortlistInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCompanyShortlist>>, TError,{data: BodyType<CompanyShortlistInput>}, TContext> => {
+
+const mutationKey = ['createCompanyShortlist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCompanyShortlist>>, {data: BodyType<CompanyShortlistInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCompanyShortlist(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCompanyShortlistMutationResult = NonNullable<Awaited<ReturnType<typeof createCompanyShortlist>>>
+    export type CreateCompanyShortlistMutationBody = BodyType<CompanyShortlistInput>
+    export type CreateCompanyShortlistMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save a consented candidate to the company's shortlist
+ */
+export const useCreateCompanyShortlist = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyShortlist>>, TError,{data: BodyType<CompanyShortlistInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCompanyShortlist>>,
+        TError,
+        {data: BodyType<CompanyShortlistInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCompanyShortlistMutationOptions(options));
+    }
+
+export const getUpdateCompanyShortlistUrl = (id: string,) => {
+
+
+
+
+  return `/api/company/shortlist/${id}`
+}
+
+/**
+ * @summary Move a company shortlist item through review, interview, and placement
+ */
+export const updateCompanyShortlist = async (id: string,
+    companyShortlistUpdate: CompanyShortlistUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Matching> => {
+
+  return customFetch<Matching>(getUpdateCompanyShortlistUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(companyShortlistUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateCompanyShortlistMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyShortlist>>, TError,{id: string;data: BodyType<CompanyShortlistUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCompanyShortlist>>, TError,{id: string;data: BodyType<CompanyShortlistUpdate>}, TContext> => {
+
+const mutationKey = ['updateCompanyShortlist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCompanyShortlist>>, {id: string;data: BodyType<CompanyShortlistUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCompanyShortlist(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCompanyShortlistMutationResult = NonNullable<Awaited<ReturnType<typeof updateCompanyShortlist>>>
+    export type UpdateCompanyShortlistMutationBody = BodyType<CompanyShortlistUpdate>
+    export type UpdateCompanyShortlistMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Move a company shortlist item through review, interview, and placement
+ */
+export const useUpdateCompanyShortlist = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyShortlist>>, TError,{id: string;data: BodyType<CompanyShortlistUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCompanyShortlist>>,
+        TError,
+        {id: string;data: BodyType<CompanyShortlistUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCompanyShortlistMutationOptions(options));
+    }
+
 export const getGetAdminDashboardUrl = () => {
 
 
@@ -2116,3 +2570,4 @@ export const useUpdateAdminTransaction = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getUpdateAdminTransactionMutationOptions(options));
     }
+

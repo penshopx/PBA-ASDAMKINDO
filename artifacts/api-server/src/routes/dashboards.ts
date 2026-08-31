@@ -1,4 +1,4 @@
-import { count, desc, eq, or, sum } from "drizzle-orm";
+import { and, count, desc, eq, inArray, or, sum } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   GetAdminDashboardResponse,
@@ -7,11 +7,13 @@ import {
 } from "@workspace/api-zod";
 import {
   companyProfilesTable,
+  companyRequirementsTable,
   db,
   enrollmentsTable,
   matchingsTable,
   memberEvidenceTable,
   memberProfilesTable,
+  notificationsTable,
   programProgressTable,
   programsTable,
   readinessDiagnosticsTable,
@@ -19,7 +21,7 @@ import {
   usersTable,
   verificationsTable,
 } from "@workspace/db";
-import { getAuthenticatedUser, requireUser } from "../lib/auth";
+import { getAuthenticatedUser, requireRole, requireUser } from "../lib/auth";
 
 const router: IRouter = Router();
 const numberFromCount = (value: string | number): number => Number(value);
@@ -70,25 +72,28 @@ router.get("/dashboard/member", requireUser, async (req, res): Promise<void> => 
   );
 });
 
-router.get("/dashboard/company", requireUser, async (req, res): Promise<void> => {
+router.get("/dashboard/company", requireUser, requireRole("company"), async (req, res): Promise<void> => {
   const user = getAuthenticatedUser(req);
-  const [[members], [programs]] = await Promise.all([
-    db.select({ value: count(memberProfilesTable.id) }).from(memberProfilesTable),
+  const [[requirements], [matchingCandidates], [shortlist], [notifications], [programs]] = await Promise.all([
+    db.select({ value: count(companyRequirementsTable.id) }).from(companyRequirementsTable).where(and(eq(companyRequirementsTable.companyUserId, user.id), eq(companyRequirementsTable.status, "open"))),
+    db.select({ value: count(matchingsTable.id) }).from(matchingsTable).where(and(eq(matchingsTable.companyUserId, user.id), inArray(matchingsTable.status, ["review", "shortlisted", "interview", "placed"]))),
+    db.select({ value: count(matchingsTable.id) }).from(matchingsTable).where(and(eq(matchingsTable.companyUserId, user.id), inArray(matchingsTable.status, ["shortlisted", "interview", "placed"]))),
+    db.select({ value: count(notificationsTable.id) }).from(notificationsTable).where(and(eq(notificationsTable.userId, user.id), eq(notificationsTable.read, false))),
     db.select({ value: count(programsTable.id) }).from(programsTable).where(eq(programsTable.status, "published")),
   ]);
   res.json(
     GetCompanyDashboardResponse.parse({
       greeting: `Selamat datang, ${user.organization ?? user.name}`,
       metrics: [
-        { label: "Kebutuhan aktif", value: "3", change: "1 mendekati tanggal mulai", tone: "warning" },
-        { label: "Kandidat cocok", value: String(numberFromCount(members?.value ?? 0)), change: "Dari Talent Pool", tone: "positive" },
-        { label: "Dalam shortlist", value: "7", change: "2 perlu ditindaklanjuti", tone: "neutral" },
+        { label: "Kebutuhan aktif", value: String(numberFromCount(requirements?.value ?? 0)), change: "Brief yang sedang terbuka", tone: requirements?.value ? "warning" : "neutral" },
+        { label: "Kandidat cocok", value: String(numberFromCount(matchingCandidates?.value ?? 0)), change: "Dalam pipeline Anda", tone: matchingCandidates?.value ? "positive" : "neutral" },
+        { label: "Dalam shortlist", value: String(numberFromCount(shortlist?.value ?? 0)), change: "Siap ditindaklanjuti", tone: shortlist?.value ? "positive" : "neutral" },
       ],
-      nextAction: { title: "Tinjau kandidat baru", description: "Ada kandidat yang sesuai dengan kebutuhan tenaga Anda.", href: "/company/candidates", tone: "primary" },
-      activeRequirements: 3,
-      matchingCandidates: numberFromCount(members?.value ?? 0),
-      shortlistCount: 7,
-      notificationsCount: numberFromCount(programs?.value ?? 0),
+      nextAction: { title: requirements?.value ? "Tinjau Talent Pool" : "Buat kebutuhan pertama", description: requirements?.value ? "Lihat kandidat consented yang paling relevan dengan brief Anda." : "Mulai dengan menjelaskan kompetensi dan lokasi yang Anda butuhkan.", href: "/company/talent", tone: "primary" },
+      activeRequirements: numberFromCount(requirements?.value ?? 0),
+      matchingCandidates: numberFromCount(matchingCandidates?.value ?? 0),
+      shortlistCount: numberFromCount(shortlist?.value ?? 0),
+      notificationsCount: numberFromCount(notifications?.value ?? 0),
     }),
   );
 });

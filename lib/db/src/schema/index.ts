@@ -10,3 +10,4 @@ export * from "./transactions";
 export * from "./audit-logs";
 export * from "./member-journey";
 export * from "./professional-passport";
+export * from "./company-recruitment";

@@ -24,6 +24,8 @@ tags:
     description: Professional Passport settings and public profile
   - name: talent-pool
     description: Consent-aware Talent Pool discovery
+  - name: company
+    description: Company talent requirements and consented talent pool
 paths:
   /healthz:
     get:
@@ -415,6 +417,177 @@ paths:
                 $ref: "#/components/schemas/CompanyDashboard"
         "401":
           description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /company/requirements:
+    get:
+      operationId: listCompanyRequirements
+      tags: [company]
+      summary: List the current company's talent and training requirements
+      responses:
+        "200":
+          description: Company requirements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyRequirement"
+        "403":
+          description: Company role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createCompanyRequirement
+      tags: [company]
+      summary: Create a company talent or training requirement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyRequirementInput"
+      responses:
+        "201":
+          description: Created requirement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyRequirement"
+        "400":
+          description: Invalid requirement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /company/requirements/{id}:
+    patch:
+      operationId: updateCompanyRequirement
+      tags: [company]
+      summary: Update a company requirement owned by the current company
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyRequirementUpdate"
+      responses:
+        "200":
+          description: Updated requirement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyRequirement"
+        "400":
+          description: Invalid requirement update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Requirement not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /company/talent-pool/matches:
+    get:
+      operationId: listCompanyTalentPool
+      tags: [company]
+      summary: List consented members ranked against a company requirement
+      parameters:
+        - name: requirementId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ranked talent pool
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TalentPoolCandidate"
+        "404":
+          description: Requirement not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /company/shortlist:
+    post:
+      operationId: createCompanyShortlist
+      tags: [company]
+      summary: Save a consented candidate to the company's shortlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyShortlistInput"
+      responses:
+        "201":
+          description: Created shortlist item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Matching"
+        "400":
+          description: Invalid shortlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Requirement or candidate not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /company/shortlist/{id}:
+    patch:
+      operationId: updateCompanyShortlist
+      tags: [company]
+      summary: Move a company shortlist item through review, interview, and placement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyShortlistUpdate"
+      responses:
+        "200":
+          description: Updated shortlist item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Matching"
+        "400":
+          description: Invalid shortlist update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Shortlist item not found
           content:
             application/json:
               schema:
@@ -1200,6 +1373,159 @@ components:
         notificationsCount:
           type: number
       required: [greeting, metrics, nextAction, activeRequirements, matchingCandidates, shortlistCount, notificationsCount]
+    CompanyRequirement:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [talent, training]
+        title:
+          type: string
+        description:
+          type: string
+        location:
+          type: string
+        competencies:
+          type: array
+          items:
+            type: string
+        minimumExperience:
+          type: number
+        headcount:
+          type: number
+        deadline:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [draft, open, closed]
+        candidateCount:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, kind, title, description, location, competencies, minimumExperience, headcount, deadline, status, candidateCount, createdAt, updatedAt]
+    CompanyRequirementInput:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [talent, training]
+        title:
+          type: string
+          minLength: 2
+        description:
+          type: string
+        location:
+          type: string
+          minLength: 2
+        competencies:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        minimumExperience:
+          type: number
+          minimum: 0
+          maximum: 80
+        headcount:
+          type: number
+          minimum: 1
+          maximum: 10000
+        deadline:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [draft, open, closed]
+      required: [kind, title, description, location, competencies, minimumExperience, headcount, deadline, status]
+    CompanyRequirementUpdate:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [talent, training]
+        title:
+          type: string
+          minLength: 2
+        description:
+          type: string
+        location:
+          type: string
+          minLength: 2
+        competencies:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 1
+        minimumExperience:
+          type: number
+          minimum: 0
+          maximum: 80
+        headcount:
+          type: number
+          minimum: 1
+          maximum: 10000
+        deadline:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [draft, open, closed]
+    TalentPoolCandidate:
+      type: object
+      properties:
+        memberUserId:
+          type: string
+        name:
+          type: string
+        domicile:
+          type: string
+        expertise:
+          type: string
+        experienceYears:
+          type: number
+        readinessScore:
+          type: number
+        readinessLabel:
+          type: string
+        score:
+          type: number
+        matchReasons:
+          type: array
+          items:
+            type: string
+        matchingId:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [new, review, shortlisted, interview, placed, declined]
+      required: [memberUserId, name, domicile, expertise, experienceYears, readinessScore, readinessLabel, score, matchReasons, matchingId, status]
+    CompanyShortlistInput:
+      type: object
+      properties:
+        requirementId:
+          type: string
+        memberUserId:
+          type: string
+      required: [requirementId, memberUserId]
+    CompanyShortlistUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [new, review, shortlisted, interview, placed, declined]
+        note:
+          type: string
+          minLength: 3
+      required: [status]
     AdminDashboard:
       type: object
       properties:
@@ -1412,7 +1738,7 @@ components:
           type: number
         status:
           type: string
-          enum: [new, shortlisted, interview, placed, declined]
+          enum: [new, review, shortlisted, interview, placed, declined]
         updatedAt:
           type: string
           format: date-time
@@ -1422,7 +1748,7 @@ components:
       properties:
         status:
           type: string
-          enum: [new, shortlisted, interview, placed, declined]
+          enum: [new, review, shortlisted, interview, placed, declined]
         note:
           type: string
           minLength: 3
@@ -1574,4 +1900,3 @@ components:
           type: string
           enum: [profile, document, program, learning, recruitment, system]
       required: [id, title, description, createdAt, read, type]
-

@@ -11,6 +11,7 @@ export type MatchingUpdateStatus = typeof MatchingUpdateStatus[keyof typeof Matc
 
 export const MatchingUpdateStatus = {
   new: 'new',
+  review: 'review',
   shortlisted: 'shortlisted',
   interview: 'interview',
   placed: 'placed',

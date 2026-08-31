@@ -7,9 +7,9 @@ import dashboardsRouter from "./dashboards";
 import adminRouter from "./admin";
 import memberJourneyRouter from "./member-journey";
 import passportRouter from "./passport";
+import companyRouter from "./company";
 
 const router: IRouter = Router();
-
 router.use(healthRouter);
 router.use(identityRouter);
 router.use(programsRouter);
@@ -18,5 +18,5 @@ router.use(dashboardsRouter);
 router.use(adminRouter);
 router.use(memberJourneyRouter);
 router.use(passportRouter);
-
+router.use(companyRouter);
 export default router;

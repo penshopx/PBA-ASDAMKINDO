@@ -206,6 +206,7 @@ export type MatchingStatus = typeof MatchingStatus[keyof typeof MatchingStatus];
 
 export const MatchingStatus = {
   new: 'new',
+  review: 'review',
   shortlisted: 'shortlisted',
   interview: 'interview',
   placed: 'placed',
@@ -521,6 +522,175 @@ export interface CompanyDashboard {
   notificationsCount: number;
 }
 
+export type CompanyRequirementKind = typeof CompanyRequirementKind[keyof typeof CompanyRequirementKind];
+
+
+export const CompanyRequirementKind = {
+  talent: 'talent',
+  training: 'training',
+} as const;
+
+export type CompanyRequirementStatus = typeof CompanyRequirementStatus[keyof typeof CompanyRequirementStatus];
+
+
+export const CompanyRequirementStatus = {
+  draft: 'draft',
+  open: 'open',
+  closed: 'closed',
+} as const;
+
+export interface CompanyRequirement {
+  id: string;
+  kind: CompanyRequirementKind;
+  title: string;
+  description: string;
+  location: string;
+  competencies: string[];
+  minimumExperience: number;
+  headcount: number;
+  deadline: string;
+  status: CompanyRequirementStatus;
+  candidateCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CompanyRequirementInputKind = typeof CompanyRequirementInputKind[keyof typeof CompanyRequirementInputKind];
+
+
+export const CompanyRequirementInputKind = {
+  talent: 'talent',
+  training: 'training',
+} as const;
+
+export type CompanyRequirementInputStatus = typeof CompanyRequirementInputStatus[keyof typeof CompanyRequirementInputStatus];
+
+
+export const CompanyRequirementInputStatus = {
+  draft: 'draft',
+  open: 'open',
+  closed: 'closed',
+} as const;
+
+export interface CompanyRequirementInput {
+  kind: CompanyRequirementInputKind;
+  /** @minLength 2 */
+  title: string;
+  description: string;
+  /** @minLength 2 */
+  location: string;
+  /**
+     * @minItems 1
+     * @items.minLength 1
+     */
+  competencies: string[];
+  /**
+     * @minimum 0
+     * @maximum 80
+     */
+  minimumExperience: number;
+  /**
+     * @minimum 1
+     * @maximum 10000
+     */
+  headcount: number;
+  deadline: string;
+  status: CompanyRequirementInputStatus;
+}
+
+export type CompanyRequirementUpdateKind = typeof CompanyRequirementUpdateKind[keyof typeof CompanyRequirementUpdateKind];
+
+
+export const CompanyRequirementUpdateKind = {
+  talent: 'talent',
+  training: 'training',
+} as const;
+
+export type CompanyRequirementUpdateStatus = typeof CompanyRequirementUpdateStatus[keyof typeof CompanyRequirementUpdateStatus];
+
+
+export const CompanyRequirementUpdateStatus = {
+  draft: 'draft',
+  open: 'open',
+  closed: 'closed',
+} as const;
+
+export interface CompanyRequirementUpdate {
+  kind?: CompanyRequirementUpdateKind;
+  /** @minLength 2 */
+  title?: string;
+  description?: string;
+  /** @minLength 2 */
+  location?: string;
+  /**
+     * @minItems 1
+     * @items.minLength 1
+     */
+  competencies?: string[];
+  /**
+     * @minimum 0
+     * @maximum 80
+     */
+  minimumExperience?: number;
+  /**
+     * @minimum 1
+     * @maximum 10000
+     */
+  headcount?: number;
+  deadline?: string;
+  status?: CompanyRequirementUpdateStatus;
+}
+
+export type TalentPoolCandidateStatus = typeof TalentPoolCandidateStatus[keyof typeof TalentPoolCandidateStatus];
+
+
+export const TalentPoolCandidateStatus = {
+  new: 'new',
+  review: 'review',
+  shortlisted: 'shortlisted',
+  interview: 'interview',
+  placed: 'placed',
+  declined: 'declined',
+} as const;
+
+export interface TalentPoolCandidate {
+  memberUserId: string;
+  name: string;
+  domicile: string;
+  expertise: string;
+  experienceYears: number;
+  readinessScore: number;
+  readinessLabel: string;
+  score: number;
+  matchReasons: string[];
+  /** @nullable */
+  matchingId: string | null;
+  status: TalentPoolCandidateStatus;
+}
+
+export interface CompanyShortlistInput {
+  requirementId: string;
+  memberUserId: string;
+}
+
+export type CompanyShortlistUpdateStatus = typeof CompanyShortlistUpdateStatus[keyof typeof CompanyShortlistUpdateStatus];
+
+
+export const CompanyShortlistUpdateStatus = {
+  new: 'new',
+  review: 'review',
+  shortlisted: 'shortlisted',
+  interview: 'interview',
+  placed: 'placed',
+  declined: 'declined',
+} as const;
+
+export interface CompanyShortlistUpdate {
+  status: CompanyShortlistUpdateStatus;
+  /** @minLength 3 */
+  note?: string;
+}
+
 export interface AdminDashboard {
   greeting: string;
   metrics: Metric[];
@@ -682,6 +852,7 @@ export type MatchingUpdateStatus = typeof MatchingUpdateStatus[keyof typeof Matc
 
 export const MatchingUpdateStatus = {
   new: 'new',
+  review: 'review',
   shortlisted: 'shortlisted',
   interview: 'interview',
   placed: 'placed',
@@ -846,7 +1017,12 @@ export const GetCompanyTalentPoolAvailability = {
   unavailable: 'unavailable',
 } as const;
 
+export type ListCompanyTalentPoolParams = {
+requirementId: string;
+};
+
 export type ListProgramsParams = {
 category?: string;
 mode?: string;
 };
+

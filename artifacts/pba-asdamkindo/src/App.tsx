@@ -23,6 +23,7 @@ import { CompanyTalentPoolPage } from '@/pages/company-talent-pool';
 import NotFound from '@/pages/not-found';
 import { useGetCurrentUser } from '@workspace/api-client-react';
 import VideoWithControls from '@/components/video/VideoWithControls';
+import { CompanyTalent } from '@/pages/company-talent';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -71,8 +72,9 @@ function AppRoutes({ clerkReady }: { clerkReady: boolean }) {
     <Route path="/member/journey">{() => <Protected><AppShell><MemberJourney /></AppShell></Protected>}</Route>
     <Route path="/member/passport">{() => <Protected><MemberOnly><AppShell><MemberPassportPage /></AppShell></MemberOnly></Protected>}</Route>
     <Route path="/passport/:slug" component={PublicPassportPage} />
-    <Route path="/company/dashboard">{() => <Protected><AppShell><CompanyDashboard /></AppShell></Protected>}</Route>
+    <Route path="/company/dashboard">{() => <Protected><CompanyOnly><AppShell><CompanyDashboard /></AppShell></CompanyOnly></Protected>}</Route>
     <Route path="/company/talent-pool">{() => <Protected><CompanyOnly><AppShell><CompanyTalentPoolPage /></AppShell></CompanyOnly></Protected>}</Route>
+    <Route path="/company/talent">{() => <Protected><CompanyOnly><AppShell><CompanyTalent /></AppShell></CompanyOnly></Protected>}</Route>
     <Route path="/admin/dashboard">{() => <Protected><AppShell><AdminDashboard /></AppShell></Protected>}</Route>
     <Route path="/admin/operations">{() => <Protected><AdminOnly><AppShell><AdminOperations /></AppShell></AdminOnly></Protected>}</Route>
     <Route path="/admin/talent-pool">{() => <Protected><AdminOnly><AppShell><AdminTalentPoolPage /></AppShell></AdminOnly></Protected>}</Route>

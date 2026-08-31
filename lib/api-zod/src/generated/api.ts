@@ -168,7 +168,7 @@ export const GetMemberJourneyResponse = zod.object({
   "candidateUserId": zod.string().nullable(),
   "candidateName": zod.string(),
   "score": zod.number(),
-  "status": zod.enum(['new', 'shortlisted', 'interview', 'placed', 'declined']),
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),
   "updatedAt": zod.coerce.date()
 })),
   "recommendedPrograms": zod.array(zod.object({
@@ -490,6 +490,192 @@ export const GetCompanyDashboardResponse = zod.object({
 
 
 /**
+ * @summary List the current company's talent and training requirements
+ */
+export const ListCompanyRequirementsResponseItem = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['talent', 'training']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "location": zod.string(),
+  "competencies": zod.array(zod.string()),
+  "minimumExperience": zod.number(),
+  "headcount": zod.number(),
+  "deadline": zod.coerce.date(),
+  "status": zod.enum(['draft', 'open', 'closed']),
+  "candidateCount": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListCompanyRequirementsResponse = zod.array(ListCompanyRequirementsResponseItem)
+
+
+/**
+ * @summary Create a company talent or training requirement
+ */
+export const createCompanyRequirementBodyTitleMin = 2;
+
+export const createCompanyRequirementBodyLocationMin = 2;
+
+
+
+export const createCompanyRequirementBodyMinimumExperienceMin = 0;
+export const createCompanyRequirementBodyMinimumExperienceMax = 80;
+
+export const createCompanyRequirementBodyHeadcountMax = 10000;
+
+
+
+export const CreateCompanyRequirementBody = zod.object({
+  "kind": zod.enum(['talent', 'training']),
+  "title": zod.string().min(createCompanyRequirementBodyTitleMin),
+  "description": zod.string(),
+  "location": zod.string().min(createCompanyRequirementBodyLocationMin),
+  "competencies": zod.array(zod.string().min(1)).min(1),
+  "minimumExperience": zod.number().min(createCompanyRequirementBodyMinimumExperienceMin).max(createCompanyRequirementBodyMinimumExperienceMax),
+  "headcount": zod.number().min(1).max(createCompanyRequirementBodyHeadcountMax),
+  "deadline": zod.coerce.date(),
+  "status": zod.enum(['draft', 'open', 'closed'])
+})
+
+export const CreateCompanyRequirementResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['talent', 'training']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "location": zod.string(),
+  "competencies": zod.array(zod.string()),
+  "minimumExperience": zod.number(),
+  "headcount": zod.number(),
+  "deadline": zod.coerce.date(),
+  "status": zod.enum(['draft', 'open', 'closed']),
+  "candidateCount": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a company requirement owned by the current company
+ */
+export const UpdateCompanyRequirementParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateCompanyRequirementBodyTitleMin = 2;
+
+export const updateCompanyRequirementBodyLocationMin = 2;
+
+
+
+export const updateCompanyRequirementBodyMinimumExperienceMin = 0;
+export const updateCompanyRequirementBodyMinimumExperienceMax = 80;
+
+export const updateCompanyRequirementBodyHeadcountMax = 10000;
+
+
+
+export const UpdateCompanyRequirementBody = zod.object({
+  "kind": zod.enum(['talent', 'training']).optional(),
+  "title": zod.string().min(updateCompanyRequirementBodyTitleMin).optional(),
+  "description": zod.string().optional(),
+  "location": zod.string().min(updateCompanyRequirementBodyLocationMin).optional(),
+  "competencies": zod.array(zod.string().min(1)).min(1).optional(),
+  "minimumExperience": zod.number().min(updateCompanyRequirementBodyMinimumExperienceMin).max(updateCompanyRequirementBodyMinimumExperienceMax).optional(),
+  "headcount": zod.number().min(1).max(updateCompanyRequirementBodyHeadcountMax).optional(),
+  "deadline": zod.coerce.date().optional(),
+  "status": zod.enum(['draft', 'open', 'closed']).optional()
+})
+
+export const UpdateCompanyRequirementResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['talent', 'training']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "location": zod.string(),
+  "competencies": zod.array(zod.string()),
+  "minimumExperience": zod.number(),
+  "headcount": zod.number(),
+  "deadline": zod.coerce.date(),
+  "status": zod.enum(['draft', 'open', 'closed']),
+  "candidateCount": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List consented members ranked against a company requirement
+ */
+export const ListCompanyTalentPoolQueryParams = zod.object({
+  "requirementId": zod.coerce.string()
+})
+
+export const ListCompanyTalentPoolResponseItem = zod.object({
+  "memberUserId": zod.string(),
+  "name": zod.string(),
+  "domicile": zod.string(),
+  "expertise": zod.string(),
+  "experienceYears": zod.number(),
+  "readinessScore": zod.number(),
+  "readinessLabel": zod.string(),
+  "score": zod.number(),
+  "matchReasons": zod.array(zod.string()),
+  "matchingId": zod.string().nullable(),
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined'])
+})
+export const ListCompanyTalentPoolResponse = zod.array(ListCompanyTalentPoolResponseItem)
+
+
+/**
+ * @summary Save a consented candidate to the company's shortlist
+ */
+export const CreateCompanyShortlistBody = zod.object({
+  "requirementId": zod.string(),
+  "memberUserId": zod.string()
+})
+
+export const CreateCompanyShortlistResponse = zod.object({
+  "id": zod.string(),
+  "requirement": zod.string(),
+  "companyName": zod.string(),
+  "candidateUserId": zod.string().nullable(),
+  "candidateName": zod.string(),
+  "score": zod.number(),
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Move a company shortlist item through review, interview, and placement
+ */
+export const UpdateCompanyShortlistParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateCompanyShortlistBodyNoteMin = 3;
+
+
+
+export const UpdateCompanyShortlistBody = zod.object({
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),
+  "note": zod.string().min(updateCompanyShortlistBodyNoteMin).optional()
+})
+
+export const UpdateCompanyShortlistResponse = zod.object({
+  "id": zod.string(),
+  "requirement": zod.string(),
+  "companyName": zod.string(),
+  "candidateUserId": zod.string().nullable(),
+  "candidateName": zod.string(),
+  "score": zod.number(),
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Get admin dashboard
  */
 export const GetAdminDashboardResponse = zod.object({
@@ -625,7 +811,7 @@ export const GetAdminOperationsResponse = zod.object({
   "candidateUserId": zod.string().nullable(),
   "candidateName": zod.string(),
   "score": zod.number(),
-  "status": zod.enum(['new', 'shortlisted', 'interview', 'placed', 'declined']),
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),
   "updatedAt": zod.coerce.date()
 })),
   "transactions": zod.array(zod.object({
@@ -830,7 +1016,7 @@ export const updateAdminMatchingBodyNoteMin = 3;
 
 
 export const UpdateAdminMatchingBody = zod.object({
-  "status": zod.enum(['new', 'shortlisted', 'interview', 'placed', 'declined']),
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),
   "note": zod.string().min(updateAdminMatchingBodyNoteMin).optional()
 })
 
@@ -841,7 +1027,7 @@ export const UpdateAdminMatchingResponse = zod.object({
   "candidateUserId": zod.string().nullable(),
   "candidateName": zod.string(),
   "score": zod.number(),
-  "status": zod.enum(['new', 'shortlisted', 'interview', 'placed', 'declined']),
+  "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),
   "updatedAt": zod.coerce.date()
 })
 

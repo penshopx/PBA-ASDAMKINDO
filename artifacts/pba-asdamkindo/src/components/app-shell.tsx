@@ -1,4 +1,4 @@
-import { Bell, BookOpen, ChevronDown, ClipboardCheck, Compass, House, LogOut, Menu, Search, Sparkles, X, UserCircle, Users } from 'lucide-react';
+import { Bell, BookOpen, BriefcaseBusiness, ChevronDown, ClipboardCheck, Compass, House, LogOut, Menu, Search, Sparkles, X, UserCircle, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth, useClerk } from '@clerk/react';
@@ -15,7 +15,7 @@ const memberNav = [
 ];
 const companyNav = [
   { href: '/company/dashboard', label: 'Ringkasan', icon: House },
-  { href: '/company/talent-pool', label: 'Talent Pool', icon: Users },
+  { href: '/company/talent', label: 'Talent Pool', icon: BriefcaseBusiness },
   { href: '/programs', label: 'Program belajar', icon: BookOpen },
   { href: '/notifications', label: 'Notifikasi', icon: Bell },
 ];

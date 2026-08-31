@@ -11,6 +11,7 @@ export type MatchingStatus = typeof MatchingStatus[keyof typeof MatchingStatus];
 
 export const MatchingStatus = {
   new: 'new',
+  review: 'review',
   shortlisted: 'shortlisted',
   interview: 'interview',
   placed: 'placed',
