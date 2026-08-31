@@ -34,8 +34,16 @@ export async function resolveCurrentUser(req: Request): Promise<User | null> {
       name,
       email,
     })
+    .onConflictDoNothing({ target: usersTable.clerkUserId })
     .returning();
-  return created ?? null;
+  if (created) return created;
+
+  const [concurrentlyCreated] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.clerkUserId, clerkUserId))
+    .limit(1);
+  return concurrentlyCreated ?? null;
 }
 
 export async function requireUser(

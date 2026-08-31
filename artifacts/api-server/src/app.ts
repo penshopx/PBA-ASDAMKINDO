@@ -1,5 +1,4 @@
-import express, { type Express } from "express";
-import cors from "cors";
+import express, { type ErrorRequestHandler, type Express } from "express";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
@@ -33,7 +32,6 @@ app.use(
   }),
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
-app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
@@ -46,5 +44,20 @@ app.use(
 );
 
 app.use("/api", router);
+app.use((_req, res) => {
+  res.status(404).json({ error: "Endpoint tidak ditemukan." });
+});
+
+const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+
+  req.log.error({ err }, "Unhandled request error");
+  res.status(500).json({ error: "Terjadi kesalahan pada server." });
+};
+
+app.use(errorHandler);
 
 export default app;

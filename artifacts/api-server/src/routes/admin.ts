@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateAdminProgramBody,
@@ -7,6 +7,7 @@ import {
   DecideVerificationBody,
   DecideVerificationParams,
   DecideVerificationResponse,
+  GetAdminFunnelResponse,
   GetAdminOperationsResponse,
   IngestAdminTransactionSettlementBody,
   IngestAdminTransactionSettlementResponse,
@@ -32,12 +33,15 @@ import {
 import {
   auditLogsTable,
   companyTalentConsentsTable,
+  companyRequirementsTable,
   db,
   enrollmentsTable,
   matchingsTable,
   memberEvidenceTable,
   memberProfilesTable,
+  professionalPassportsTable,
   programsTable,
+  readinessDiagnosticsTable,
   transactionsTable,
   usersTable,
   verificationsTable,
@@ -238,6 +242,49 @@ router.get("/admin/matchings", requireUser, requireRole(...adminRoles), async (r
     ),
   );
   res.json(ListAdminMatchingsResponse.parse(page));
+});
+
+router.get("/admin/funnel", requireUser, requireRole(...adminRoles), async (_req, res): Promise<void> => {
+  const [
+    registrations,
+    completedDiagnostics,
+    paidParticipants,
+    activeTalent,
+    openCompanyRequirements,
+    matchingRecords,
+    shortlistPipeline,
+    placements,
+  ] = await Promise.all([
+    db.select({ value: count(usersTable.id) }).from(usersTable).where(eq(usersTable.role, "member")),
+    db.select({ value: count(readinessDiagnosticsTable.id) }).from(readinessDiagnosticsTable),
+    db
+      .select({ value: countDistinct(enrollmentsTable.memberUserId) })
+      .from(transactionsTable)
+      .innerJoin(enrollmentsTable, eq(transactionsTable.referenceId, enrollmentsTable.id))
+      .where(and(eq(transactionsTable.kind, "program"), eq(transactionsTable.status, "paid"))),
+    db
+      .select({ value: count(professionalPassportsTable.id) })
+      .from(professionalPassportsTable)
+      .innerJoin(memberProfilesTable, eq(memberProfilesTable.userId, professionalPassportsTable.memberUserId))
+      .where(and(eq(memberProfilesTable.dataConsent, true), inArray(professionalPassportsTable.availabilityStatus, ["available", "open_to_offer"]))),
+    db.select({ value: count(companyRequirementsTable.id) }).from(companyRequirementsTable).where(eq(companyRequirementsTable.status, "open")),
+    db.select({ value: count(matchingsTable.id) }).from(matchingsTable),
+    db.select({ value: count(matchingsTable.id) }).from(matchingsTable).where(inArray(matchingsTable.status, ["shortlisted", "interview"])),
+    db.select({ value: count(matchingsTable.id) }).from(matchingsTable).where(eq(matchingsTable.status, "placed")),
+  ]);
+
+  res.json(GetAdminFunnelResponse.parse({
+    metrics: [
+      { key: "registrations", label: "Registrasi anggota", value: registrations[0]?.value ?? 0, definition: "Jumlah seluruh akun dengan peran member yang terdaftar, tanpa mensyaratkan onboarding atau aktivitas lain." },
+      { key: "completedDiagnostics", label: "Diagnostik selesai", value: completedDiagnostics[0]?.value ?? 0, definition: "Jumlah record readiness diagnostic; satu member hanya dapat memiliki satu record dan record dibuat saat diagnostik disimpan selesai." },
+      { key: "paidParticipants", label: "Peserta berbayar", value: paidParticipants[0]?.value ?? 0, definition: "Jumlah anggota unik pada enrollment yang memiliki transaksi program berstatus paid; transaksi tanpa relasi enrollment tidak dihitung." },
+      { key: "activeTalent", label: "Talenta aktif", value: activeTalent[0]?.value ?? 0, definition: "Jumlah passport profesional milik member dengan dataConsent aktif dan availabilityStatus available atau open_to_offer; tidak menyiratkan consent kepada perusahaan tertentu." },
+      { key: "openCompanyRequirements", label: "Kebutuhan perusahaan terbuka", value: openCompanyRequirements[0]?.value ?? 0, definition: "Jumlah company requirement dengan status open, untuk semua jenis kebutuhan yang tercatat pada skema." },
+      { key: "matchingRecords", label: "Record matching", value: matchingRecords[0]?.value ?? 0, definition: "Jumlah seluruh record matching yang tersimpan, termasuk status baru, ditinjau, shortlist, interview, placed, dan declined." },
+      { key: "shortlistPipeline", label: "Pipeline shortlist", value: shortlistPipeline[0]?.value ?? 0, definition: "Jumlah record matching berstatus shortlisted atau interview; placed dihitung terpisah sebagai placement dan declined tidak termasuk." },
+      { key: "placements", label: "Placement", value: placements[0]?.value ?? 0, definition: "Jumlah record matching dengan status placed." },
+    ],
+  }));
 });
 
 router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (req, res): Promise<void> => {

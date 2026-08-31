@@ -40,6 +40,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: Database unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /me:
     get:
       operationId: getCurrentUser
@@ -1066,6 +1072,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminOperations"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/funnel:
+    get:
+      operationId: getAdminFunnel
+      tags: [admin]
+      summary: Get aggregate business funnel metrics for Admin PBA
+      description: Returns only aggregate counts and metric definitions; no internal identifiers or participant-level data are returned.
+      responses:
+        "200":
+          description: Aggregate business funnel metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminFunnel"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: Admin role required
           content:
@@ -2878,6 +2909,31 @@ components:
           items:
             $ref: "#/components/schemas/AuditLog"
       required: [permissions, summary, verifications, programs, enrollments, matchings, transactions, auditLogs]
+    AdminFunnelMetric:
+      type: object
+      description: One aggregate funnel metric. This response deliberately contains no internal identifiers.
+      properties:
+        key:
+          type: string
+          enum: [registrations, completedDiagnostics, paidParticipants, activeTalent, openCompanyRequirements, matchingRecords, shortlistPipeline, placements]
+        label:
+          type: string
+        value:
+          type: integer
+          minimum: 0
+        definition:
+          type: string
+          description: Definisi metrik dalam Bahasa Indonesia, termasuk batasan data yang dihitung.
+      required: [key, label, value, definition]
+    AdminFunnel:
+      type: object
+      description: Ringkasan funnel bisnis agregat untuk Admin dan Super Admin.
+      properties:
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminFunnelMetric"
+      required: [metrics]
     Notification:
       type: object
       properties:

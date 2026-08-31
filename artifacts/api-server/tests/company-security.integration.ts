@@ -2,19 +2,21 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import express, { type NextFunction, type Request, type Response } from "express";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, count, countDistinct, eq, inArray, or } from "drizzle-orm";
 import {
   auditLogsTable,
   companyProfilesTable,
   companyRequirementsTable,
   companyTalentConsentsTable,
   db,
+  enrollmentsTable,
   matchingsTable,
   memberEvidenceTable,
   memberProfilesTable,
   notificationsTable,
   professionalPassportsTable,
   readinessDiagnosticsTable,
+  transactionsTable,
   talentConsentSettingsTable,
   usersTable,
   type User,
@@ -373,6 +375,8 @@ try {
     result.body.map((requirement: { id: string }) => requirement.id),
     [requirementAId],
   );
+  result = await request("/admin/funnel");
+  assert.equal(result.response.status, 403);
 
   result = await request(`/company/requirements/${requirementBId}`, {
     method: "PATCH",
@@ -536,6 +540,37 @@ try {
   assert.equal(recruitmentNotifications.some((notification) => notification.userId === strongMemberId && notification.title === "Status peluang diperbarui" && notification.description.includes("interview")), true);
 
   actor = await loadUser(adminId);
+  result = await request("/admin/funnel");
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.metrics.length, 8);
+  assert.deepEqual(
+    result.body.metrics.map((metric: { key: string }) => metric.key),
+    ["registrations", "completedDiagnostics", "paidParticipants", "activeTalent", "openCompanyRequirements", "matchingRecords", "shortlistPipeline", "placements"],
+  );
+  assert.equal(result.body.metrics.every((metric: { value: unknown; definition: unknown }) => typeof metric.value === "number" && typeof metric.definition === "string" && metric.definition.length > 0), true);
+  assert.equal(result.body.metrics.some((metric: Record<string, unknown>) => ["id", "memberUserId", "companyUserId", "candidateUserId"].some((key) => key in metric)), false);
+  assert.match(
+    result.body.metrics.find((metric: { key: string }) => metric.key === "paidParticipants").definition,
+    /anggota unik/,
+  );
+  const [registrationCount, diagnosticCount, paidCount, activeTalentCount, openRequirementCount, matchingCount, shortlistCount, placementCount] = await Promise.all([
+    db.select({ value: count(usersTable.id) }).from(usersTable).where(eq(usersTable.role, "member")),
+    db.select({ value: count(readinessDiagnosticsTable.id) }).from(readinessDiagnosticsTable),
+    db
+      .select({ value: countDistinct(enrollmentsTable.memberUserId) })
+      .from(transactionsTable)
+      .innerJoin(enrollmentsTable, eq(transactionsTable.referenceId, enrollmentsTable.id))
+      .where(and(eq(transactionsTable.kind, "program"), eq(transactionsTable.status, "paid"))),
+    db.select({ value: count(professionalPassportsTable.id) }).from(professionalPassportsTable).innerJoin(memberProfilesTable, eq(memberProfilesTable.userId, professionalPassportsTable.memberUserId)).where(and(eq(memberProfilesTable.dataConsent, true), inArray(professionalPassportsTable.availabilityStatus, ["available", "open_to_offer"]))),
+    db.select({ value: count(companyRequirementsTable.id) }).from(companyRequirementsTable).where(eq(companyRequirementsTable.status, "open")),
+    db.select({ value: count(matchingsTable.id) }).from(matchingsTable),
+    db.select({ value: count(matchingsTable.id) }).from(matchingsTable).where(inArray(matchingsTable.status, ["shortlisted", "interview"])),
+    db.select({ value: count(matchingsTable.id) }).from(matchingsTable).where(eq(matchingsTable.status, "placed")),
+  ]);
+  assert.deepEqual(
+    result.body.metrics.map((metric: { value: number }) => metric.value),
+    [registrationCount[0]?.value, diagnosticCount[0]?.value, paidCount[0]?.value, activeTalentCount[0]?.value, openRequirementCount[0]?.value, matchingCount[0]?.value, shortlistCount[0]?.value, placementCount[0]?.value],
+  );
   result = await request(`/admin/matchings?requirementId=${requirementAId}&minScore=90&page=1&pageSize=10&refresh=true`);
   assert.equal(result.response.status, 200);
   assert.equal(result.body.total, 1);

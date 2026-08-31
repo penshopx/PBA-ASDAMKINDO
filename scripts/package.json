@@ -5,7 +5,15 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "pilot:seed": "tsx ./src/pilot-data.ts seed",
+    "pilot:reset": "tsx ./src/pilot-data.ts reset",
+    "pilot:cleanup-user": "tsx ./src/pilot-data.ts cleanup-user",
+    "test": "tsx ./tests/pilot-data.integration.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

@@ -26,7 +26,14 @@ try {
       bundle: true,
       format: "esm",
       outfile: path.resolve(outDir, `${testFile}.mjs`),
-      external: ["*.node", "pg-native"],
+      external: [
+        "*.node",
+        "pg-native",
+        "pino",
+        "pino-http",
+        "pino-pretty",
+        "thread-stream",
+      ],
       logLevel: "warning",
       banner: {
         js: `import { createRequire as __createRequire } from "node:module";

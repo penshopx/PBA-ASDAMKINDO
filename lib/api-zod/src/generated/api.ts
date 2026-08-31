@@ -1394,6 +1394,24 @@ export const GetAdminOperationsResponse = zod.object({
 
 
 /**
+ * Returns only aggregate counts and metric definitions; no internal identifiers or participant-level data are returned.
+ * @summary Get aggregate business funnel metrics for Admin PBA
+ */
+export const getAdminFunnelResponseMetricsItemValueMin = 0;
+
+
+
+export const GetAdminFunnelResponse = zod.object({
+  "metrics": zod.array(zod.object({
+  "key": zod.enum(['registrations', 'completedDiagnostics', 'paidParticipants', 'activeTalent', 'openCompanyRequirements', 'matchingRecords', 'shortlistPipeline', 'placements']),
+  "label": zod.string(),
+  "value": zod.int().min(getAdminFunnelResponseMetricsItemValueMin),
+  "definition": zod.string().describe('Definisi metrik dalam Bahasa Indonesia, termasuk batasan data yang dihitung.')
+}).describe('One aggregate funnel metric. This response deliberately contains no internal identifiers.'))
+}).describe('Ringkasan funnel bisnis agregat untuk Admin dan Super Admin.')
+
+
+/**
  * @summary List admin audit logs
  */
 export const ListAdminAuditLogsResponseItem = zod.object({

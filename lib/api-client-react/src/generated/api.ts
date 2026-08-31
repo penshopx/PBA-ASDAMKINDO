@@ -21,6 +21,7 @@ import type {
 
 import type {
   AdminDashboard,
+  AdminFunnel,
   AdminMatchingPage,
   AdminOperations,
   AdminTalentConsent,
@@ -143,7 +144,7 @@ export const getHealthCheckQueryKey = () => {
     }
 
 
-export const getHealthCheckQueryOptions = <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getHealthCheckQueryOptions = <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -162,14 +163,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type HealthCheckQueryResult = NonNullable<Awaited<ReturnType<typeof healthCheck>>>
-export type HealthCheckQueryError = ErrorType<unknown>
+export type HealthCheckQueryError = ErrorType<ErrorResponse>
 
 
 /**
  * @summary Health check
  */
 
-export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<unknown>>(
+export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<ErrorResponse>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -2822,6 +2823,84 @@ export function useGetAdminOperations<TData = Awaited<ReturnType<typeof getAdmin
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetAdminOperationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminFunnelUrl = () => {
+
+
+
+
+  return `/api/admin/funnel`
+}
+
+/**
+ * Returns only aggregate counts and metric definitions; no internal identifiers or participant-level data are returned.
+ * @summary Get aggregate business funnel metrics for Admin PBA
+ */
+export const getAdminFunnel = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminFunnel> => {
+
+  return customFetch<AdminFunnel>(getGetAdminFunnelUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminFunnelQueryKey = () => {
+    return [
+    `/api/admin/funnel`
+    ] as const;
+    }
+
+
+export const getGetAdminFunnelQueryOptions = <TData = Awaited<ReturnType<typeof getAdminFunnel>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFunnel>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminFunnelQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminFunnel>>> = ({ signal }) => getAdminFunnel({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminFunnel>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminFunnelQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminFunnel>>>
+export type GetAdminFunnelQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get aggregate business funnel metrics for Admin PBA
+ */
+
+export function useGetAdminFunnel<TData = Awaited<ReturnType<typeof getAdminFunnel>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFunnel>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminFunnelQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

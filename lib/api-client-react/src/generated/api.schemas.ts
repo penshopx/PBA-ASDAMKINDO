@@ -1410,6 +1410,39 @@ export interface AdminOperations {
   auditLogs: AuditLog[];
 }
 
+export type AdminFunnelMetricKey = typeof AdminFunnelMetricKey[keyof typeof AdminFunnelMetricKey];
+
+
+export const AdminFunnelMetricKey = {
+  registrations: 'registrations',
+  completedDiagnostics: 'completedDiagnostics',
+  paidParticipants: 'paidParticipants',
+  activeTalent: 'activeTalent',
+  openCompanyRequirements: 'openCompanyRequirements',
+  matchingRecords: 'matchingRecords',
+  shortlistPipeline: 'shortlistPipeline',
+  placements: 'placements',
+} as const;
+
+/**
+ * One aggregate funnel metric. This response deliberately contains no internal identifiers.
+ */
+export interface AdminFunnelMetric {
+  key: AdminFunnelMetricKey;
+  label: string;
+  /** @minimum 0 */
+  value: number;
+  /** Definisi metrik dalam Bahasa Indonesia, termasuk batasan data yang dihitung. */
+  definition: string;
+}
+
+/**
+ * Ringkasan funnel bisnis agregat untuk Admin dan Super Admin.
+ */
+export interface AdminFunnel {
+  metrics: AdminFunnelMetric[];
+}
+
 export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
 
 

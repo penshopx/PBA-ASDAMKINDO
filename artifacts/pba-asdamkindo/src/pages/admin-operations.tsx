@@ -11,6 +11,7 @@ import {
   MapPin,
   Plus,
   ReceiptText,
+  RefreshCw,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -24,9 +25,11 @@ import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetAdminOperationsQueryKey,
+  getGetAdminFunnelQueryKey,
   useCreateAdminProgram,
   useDecideVerification,
   useGetAdminOperations,
+  useGetAdminFunnel,
   useUpdateAdminEnrollment,
   useUpdateAdminMatching,
   useUpdateAdminProgram,
@@ -44,14 +47,16 @@ import type {
   Transaction,
   Verification,
   AdminMatchingCandidate,
+  AdminFunnel,
 } from "@workspace/api-client-react";
 import { QueryState } from "@/components/ui-kit";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 
-type Tab = "verifications" | "programs" | "pipeline" | "revenue" | "audit";
+type Tab = "funnel" | "verifications" | "programs" | "pipeline" | "revenue" | "audit";
 
 const tabs: Array<{ id: Tab; label: string; icon: typeof ClipboardCheck }> = [
+  { id: "funnel", label: "Funnel bisnis", icon: UsersRound },
   { id: "verifications", label: "Verifikasi", icon: FileCheck2 },
   { id: "programs", label: "Program & enrollment", icon: BookOpen },
   { id: "pipeline", label: "Matching / placement", icon: UsersRound },
@@ -128,7 +133,7 @@ function SummaryStrip({ summary }: { summary: AdminOperations["summary"] }) {
 
 export function AdminOperations() {
   const query = useGetAdminOperations();
-  const [tab, setTab] = useState<Tab>("verifications");
+  const [tab, setTab] = useState<Tab>("funnel");
   const [showProgramForm, setShowProgramForm] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -155,12 +160,41 @@ export function AdminOperations() {
         <nav className="flex gap-1 overflow-auto rounded-2xl border border-border bg-card p-2 lg:block lg:h-fit lg:space-y-1" aria-label="Menu operasi">{tabs.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setTab(id)} className={`flex min-w-max items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold lg:w-full ${tab === id ? "bg-sidebar text-sidebar-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} data-testid={`tab-admin-${id}`}><Icon size={17} /><span>{label}</span>{id === "verifications" && data.summary.pendingVerifications > 0 && <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground">{data.summary.pendingVerifications}</span>}</button>)}</nav>
         <section className="min-w-0">
           {tab === "verifications" && <VerificationQueue items={data.verifications} mutation={review} />}
+          {tab === "funnel" && <FunnelWorkspace />}
           {tab === "programs" && <ProgramWorkspace data={data} showForm={showProgramForm} setShowForm={setShowProgramForm} createMutation={createProgram} updateMutation={updateProgram} updateEnrollment={updateEnrollment} />}
           {tab === "pipeline" && <PipelineWorkspace mutation={updateMatching} />}
           {tab === "revenue" && <RevenueWorkspace items={data.transactions} canManage={data.permissions.canManageTransactions} mutation={updateTransaction} resolveMutation={resolveReconciliation} />}
           {tab === "audit" && <AuditWorkspace items={data.auditLogs} canView={data.permissions.canViewAudit} />}
         </section>
       </div></>}
+    </QueryState>
+  </div>;
+}
+
+function FunnelWorkspace() {
+  const query = useGetAdminFunnel();
+  const queryClient = useQueryClient();
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: getGetAdminFunnelQueryKey() });
+    await query.refetch();
+  };
+  const metrics = query.data?.metrics ?? [];
+
+  return <div className="rounded-2xl border border-border bg-card p-5 sm:p-7">
+    <SectionHeader
+      eyebrow="Business funnel"
+      title="Funnel bisnis"
+      copy="Ringkasan agregat operasional; definisi setiap angka tersedia untuk menjaga interpretasi tetap konsisten."
+      action={<button onClick={refresh} disabled={query.isFetching} className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-bold hover:border-primary disabled:opacity-50" data-testid="button-refresh-funnel"><RefreshCw size={14} className={query.isFetching ? "animate-spin" : ""} />{query.isFetching ? "Memuat..." : "Refresh"}</button>}
+    />
+    <QueryState loading={query.isLoading} error={query.isError} retry={() => query.refetch()}>
+      {metrics.length === 0 ? <Empty label="Belum ada data funnel" /> : <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {metrics.map((metric: AdminFunnel["metrics"][number]) => <article key={metric.key} className="rounded-xl border border-border bg-background p-4" data-testid={`funnel-metric-${metric.key}`}>
+          <p className="text-xs font-bold uppercase tracking-[.08em] text-muted-foreground">{metric.label}</p>
+          <strong className="display-font mt-2 block text-3xl font-semibold">{metric.value.toLocaleString("id-ID")}</strong>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{metric.definition}</p>
+        </article>)}
+      </div>}
     </QueryState>
   </div>;
 }
