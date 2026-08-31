@@ -7,12 +7,13 @@ import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wo
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { AppShell, Protected } from '@/components/app-shell';
+import { AdminOnly, AppShell, Protected } from '@/components/app-shell';
 import { AuthUnavailable, SignInPage, SignUpPage } from '@/pages/auth';
 import { AdminDashboard, CompanyDashboard, MemberDashboard } from '@/pages/portal';
 import { CompanyOnboarding, MemberOnboarding } from '@/pages/onboarding';
 import { Home, ProgramDetail, Programs } from '@/pages/public';
 import { Notifications } from '@/pages/notifications';
+import { AdminOperations } from '@/pages/admin-operations';
 import { Legal } from '@/pages/legal';
 import NotFound from '@/pages/not-found';
 import { useGetCurrentUser } from '@workspace/api-client-react';
@@ -62,6 +63,7 @@ function AppRoutes({ clerkReady }: { clerkReady: boolean }) {
     <Route path="/member/dashboard">{() => <Protected><AppShell><MemberDashboard /></AppShell></Protected>}</Route>
     <Route path="/company/dashboard">{() => <Protected><AppShell><CompanyDashboard /></AppShell></Protected>}</Route>
     <Route path="/admin/dashboard">{() => <Protected><AppShell><AdminDashboard /></AppShell></Protected>}</Route>
+    <Route path="/admin/operations">{() => <Protected><AdminOnly><AppShell><AdminOperations /></AppShell></AdminOnly></Protected>}</Route>
     <Route path="/onboarding/member">{() => <Protected><MemberOnboarding /></Protected>}</Route>
     <Route path="/onboarding/company">{() => <Protected><CompanyOnboarding /></Protected>}</Route>
     <Route path="/notifications">{() => <Protected><AppShell><Notifications /></AppShell></Protected>}</Route>

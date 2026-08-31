@@ -15,8 +15,6 @@ import * as zod from 'zod';
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
-
-
 /**
  * Returns the signed-in user's role and onboarding profile.
  * @summary Get current user
@@ -30,8 +28,6 @@ export const GetCurrentUserResponse = zod.object({
   "avatarUrl": zod.string().nullable(),
   "organization": zod.string().nullable()
 })
-
-
 /**
  * @summary Save member onboarding
  */
@@ -56,7 +52,7 @@ export const SaveMemberOnboardingBody = zod.object({
   "primaryGoal": zod.enum(['skk', 'competency', 'job', 'career']),
   "dataConsent": zod.boolean()
 })
-
+// End of generated schema.
 export const SaveMemberOnboardingResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -193,7 +189,10 @@ export const ListProgramsResponseItem = zod.object({
   "price": zod.number(),
   "instructor": zod.string(),
   "description": zod.string(),
-  "status": zod.enum(['draft', 'published'])
+  "status": zod.enum(['draft', 'published']),
+  "capacity": zod.number(),
+  "enrolledCount": zod.number(),
+  "completedCount": zod.number()
 })
 export const ListProgramsResponse = zod.array(ListProgramsResponseItem)
 
@@ -210,5 +209,324 @@ export const ListNotificationsResponseItem = zod.object({
   "type": zod.enum(['profile', 'document', 'program', 'learning', 'recruitment', 'system'])
 })
 export const ListNotificationsResponse = zod.array(ListNotificationsResponseItem)
+
+
+/**
+ * @summary Get the Admin PBA operations workspace
+ */
+export const GetAdminOperationsResponse = zod.object({
+  "permissions": zod.object({
+  "canReviewVerifications": zod.boolean(),
+  "canManagePrograms": zod.boolean(),
+  "canManageEnrollments": zod.boolean(),
+  "canManagePlacements": zod.boolean(),
+  "canManageTransactions": zod.boolean(),
+  "canViewAudit": zod.boolean()
+}),
+  "summary": zod.object({
+  "pendingVerifications": zod.number(),
+  "activePrograms": zod.number(),
+  "activeEnrollments": zod.number(),
+  "completions": zod.number(),
+  "placements": zod.number(),
+  "revenue": zod.number(),
+  "pendingRevenue": zod.number()
+}),
+  "verifications": zod.array(zod.object({
+  "id": zod.string(),
+  "subjectType": zod.enum(['profile', 'document', 'competency']),
+  "subjectId": zod.string(),
+  "subjectName": zod.string(),
+  "evidenceType": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'changes_requested', 'rejected']),
+  "submittedByUserId": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "reviewedByUserId": zod.string().nullable(),
+  "reviewedAt": zod.string().nullable(),
+  "reviewNote": zod.string().nullable()
+})),
+  "programs": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.string(),
+  "mode": zod.string(),
+  "schedule": zod.string(),
+  "duration": zod.string(),
+  "price": zod.number(),
+  "instructor": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['draft', 'published']),
+  "capacity": zod.number(),
+  "enrolledCount": zod.number(),
+  "completedCount": zod.number()
+}).and(zod.object({
+  "enrollmentCount": zod.number(),
+  "completionCount": zod.number()
+}))),
+  "enrollments": zod.array(zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "programName": zod.string(),
+  "memberUserId": zod.string(),
+  "memberName": zod.string(),
+  "status": zod.enum(['pending', 'enrolled', 'completed', 'cancelled']),
+  "enrolledAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "matchings": zod.array(zod.object({
+  "id": zod.string(),
+  "requirement": zod.string(),
+  "companyName": zod.string(),
+  "candidateUserId": zod.string().nullable(),
+  "candidateName": zod.string(),
+  "score": zod.number(),
+  "status": zod.enum(['new', 'shortlisted', 'interview', 'placed', 'declined']),
+  "updatedAt": zod.coerce.date()
+})),
+  "transactions": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['program', 'placement']),
+  "referenceId": zod.string(),
+  "customerName": zod.string(),
+  "amount": zod.number(),
+  "commission": zod.number(),
+  "status": zod.enum(['pending', 'paid', 'refunded']),
+  "occurredAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "auditLogs": zod.array(zod.object({
+  "id": zod.string(),
+  "actorUserId": zod.string(),
+  "actorName": zod.string(),
+  "actorRole": zod.enum(['member', 'company', 'admin', 'super_admin']),
+  "action": zod.string(),
+  "entityType": zod.string(),
+  "entityId": zod.string(),
+  "fromStatus": zod.string().nullable(),
+  "toStatus": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary List admin audit logs
+ */
+export const ListAdminAuditLogsResponseItem = zod.object({
+  "id": zod.string(),
+  "actorUserId": zod.string(),
+  "actorName": zod.string(),
+  "actorRole": zod.enum(['member', 'company', 'admin', 'super_admin']),
+  "action": zod.string(),
+  "entityType": zod.string(),
+  "entityId": zod.string(),
+  "fromStatus": zod.string().nullable(),
+  "toStatus": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminAuditLogsResponse = zod.array(ListAdminAuditLogsResponseItem)
+
+
+/**
+ * @summary Approve, request changes, or reject a verification
+ */
+export const DecideVerificationParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const decideVerificationBodyNoteMin = 3;
+
+
+
+export const DecideVerificationBody = zod.object({
+  "status": zod.enum(['approved', 'changes_requested', 'rejected']),
+  "note": zod.string().min(decideVerificationBodyNoteMin)
+})
+
+export const DecideVerificationResponse = zod.object({
+  "id": zod.string(),
+  "subjectType": zod.enum(['profile', 'document', 'competency']),
+  "subjectId": zod.string(),
+  "subjectName": zod.string(),
+  "evidenceType": zod.string(),
+  "status": zod.enum(['pending', 'approved', 'changes_requested', 'rejected']),
+  "submittedByUserId": zod.string(),
+  "submittedAt": zod.coerce.date(),
+  "reviewedByUserId": zod.string().nullable(),
+  "reviewedAt": zod.string().nullable(),
+  "reviewNote": zod.string().nullable()
+})
+
+
+/**
+ * @summary Create a program
+ */
+export const createAdminProgramBodyNameMin = 2;
+
+export const createAdminProgramBodyPriceMin = 0;
+
+
+
+
+export const CreateAdminProgramBody = zod.object({
+  "name": zod.string().min(createAdminProgramBodyNameMin),
+  "category": zod.string(),
+  "mode": zod.string(),
+  "schedule": zod.string(),
+  "duration": zod.string(),
+  "price": zod.number().min(createAdminProgramBodyPriceMin),
+  "instructor": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['draft', 'published']),
+  "capacity": zod.number().min(1)
+})
+
+export const CreateAdminProgramResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.string(),
+  "mode": zod.string(),
+  "schedule": zod.string(),
+  "duration": zod.string(),
+  "price": zod.number(),
+  "instructor": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['draft', 'published']),
+  "capacity": zod.number(),
+  "enrolledCount": zod.number(),
+  "completedCount": zod.number()
+})
+
+
+/**
+ * @summary Update program details or publish status
+ */
+export const UpdateAdminProgramParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateAdminProgramBodyNameMin = 2;
+
+export const updateAdminProgramBodyPriceMin = 0;
+
+
+
+
+export const UpdateAdminProgramBody = zod.object({
+  "name": zod.string().min(updateAdminProgramBodyNameMin).optional(),
+  "category": zod.string().optional(),
+  "mode": zod.string().optional(),
+  "schedule": zod.string().optional(),
+  "duration": zod.string().optional(),
+  "price": zod.number().min(updateAdminProgramBodyPriceMin).optional(),
+  "instructor": zod.string().optional(),
+  "description": zod.string().optional(),
+  "status": zod.enum(['draft', 'published']).optional(),
+  "capacity": zod.number().min(1).optional()
+})
+
+export const UpdateAdminProgramResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.string(),
+  "mode": zod.string(),
+  "schedule": zod.string(),
+  "duration": zod.string(),
+  "price": zod.number(),
+  "instructor": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['draft', 'published']),
+  "capacity": zod.number(),
+  "enrolledCount": zod.number(),
+  "completedCount": zod.number()
+})
+
+
+/**
+ * @summary Approve, cancel, or complete an enrollment
+ */
+export const UpdateAdminEnrollmentParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateAdminEnrollmentBodyNoteMin = 3;
+
+
+
+export const UpdateAdminEnrollmentBody = zod.object({
+  "status": zod.enum(['pending', 'enrolled', 'completed', 'cancelled']),
+  "note": zod.string().min(updateAdminEnrollmentBodyNoteMin).optional()
+})
+
+export const UpdateAdminEnrollmentResponse = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "programName": zod.string(),
+  "memberUserId": zod.string(),
+  "memberName": zod.string(),
+  "status": zod.enum(['pending', 'enrolled', 'completed', 'cancelled']),
+  "enrolledAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update shortlist or placement pipeline status
+ */
+export const UpdateAdminMatchingParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateAdminMatchingBodyNoteMin = 3;
+
+
+
+export const UpdateAdminMatchingBody = zod.object({
+  "status": zod.enum(['new', 'shortlisted', 'interview', 'placed', 'declined']),
+  "note": zod.string().min(updateAdminMatchingBodyNoteMin).optional()
+})
+
+export const UpdateAdminMatchingResponse = zod.object({
+  "id": zod.string(),
+  "requirement": zod.string(),
+  "companyName": zod.string(),
+  "candidateUserId": zod.string().nullable(),
+  "candidateName": zod.string(),
+  "score": zod.number(),
+  "status": zod.enum(['new', 'shortlisted', 'interview', 'placed', 'declined']),
+  "updatedAt": zod.coerce.date()
+})
+
+/**
+ * @summary Update a transaction settlement status
+ */
+export const UpdateAdminTransactionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateAdminTransactionBodyNoteMin = 3;
+
+
+
+export const UpdateAdminTransactionBody = zod.object({
+  "status": zod.enum(['pending', 'paid', 'refunded']),
+  "note": zod.string().min(updateAdminTransactionBodyNoteMin)
+})
+
+export const UpdateAdminTransactionResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['program', 'placement']),
+  "referenceId": zod.string(),
+  "customerName": zod.string(),
+  "amount": zod.number(),
+  "commission": zod.number(),
+  "status": zod.enum(['pending', 'paid', 'refunded']),
+  "occurredAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
 
 

@@ -1,7 +1,7 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { ListProgramsQueryParams, ListProgramsResponse } from "@workspace/api-zod";
-import { db, programsTable } from "@workspace/db";
+import { db, enrollmentsTable, programsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -20,10 +20,23 @@ router.get("/programs", async (req, res): Promise<void> => {
     .select()
     .from(programsTable)
     .where(and(...filters))
-    .orderBy(programsTable.createdAt);
+    .orderBy(desc(programsTable.createdAt));
+  const enrollments = await db.select().from(enrollmentsTable);
+  const counts = new Map<string, { enrolled: number; completed: number }>();
+  for (const enrollment of enrollments) {
+    const current = counts.get(enrollment.programId) ?? { enrolled: 0, completed: 0 };
+    if (enrollment.status !== "cancelled") current.enrolled += 1;
+    if (enrollment.status === "completed") current.completed += 1;
+    counts.set(enrollment.programId, current);
+  }
   res.json(
     ListProgramsResponse.parse(
-      programs.map((program) => ({ ...program, price: Number(program.price) })),
+      programs.map((program) => ({
+        ...program,
+        price: Number(program.price),
+        enrolledCount: counts.get(program.id)?.enrolled ?? 0,
+        completedCount: counts.get(program.id)?.completed ?? 0,
+      })),
     ),
   );
 });

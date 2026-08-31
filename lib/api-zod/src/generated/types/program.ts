@@ -18,4 +18,7 @@ export interface Program {
   instructor: string;
   description: string;
   status: ProgramStatus;
+  capacity: number;
+  enrolledCount: number;
+  completedCount: number;
 }

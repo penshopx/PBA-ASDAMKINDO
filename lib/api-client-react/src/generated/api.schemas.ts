@@ -174,6 +174,284 @@ export interface Program {
   instructor: string;
   description: string;
   status: ProgramStatus;
+  capacity: number;
+  enrolledCount: number;
+  completedCount: number;
+}
+
+export type ProgramInputStatus = typeof ProgramInputStatus[keyof typeof ProgramInputStatus];
+
+
+export const ProgramInputStatus = {
+  draft: 'draft',
+  published: 'published',
+} as const;
+
+export interface ProgramInput {
+  /** @minLength 2 */
+  name: string;
+  category: string;
+  mode: string;
+  schedule: string;
+  duration: string;
+  /** @minimum 0 */
+  price: number;
+  instructor: string;
+  description: string;
+  status: ProgramInputStatus;
+  /** @minimum 1 */
+  capacity: number;
+}
+
+export type ProgramUpdateStatus = typeof ProgramUpdateStatus[keyof typeof ProgramUpdateStatus];
+
+
+export const ProgramUpdateStatus = {
+  draft: 'draft',
+  published: 'published',
+} as const;
+
+export interface ProgramUpdate {
+  /** @minLength 2 */
+  name?: string;
+  category?: string;
+  mode?: string;
+  schedule?: string;
+  duration?: string;
+  /** @minimum 0 */
+  price?: number;
+  instructor?: string;
+  description?: string;
+  status?: ProgramUpdateStatus;
+  /** @minimum 1 */
+  capacity?: number;
+}
+
+export type VerificationSubjectType = typeof VerificationSubjectType[keyof typeof VerificationSubjectType];
+
+
+export const VerificationSubjectType = {
+  profile: 'profile',
+  document: 'document',
+  competency: 'competency',
+} as const;
+
+export type VerificationStatus = typeof VerificationStatus[keyof typeof VerificationStatus];
+
+
+export const VerificationStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  changes_requested: 'changes_requested',
+  rejected: 'rejected',
+} as const;
+
+export interface Verification {
+  id: string;
+  subjectType: VerificationSubjectType;
+  subjectId: string;
+  subjectName: string;
+  evidenceType: string;
+  status: VerificationStatus;
+  submittedByUserId: string;
+  submittedAt: string;
+  /** @nullable */
+  reviewedByUserId: string | null;
+  /** @nullable */
+  reviewedAt: string | null;
+  /** @nullable */
+  reviewNote: string | null;
+}
+
+export type VerificationDecisionInputStatus = typeof VerificationDecisionInputStatus[keyof typeof VerificationDecisionInputStatus];
+
+
+export const VerificationDecisionInputStatus = {
+  approved: 'approved',
+  changes_requested: 'changes_requested',
+  rejected: 'rejected',
+} as const;
+
+export interface VerificationDecisionInput {
+  status: VerificationDecisionInputStatus;
+  /** @minLength 3 */
+  note: string;
+}
+
+export type AdminProgram = Program & {
+  enrollmentCount: number;
+  completionCount: number;
+};
+
+export type EnrollmentStatus = typeof EnrollmentStatus[keyof typeof EnrollmentStatus];
+
+
+export const EnrollmentStatus = {
+  pending: 'pending',
+  enrolled: 'enrolled',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface Enrollment {
+  id: string;
+  programId: string;
+  programName: string;
+  memberUserId: string;
+  memberName: string;
+  status: EnrollmentStatus;
+  /** @nullable */
+  enrolledAt: string | null;
+  /** @nullable */
+  completedAt: string | null;
+  createdAt: string;
+}
+
+export type EnrollmentUpdateStatus = typeof EnrollmentUpdateStatus[keyof typeof EnrollmentUpdateStatus];
+
+
+export const EnrollmentUpdateStatus = {
+  pending: 'pending',
+  enrolled: 'enrolled',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface EnrollmentUpdate {
+  status: EnrollmentUpdateStatus;
+  /** @minLength 3 */
+  note?: string;
+}
+
+export type MatchingStatus = typeof MatchingStatus[keyof typeof MatchingStatus];
+
+
+export const MatchingStatus = {
+  new: 'new',
+  shortlisted: 'shortlisted',
+  interview: 'interview',
+  placed: 'placed',
+  declined: 'declined',
+} as const;
+
+export interface Matching {
+  id: string;
+  requirement: string;
+  companyName: string;
+  /** @nullable */
+  candidateUserId: string | null;
+  candidateName: string;
+  score: number;
+  status: MatchingStatus;
+  updatedAt: string;
+}
+
+export type MatchingUpdateStatus = typeof MatchingUpdateStatus[keyof typeof MatchingUpdateStatus];
+
+
+export const MatchingUpdateStatus = {
+  new: 'new',
+  shortlisted: 'shortlisted',
+  interview: 'interview',
+  placed: 'placed',
+  declined: 'declined',
+} as const;
+
+export interface MatchingUpdate {
+  status: MatchingUpdateStatus;
+  /** @minLength 3 */
+  note?: string;
+}
+
+export type TransactionKind = typeof TransactionKind[keyof typeof TransactionKind];
+
+
+export const TransactionKind = {
+  program: 'program',
+  placement: 'placement',
+} as const;
+
+export type TransactionStatus = typeof TransactionStatus[keyof typeof TransactionStatus];
+
+
+export const TransactionStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  refunded: 'refunded',
+} as const;
+
+export interface Transaction {
+  id: string;
+  kind: TransactionKind;
+  referenceId: string;
+  customerName: string;
+  amount: number;
+  commission: number;
+  status: TransactionStatus;
+  occurredAt: string;
+  updatedAt: string;
+}
+
+export type TransactionUpdateStatus = typeof TransactionUpdateStatus[keyof typeof TransactionUpdateStatus];
+
+
+export const TransactionUpdateStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  refunded: 'refunded',
+} as const;
+
+export interface TransactionUpdate {
+  status: TransactionUpdateStatus;
+  /** @minLength 3 */
+  note: string;
+}
+
+export interface AuditLog {
+  id: string;
+  actorUserId: string;
+  actorName: string;
+  actorRole: Role;
+  action: string;
+  entityType: string;
+  entityId: string;
+  /** @nullable */
+  fromStatus: string | null;
+  /** @nullable */
+  toStatus: string | null;
+  /** @nullable */
+  note: string | null;
+  createdAt: string;
+}
+
+export interface AdminPermissions {
+  canReviewVerifications: boolean;
+  canManagePrograms: boolean;
+  canManageEnrollments: boolean;
+  canManagePlacements: boolean;
+  canManageTransactions: boolean;
+  canViewAudit: boolean;
+}
+
+export interface AdminSummary {
+  pendingVerifications: number;
+  activePrograms: number;
+  activeEnrollments: number;
+  completions: number;
+  placements: number;
+  revenue: number;
+  pendingRevenue: number;
+}
+
+export interface AdminOperations {
+  permissions: AdminPermissions;
+  summary: AdminSummary;
+  verifications: Verification[];
+  programs: AdminProgram[];
+  enrollments: Enrollment[];
+  matchings: Matching[];
+  transactions: Transaction[];
+  auditLogs: AuditLog[];
 }
 
 export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
@@ -201,4 +479,3 @@ export type ListProgramsParams = {
 category?: string;
 mode?: string;
 };
-

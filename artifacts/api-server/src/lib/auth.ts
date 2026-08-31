@@ -57,3 +57,14 @@ export async function requireUser(
 export function getAuthenticatedUser(req: Request): User {
   return (req as AuthenticatedRequest).currentUser;
 }
+
+export function requireRole(...roles: User["role"][]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const user = getAuthenticatedUser(req);
+    if (!roles.includes(user.role)) {
+      res.status(403).json({ error: "Aksi ini tidak tersedia untuk role Anda." });
+      return;
+    }
+    next();
+  };
+}

@@ -3,3 +3,8 @@ export * from "./member-profiles";
 export * from "./company-profiles";
 export * from "./programs";
 export * from "./notifications";
+export * from "./verifications";
+export * from "./enrollments";
+export * from "./matchings";
+export * from "./transactions";
+export * from "./audit-logs";

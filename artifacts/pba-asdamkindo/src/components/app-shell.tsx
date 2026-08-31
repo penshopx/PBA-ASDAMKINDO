@@ -1,5 +1,5 @@
 import { Bell, BookOpen, ChevronDown, ClipboardCheck, Compass, House, LogOut, Menu, Search, X } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useClerk } from '@clerk/react';
 import { useGetCurrentUser } from '@workspace/api-client-react';
@@ -18,6 +18,7 @@ const companyNav = [
 ];
 const adminNav = [
   { href: '/admin/dashboard', label: 'Ringkasan operasi', icon: House },
+  { href: '/admin/operations', label: 'Pusat operasi', icon: ClipboardCheck },
   { href: '/programs', label: 'Program belajar', icon: BookOpen },
   { href: '/notifications', label: 'Notifikasi', icon: Bell },
 ];
@@ -31,6 +32,17 @@ export function Protected({ children }: { children: ReactNode }) {
     setLocation(user.role === 'company' ? '/onboarding/company' : '/onboarding/member');
     return null;
   }
+  return <>{children}</>;
+}
+
+export function AdminOnly({ children }: { children: ReactNode }) {
+  const { data: user, isLoading } = useGetCurrentUser({ query: { queryKey: ['/api/me'] } });
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (!isLoading && user && user.role !== 'admin' && user.role !== 'super_admin') setLocation('/403');
+  }, [isLoading, user, setLocation]);
+  if (isLoading) return <div className="grid min-h-[100dvh] place-items-center bg-background p-6"><Skeleton className="h-16 w-16 rounded-2xl" /></div>;
+  if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) return null;
   return <>{children}</>;
 }
 
@@ -50,6 +62,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="mt-4 flex items-center gap-3 border-t border-sidebar-border px-2 pt-4"><div className="grid h-9 w-9 place-items-center rounded-full bg-primary font-bold text-primary-foreground">{displayName.slice(0, 1).toUpperCase()}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{displayName}</p><p className="truncate text-xs text-sidebar-foreground/50">{user?.organization || (user?.role === 'company' ? 'Perusahaan' : 'Anggota')}</p></div><button onClick={() => signOut({ redirectUrl: '/' })} className="rounded-md p-2 text-sidebar-foreground/55 hover:bg-sidebar-accent hover:text-primary" title="Keluar" data-testid="button-logout"><LogOut size={16} /></button></div>
     </aside>
     {open && <button className="fixed inset-0 z-30 bg-sidebar/45 lg:hidden" onClick={() => setOpen(false)} aria-label="Tutup menu" data-testid="button-overlay-menu" />}
-    <main className="lg:pl-[264px]"><header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-border bg-background/90 px-5 backdrop-blur-md sm:px-8"><button onClick={() => setOpen(true)} className="rounded-lg p-2 hover:bg-muted lg:hidden" data-testid="button-open-menu"><Menu size={20} /></button><div className="hidden items-center gap-3 text-sm text-muted-foreground sm:flex"><Search size={17} /><span>Ruang kerja PBA</span></div><div className="ml-auto flex items-center gap-2"><Link href="/notifications" className="relative rounded-lg p-2.5 text-muted-foreground hover:bg-muted hover:text-foreground" data-testid="link-header-notifications"><Bell size={18} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" /></Link><Link href={user?.role === 'company' ? '/company/dashboard' : '/member/dashboard'} className="flex items-center gap-2 rounded-lg py-1.5 pl-2 pr-1.5 hover:bg-muted" data-testid="link-header-profile"><span className="hidden text-right sm:block"><span className="block text-xs font-bold">{displayName}</span><span className="block text-[10px] uppercase tracking-wider text-muted-foreground">{user?.role === 'company' ? 'Company' : user?.role === 'admin' || user?.role === 'super_admin' ? 'Operations' : 'Member'}</span></span><span className="grid h-8 w-8 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">{displayName.slice(0, 1).toUpperCase()}</span><ChevronDown size={14} className="text-muted-foreground" /></Link></div></header><div className="page-enter">{children}</div></main>
+    <main className="lg:pl-[264px]"><header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-border bg-background/90 px-5 backdrop-blur-md sm:px-8"><button onClick={() => setOpen(true)} className="rounded-lg p-2 hover:bg-muted lg:hidden" data-testid="button-open-menu"><Menu size={20} /></button><div className="hidden items-center gap-3 text-sm text-muted-foreground sm:flex"><Search size={17} /><span>Ruang kerja PBA</span></div><div className="ml-auto flex items-center gap-2"><Link href="/notifications" className="relative rounded-lg p-2.5 text-muted-foreground hover:bg-muted hover:text-foreground" data-testid="link-header-notifications"><Bell size={18} /><span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" /></Link><Link href={user?.role === 'company' ? '/company/dashboard' : user?.role === 'admin' || user?.role === 'super_admin' ? '/admin/dashboard' : '/member/dashboard'} className="flex items-center gap-2 rounded-lg py-1.5 pl-2 pr-1.5 hover:bg-muted" data-testid="link-header-profile"><span className="hidden text-right sm:block"><span className="block text-xs font-bold">{displayName}</span><span className="block text-[10px] uppercase tracking-wider text-muted-foreground">{user?.role === 'company' ? 'Company' : user?.role === 'admin' || user?.role === 'super_admin' ? 'Operations' : 'Member'}</span></span><span className="grid h-8 w-8 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">{displayName.slice(0, 1).toUpperCase()}</span><ChevronDown size={14} className="text-muted-foreground" /></Link></div></header><div className="page-enter">{children}</div></main>
   </div>;
 }

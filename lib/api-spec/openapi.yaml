@@ -18,6 +18,8 @@ tags:
     description: Public program catalog
   - name: notifications
     description: In-app notifications
+  - name: admin
+    description: Admin PBA operations and governance
 paths:
   /healthz:
     get:
@@ -192,6 +194,194 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Notification"
+  /admin/operations:
+    get:
+      operationId: getAdminOperations
+      tags: [admin]
+      summary: Get the Admin PBA operations workspace
+      responses:
+        "200":
+          description: Admin operation queues and summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOperations"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/audit-logs:
+    get:
+      operationId: listAdminAuditLogs
+      tags: [admin]
+      summary: List admin audit logs
+      responses:
+        "200":
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
+        "403":
+          description: Super admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/verifications/{id}/decision:
+    post:
+      operationId: decideVerification
+      tags: [admin]
+      summary: Approve, request changes, or reject a verification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerificationDecisionInput"
+      responses:
+        "200":
+          description: Updated verification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Verification"
+        "400":
+          description: Invalid decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Verification not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/programs:
+    post:
+      operationId: createAdminProgram
+      tags: [admin]
+      summary: Create a program
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgramInput"
+      responses:
+        "201":
+          description: Created program
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Program"
+  /admin/programs/{id}:
+    patch:
+      operationId: updateAdminProgram
+      tags: [admin]
+      summary: Update program details or publish status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgramUpdate"
+      responses:
+        "200":
+          description: Updated program
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Program"
+  /admin/enrollments/{id}:
+    patch:
+      operationId: updateAdminEnrollment
+      tags: [admin]
+      summary: Approve, cancel, or complete an enrollment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollmentUpdate"
+      responses:
+        "200":
+          description: Updated enrollment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+  /admin/matchings/{id}:
+    patch:
+      operationId: updateAdminMatching
+      tags: [admin]
+      summary: Update shortlist or placement pipeline status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchingUpdate"
+      responses:
+        "200":
+          description: Updated matching
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Matching"
+  /admin/transactions/{id}:
+    patch:
+      operationId: updateAdminTransaction
+      tags: [admin]
+      summary: Update a transaction settlement status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionUpdate"
+      responses:
+        "200":
+          description: Updated transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
 components:
   schemas:
     HealthStatus:
@@ -395,7 +585,314 @@ components:
         status:
           type: string
           enum: [draft, published]
-      required: [id, name, category, mode, schedule, duration, price, instructor, description, status]
+        capacity:
+          type: number
+        enrolledCount:
+          type: number
+        completedCount:
+          type: number
+      required: [id, name, category, mode, schedule, duration, price, instructor, description, status, capacity, enrolledCount, completedCount]
+    ProgramInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        category:
+          type: string
+        mode:
+          type: string
+        schedule:
+          type: string
+        duration:
+          type: string
+        price:
+          type: number
+          minimum: 0
+        instructor:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft, published]
+        capacity:
+          type: number
+          minimum: 1
+      required: [name, category, mode, schedule, duration, price, instructor, description, status, capacity]
+    ProgramUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        category:
+          type: string
+        mode:
+          type: string
+        schedule:
+          type: string
+        duration:
+          type: string
+        price:
+          type: number
+          minimum: 0
+        instructor:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft, published]
+        capacity:
+          type: number
+          minimum: 1
+    Verification:
+      type: object
+      properties:
+        id:
+          type: string
+        subjectType:
+          type: string
+          enum: [profile, document, competency]
+        subjectId:
+          type: string
+        subjectName:
+          type: string
+        evidenceType:
+          type: string
+        status:
+          type: string
+          enum: [pending, approved, changes_requested, rejected]
+        submittedByUserId:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        reviewedByUserId:
+          type: ["string", "null"]
+        reviewedAt:
+          type: ["string", "null"]
+        reviewNote:
+          type: ["string", "null"]
+      required: [id, subjectType, subjectId, subjectName, evidenceType, status, submittedByUserId, submittedAt, reviewedByUserId, reviewedAt, reviewNote]
+    VerificationDecisionInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [approved, changes_requested, rejected]
+        note:
+          type: string
+          minLength: 3
+      required: [status, note]
+    AdminProgram:
+      allOf:
+        - $ref: "#/components/schemas/Program"
+        - type: object
+          properties:
+            enrollmentCount:
+              type: number
+            completionCount:
+              type: number
+          required: [enrollmentCount, completionCount]
+    Enrollment:
+      type: object
+      properties:
+        id:
+          type: string
+        programId:
+          type: string
+        programName:
+          type: string
+        memberUserId:
+          type: string
+        memberName:
+          type: string
+        status:
+          type: string
+          enum: [pending, enrolled, completed, cancelled]
+        enrolledAt:
+          type: ["string", "null"]
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, programId, programName, memberUserId, memberName, status, enrolledAt, completedAt, createdAt]
+    EnrollmentUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, enrolled, completed, cancelled]
+        note:
+          type: string
+          minLength: 3
+      required: [status]
+    Matching:
+      type: object
+      properties:
+        id:
+          type: string
+        requirement:
+          type: string
+        companyName:
+          type: string
+        candidateUserId:
+          type: ["string", "null"]
+        candidateName:
+          type: string
+        score:
+          type: number
+        status:
+          type: string
+          enum: [new, shortlisted, interview, placed, declined]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, requirement, companyName, candidateUserId, candidateName, score, status, updatedAt]
+    MatchingUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [new, shortlisted, interview, placed, declined]
+        note:
+          type: string
+          minLength: 3
+      required: [status]
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [program, placement]
+        referenceId:
+          type: string
+        customerName:
+          type: string
+        amount:
+          type: number
+        commission:
+          type: number
+        status:
+          type: string
+          enum: [pending, paid, refunded]
+        occurredAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, kind, referenceId, customerName, amount, commission, status, occurredAt, updatedAt]
+    TransactionUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, paid, refunded]
+        note:
+          type: string
+          minLength: 3
+      required: [status, note]
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+        actorUserId:
+          type: string
+        actorName:
+          type: string
+        actorRole:
+          $ref: "#/components/schemas/Role"
+        action:
+          type: string
+        entityType:
+          type: string
+        entityId:
+          type: string
+        fromStatus:
+          type: ["string", "null"]
+        toStatus:
+          type: ["string", "null"]
+        note:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, actorUserId, actorName, actorRole, action, entityType, entityId, fromStatus, toStatus, note, createdAt]
+    AdminPermissions:
+      type: object
+      properties:
+        canReviewVerifications:
+          type: boolean
+        canManagePrograms:
+          type: boolean
+        canManageEnrollments:
+          type: boolean
+        canManagePlacements:
+          type: boolean
+        canManageTransactions:
+          type: boolean
+        canViewAudit:
+          type: boolean
+      required: [canReviewVerifications, canManagePrograms, canManageEnrollments, canManagePlacements, canManageTransactions, canViewAudit]
+    AdminSummary:
+      type: object
+      properties:
+        pendingVerifications:
+          type: number
+        activePrograms:
+          type: number
+        activeEnrollments:
+          type: number
+        completions:
+          type: number
+        placements:
+          type: number
+        revenue:
+          type: number
+        pendingRevenue:
+          type: number
+      required: [pendingVerifications, activePrograms, activeEnrollments, completions, placements, revenue, pendingRevenue]
+    AdminOperations:
+      type: object
+      properties:
+        permissions:
+          $ref: "#/components/schemas/AdminPermissions"
+        summary:
+          $ref: "#/components/schemas/AdminSummary"
+        verifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/Verification"
+        programs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminProgram"
+        enrollments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Enrollment"
+        matchings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Matching"
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        auditLogs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+      required: [permissions, summary, verifications, programs, enrollments, matchings, transactions, auditLogs]
     Notification:
       type: object
       properties:
