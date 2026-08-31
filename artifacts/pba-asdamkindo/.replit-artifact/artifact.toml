@@ -5,6 +5,7 @@ description = "Aplikasi web untuk membantu tenaga konstruksi memetakan kompetens
 version = "1.0.0"
 id = "artifacts/pba-asdamkindo"
 router = "path"
+videoAspectRatio = "16:9"
 
 [[services]]
 name = "web"

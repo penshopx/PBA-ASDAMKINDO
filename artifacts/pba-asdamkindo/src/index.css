@@ -63,6 +63,14 @@
   .eyebrow { font-family: var(--app-font-mono); text-transform: uppercase; letter-spacing: .16em; font-size: .69rem; font-weight: 700; }
   .page-enter { animation: page-enter .5s cubic-bezier(.22,1,.36,1) both; }
   .float-in { animation: float-in .7s cubic-bezier(.22,1,.36,1) both; }
+  .video-display { font-family: 'Space Grotesk', sans-serif; letter-spacing: -.06em; }
+  .video-mono { font-family: 'Space Grotesk', sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+  .video-root { isolation: isolate; }
+  .video-grain::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .08; mix-blend-mode: multiply; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E"); z-index: 30; }
+  .video-grid { background-image: linear-gradient(hsl(195 27% 18% / .055) 1px, transparent 1px), linear-gradient(90deg, hsl(195 27% 18% / .055) 1px, transparent 1px); background-size: 4vw 4vw; }
+  .video-cutout { filter: drop-shadow(0 1.4vw 1.8vw hsl(195 27% 18% / .18)); }
+  .video-squiggle { stroke-dasharray: 240; stroke-dashoffset: 240; animation: video-draw 1.4s .35s cubic-bezier(.22,1,.36,1) forwards; }
   @keyframes page-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes float-in { from { opacity: 0; transform: translateY(20px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes video-draw { to { stroke-dashoffset: 0; } }
 }
