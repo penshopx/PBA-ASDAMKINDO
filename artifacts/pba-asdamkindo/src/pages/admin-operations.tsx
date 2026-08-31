@@ -25,6 +25,7 @@ import {
   useUpdateAdminMatching,
   useUpdateAdminProgram,
   useUpdateAdminTransaction,
+  useResolveAdminTransactionReconciliation,
 } from "@workspace/api-client-react";
 import type {
   AdminOperations,
@@ -62,9 +63,9 @@ function formatDate(value: string | null) {
 
 function StatusBadge({ status }: { status: string }) {
   const tone =
-    status === "approved" || status === "paid" || status === "completed" || status === "placed" || status === "published"
+    status === "approved" || status === "paid" || status === "completed" || status === "placed" || status === "published" || status === "matched" || status === "resolved"
       ? "bg-accent/12 text-accent"
-      : status === "rejected" || status === "cancelled" || status === "declined" || status === "refunded"
+      : status === "rejected" || status === "cancelled" || status === "declined" || status === "refunded" || status === "mismatch"
         ? "bg-destructive/10 text-destructive"
         : "bg-primary/12 text-primary";
   const labels: Record<string, string> = {
@@ -84,6 +85,10 @@ function StatusBadge({ status }: { status: string }) {
     declined: "Tidak lanjut",
     paid: "Dibayar",
     refunded: "Dikembalikan",
+    matched: "Cocok",
+    mismatch: "Tidak cocok",
+    overdue: "Lewat SLA",
+    resolved: "Diselesaikan",
   };
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${tone}`}>{labels[status] ?? status}</span>;
 }
@@ -96,7 +101,11 @@ function SummaryStrip({ summary }: { summary: AdminOperations["summary"] }) {
     ["Placement", summary.placements, "berhasil"],
     ["Pendapatan dibayar", formatIdr(summary.revenue), "settled"],
   ];
-  return <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 xl:grid-cols-5">{items.map(([label, value, note], index) => <div className="bg-card p-5" key={label} data-testid={`admin-summary-${index}`}><p className="text-xs font-semibold uppercase tracking-[.1em] text-muted-foreground">{label}</p><strong className="display-font mt-3 block text-2xl font-semibold">{value}</strong><p className="mt-1 text-xs text-muted-foreground">{note}</p></div>)}</div>;
+  items.push(
+    ["Perlu rekonsiliasi", summary.reconciliationIssues, "mismatch / lewat SLA"],
+    ["Lewat SLA settlement", summary.overdueSettlements, "perlu ditindaklanjuti"],
+  );
+  return <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 xl:grid-cols-7">{items.map(([label, value, note], index) => <div className="bg-card p-5" key={label} data-testid={`admin-summary-${index}`}><p className="text-xs font-semibold uppercase tracking-[.1em] text-muted-foreground">{label}</p><strong className="display-font mt-3 block text-2xl font-semibold">{value}</strong><p className="mt-1 text-xs text-muted-foreground">{note}</p></div>)}</div>;
 }
 
 export function AdminOperations() {
@@ -116,6 +125,7 @@ export function AdminOperations() {
   const updateEnrollment = useUpdateAdminEnrollment({ mutation: { onSuccess: () => { refresh(); notifySuccess("Status enrollment diperbarui"); }, onError: notifyError } });
   const updateMatching = useUpdateAdminMatching({ mutation: { onSuccess: () => { refresh(); notifySuccess("Pipeline matching diperbarui"); }, onError: notifyError } });
   const updateTransaction = useUpdateAdminTransaction({ mutation: { onSuccess: () => { refresh(); notifySuccess("Status transaksi diperbarui"); }, onError: notifyError } });
+  const resolveReconciliation = useResolveAdminTransactionReconciliation({ mutation: { onSuccess: () => { refresh(); notifySuccess("Rekonsiliasi diselesaikan"); }, onError: notifyError } });
 
   return <div className="mx-auto max-w-7xl px-5 py-9 sm:px-8 lg:px-10 lg:py-12">
     <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
@@ -125,7 +135,7 @@ export function AdminOperations() {
     <QueryState loading={query.isLoading} error={query.isError} retry={() => query.refetch()}>
       {data && <><SummaryStrip summary={data.summary} /><div className="mt-7 grid gap-6 lg:grid-cols-[220px_1fr]">
         <nav className="flex gap-1 overflow-auto rounded-2xl border border-border bg-card p-2 lg:block lg:h-fit lg:space-y-1" aria-label="Menu operasi">{tabs.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setTab(id)} className={`flex min-w-max items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold lg:w-full ${tab === id ? "bg-sidebar text-sidebar-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} data-testid={`tab-admin-${id}`}><Icon size={17} /><span>{label}</span>{id === "verifications" && data.summary.pendingVerifications > 0 && <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground">{data.summary.pendingVerifications}</span>}</button>)}</nav>
-        <section className="min-w-0">{tab === "verifications" && <VerificationQueue items={data.verifications} mutation={review} />} {tab === "programs" && <ProgramWorkspace data={data} showForm={showProgramForm} setShowForm={setShowProgramForm} createMutation={createProgram} updateMutation={updateProgram} updateEnrollment={updateEnrollment} />} {tab === "pipeline" && <PipelineWorkspace items={data.matchings} mutation={updateMatching} />} {tab === "revenue" && <RevenueWorkspace items={data.transactions} canManage={data.permissions.canManageTransactions} mutation={updateTransaction} />} {tab === "audit" && <AuditWorkspace items={data.auditLogs} canView={data.permissions.canViewAudit} />}</section>
+        <section className="min-w-0">{tab === "verifications" && <VerificationQueue items={data.verifications} mutation={review} />} {tab === "programs" && <ProgramWorkspace data={data} showForm={showProgramForm} setShowForm={setShowProgramForm} createMutation={createProgram} updateMutation={updateProgram} updateEnrollment={updateEnrollment} />} {tab === "pipeline" && <PipelineWorkspace items={data.matchings} mutation={updateMatching} />} {tab === "revenue" && <RevenueWorkspace items={data.transactions} canManage={data.permissions.canManageTransactions} mutation={updateTransaction} resolveMutation={resolveReconciliation} />} {tab === "audit" && <AuditWorkspace items={data.auditLogs} canView={data.permissions.canViewAudit} />}</section>
       </div></>}
     </QueryState>
   </div>;
@@ -169,9 +179,78 @@ function PipelineWorkspace({ items, mutation }: { items: Matching[]; mutation: R
   return <div className="rounded-2xl border border-border bg-card p-5 sm:p-7"><SectionHeader eyebrow="Opportunity pipeline" title="Matching, shortlist, hingga placement" copy={`${items.length} kandidat dalam pipeline · ${counts.placed ?? 0} sudah ditempatkan`} />{items.length === 0 ? <Empty label="Belum ada matching" /> : <div className="mt-5 space-y-3">{items.map((item) => <div key={item.id} className="rounded-xl border border-border p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="text-sm">{item.candidateName}</strong><StatusBadge status={item.status} /></div><p className="mt-1 text-xs text-muted-foreground">{item.requirement} · {item.companyName} · kecocokan {item.score}%</p></div><select value={item.status} onChange={(event) => mutation.mutate({ id: item.id, data: { status: event.target.value as Matching["status"], note: "Pipeline diperbarui oleh Admin PBA." } })} className="rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-bold" aria-label={`Status matching ${item.candidateName}`}><option value="new">Baru</option><option value="shortlisted">Shortlist</option><option value="interview">Interview</option><option value="placed">Ditempatkan</option><option value="declined">Tidak lanjut</option></select></div></div>)}</div>}</div>;
 }
 
-function RevenueWorkspace({ items, canManage, mutation }: { items: Transaction[]; canManage: boolean; mutation: ReturnType<typeof useUpdateAdminTransaction> }) {
+function RevenueWorkspace({ items, canManage, mutation, resolveMutation }: {
+  items: Transaction[];
+  canManage: boolean;
+  mutation: ReturnType<typeof useUpdateAdminTransaction>;
+  resolveMutation: ReturnType<typeof useResolveAdminTransactionReconciliation>;
+}) {
   const [notes, setNotes] = useState<Record<string, string>>({});
-  return <div className="rounded-2xl border border-border bg-card p-5 sm:p-7"><SectionHeader eyebrow="Revenue control" title="Komisi dan status pendapatan" copy={canManage ? "Anda dapat memperbarui settlement sebagai super admin." : "Admin dapat meninjau; perubahan settlement membutuhkan super admin."} />{items.length === 0 ? <Empty label="Belum ada transaksi" /> : <div className="mt-5 space-y-3">{items.map((item) => <div key={item.id} className="rounded-xl border border-border p-4"><div className="flex flex-col gap-4 lg:flex-row lg:items-center"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="text-sm">{item.customerName}</strong><StatusBadge status={item.status} /></div><p className="mt-1 text-xs text-muted-foreground">{item.kind} · ref {item.referenceId} · {formatDate(item.occurredAt)}</p></div><div className="grid grid-cols-2 gap-5 text-right text-xs"><div><p className="text-muted-foreground">Nilai</p><strong className="mt-1 block">{formatIdr(item.amount)}</strong></div><div><p className="text-muted-foreground">Komisi</p><strong className="mt-1 block text-accent">{formatIdr(item.commission)}</strong></div></div></div>{canManage ? <div className="mt-4 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row"><input value={notes[item.id] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [item.id]: event.target.value }))} placeholder="Catatan settlement (wajib)" className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs" /><select value={item.status} onChange={(event) => { const note = notes[item.id]?.trim(); if (note && note.length >= 3) mutation.mutate({ id: item.id, data: { status: event.target.value as Transaction["status"], note } }); }} className="rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-bold" aria-label={`Status transaksi ${item.id}`}><option value="pending">Menunggu</option><option value="paid">Dibayar</option><option value="refunded">Dikembalikan</option></select></div> : <div className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground"><LockKeyhole size={14} /> Akses settlement hanya untuk super admin.</div>}</div>)}</div>}</div>;
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const flagLabels: Record<string, string> = {
+    settlement_missing: "Settlement bank belum masuk",
+    amount_mismatch: "Nominal tidak cocok",
+    settlement_sla_breached: "Melewati SLA 7 hari",
+  };
+
+  return <div className="rounded-2xl border border-border bg-card p-5 sm:p-7">
+    <SectionHeader
+      eyebrow="Revenue control"
+      title="Rekonsiliasi invoice dan settlement"
+      copy={canManage ? "Periksa angka invoice, payout komisi, refund, dan settlement bank. Penyelesaian hanya tersedia untuk super admin." : "Admin dapat meninjau detail dan anomali; penyelesaian rekonsiliasi membutuhkan super admin."}
+    />
+    {items.length === 0 ? <Empty label="Belum ada transaksi" /> : <div className="mt-5 space-y-3">{items.map((item) => {
+      const note = notes[item.id]?.trim() ?? "";
+      const hasIssue = item.reconciliationStatus === "mismatch" || item.reconciliationStatus === "overdue" || item.reconciliationStatus === "pending";
+      return <article key={item.id} className={`rounded-xl border p-4 ${hasIssue ? "border-primary/35" : "border-border"}`} data-testid={`transaction-${item.id}`}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <strong className="text-sm">{item.customerName}</strong>
+              <StatusBadge status={item.status} />
+              <StatusBadge status={item.reconciliationStatus} />
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{item.kind} · ref {item.referenceId} · invoice {item.invoiceNumber} · {formatDate(item.occurredAt)}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-right text-xs sm:grid-cols-3">
+            <div><p className="text-muted-foreground">Invoice</p><strong className="mt-1 block">{formatIdr(item.invoiceAmount)}</strong></div>
+            <div><p className="text-muted-foreground">Net settlement</p><strong className={`mt-1 block ${item.settlementDifference && Math.abs(item.settlementDifference) > 0.01 ? "text-destructive" : "text-accent"}`}>{item.netSettlement === null ? "Belum masuk" : formatIdr(item.netSettlement)}</strong></div>
+            <div><p className="text-muted-foreground">Selisih</p><strong className={`mt-1 block ${item.settlementDifference && Math.abs(item.settlementDifference) > 0.01 ? "text-destructive" : ""}`}>{item.settlementDifference === null ? "—" : formatIdr(item.settlementDifference)}</strong></div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-muted/50 p-3 text-xs sm:grid-cols-5">
+          <div><p className="text-muted-foreground">Fee</p><strong className="mt-1 block">{formatIdr(item.feeAmount)}</strong></div>
+          <div><p className="text-muted-foreground">Payout komisi</p><strong className="mt-1 block">{formatIdr(item.commission)}</strong></div>
+          <div><p className="text-muted-foreground">Refund</p><strong className="mt-1 block">{formatIdr(item.refundAmount)}</strong></div>
+          <div><p className="text-muted-foreground">Net yang diharapkan</p><strong className="mt-1 block">{formatIdr(item.expectedSettlement)}</strong></div>
+          <div><p className="text-muted-foreground">Jatuh tempo SLA</p><strong className="mt-1 block">{formatDate(item.settlementDueAt)}</strong></div>
+        </div>
+
+        {item.reconciliationFlags.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{item.reconciliationFlags.map((flag) => <span key={flag} className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">{flagLabels[flag] ?? flag}</span>)}</div>}
+
+        <button onClick={() => setExpanded((current) => ({ ...current, [item.id]: !current[item.id] }))} className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground" aria-expanded={expanded[item.id] ?? false}>
+          {expanded[item.id] ? "Sembunyikan detail" : "Lihat detail invoice & settlement"} <ChevronDown size={14} className={expanded[item.id] ? "rotate-180" : ""} />
+        </button>
+        {expanded[item.id] && <div className="mt-3 grid gap-2 border-t border-border pt-3 text-xs text-muted-foreground sm:grid-cols-2">
+          <p>Invoice: <strong className="text-foreground">{item.invoiceNumber}</strong> · nilai {formatIdr(item.invoiceAmount)}</p>
+          <p>Settlement bank: <strong className="text-foreground">{item.netSettlement === null ? "Belum diterima" : formatIdr(item.netSettlement)}</strong> · diterima {formatDate(item.settledAt)}</p>
+          <p>Rumus expected: invoice − fee − komisi − refund = <strong className="text-foreground">{formatIdr(item.expectedSettlement)}</strong></p>
+          <p>Rekonsiliasi diperbarui: <strong className="text-foreground">{formatDate(item.updatedAt)}</strong>{item.reconciliationResolvedAt ? ` · diselesaikan ${formatDate(item.reconciliationResolvedAt)}` : ""}</p>
+        </div>}
+
+        {canManage ? <div className="mt-4 border-t border-border pt-3">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input value={notes[item.id] ?? ""} onChange={(event) => setNotes((current) => ({ ...current, [item.id]: event.target.value }))} placeholder="Catatan audit wajib (min. 3 karakter)" className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs" aria-label={`Catatan transaksi ${item.id}`} />
+            <select value={item.status} onChange={(event) => { if (note.length >= 3) mutation.mutate({ id: item.id, data: { status: event.target.value as Transaction["status"], note } }); }} className="rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-bold" aria-label={`Status transaksi ${item.id}`}>
+              <option value="pending">Menunggu</option><option value="paid">Dibayar</option><option value="refunded">Dikembalikan</option>
+            </select>
+          </div>
+          {item.reconciliationStatus !== "resolved" && <button disabled={resolveMutation.isPending || note.length < 3} onClick={() => resolveMutation.mutate({ id: item.id, data: { note } })} className="mt-2 rounded-lg bg-accent px-3 py-2 text-xs font-bold text-accent-foreground disabled:opacity-50" data-testid={`button-resolve-${item.id}`}>Selesaikan rekonsiliasi</button>}
+        </div> : <div className="mt-4 flex items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground"><LockKeyhole size={14} /> Akses settlement dan penyelesaian hanya untuk super admin.</div>}
+      </article>;
+    })}</div>}
+  </div>;
 }
 
 function AuditWorkspace({ items, canView }: { items: AdminOperations["auditLogs"]; canView: boolean }) {

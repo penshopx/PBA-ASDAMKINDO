@@ -9,6 +9,9 @@ import {
   DecideVerificationResponse,
   GetAdminOperationsResponse,
   ListAdminAuditLogsResponse,
+  ResolveAdminTransactionReconciliationBody,
+  ResolveAdminTransactionReconciliationParams,
+  ResolveAdminTransactionReconciliationResponse,
   UpdateAdminEnrollmentBody,
   UpdateAdminEnrollmentParams,
   UpdateAdminEnrollmentResponse,
@@ -57,6 +60,62 @@ function verificationResponse(verification: typeof verificationsTable.$inferSele
     ...verification,
     submittedAt: verification.submittedAt,
     reviewedAt: iso(verification.reviewedAt),
+  };
+}
+
+const SETTLEMENT_SLA_DAYS = 7;
+const CENT_TOLERANCE = 0.01;
+
+function transactionResponse(transaction: typeof transactionsTable.$inferSelect, now = new Date()) {
+  const amount = Number(transaction.amount);
+  const invoiceAmount = transaction.invoiceAmount === null ? amount : Number(transaction.invoiceAmount);
+  const feeAmount = Number(transaction.feeAmount);
+  const commission = Number(transaction.commission);
+  const refundAmount = Number(transaction.refundAmount);
+  const expectedSettlement = invoiceAmount - feeAmount - commission - refundAmount;
+  const settlementAmount = transaction.settlementAmount === null ? null : Number(transaction.settlementAmount);
+  const settlementDifference =
+    settlementAmount === null ? null : Number((settlementAmount - expectedSettlement).toFixed(2));
+  const settlementDueAt =
+    transaction.settlementDueAt ?? new Date(transaction.occurredAt.getTime() + SETTLEMENT_SLA_DAYS * 24 * 60 * 60 * 1000);
+  const settledAt = transaction.settledAt;
+  const slaBreached =
+    (settledAt !== null && settledAt.getTime() > settlementDueAt.getTime()) ||
+    (settledAt === null && now.getTime() > settlementDueAt.getTime());
+  const amountMismatch =
+    settlementAmount !== null && Math.abs(settlementAmount - expectedSettlement) > CENT_TOLERANCE;
+  const flags: Array<"settlement_missing" | "amount_mismatch" | "settlement_sla_breached"> = [];
+  if (settlementAmount === null) flags.push("settlement_missing");
+  if (amountMismatch) flags.push("amount_mismatch");
+  if (slaBreached) flags.push("settlement_sla_breached");
+  const reconciliationStatus =
+    transaction.reconciliationStatus === "resolved"
+      ? "resolved"
+      : amountMismatch
+        ? "mismatch"
+        : slaBreached
+          ? "overdue"
+          : settlementAmount === null
+            ? "pending"
+            : "matched";
+
+  return {
+    ...transaction,
+    amount,
+    invoiceNumber: transaction.invoiceNumber ?? `INV-${transaction.referenceId}`,
+    invoiceAmount,
+    feeAmount,
+    commission,
+    refundAmount,
+    expectedSettlement,
+    settlementAmount,
+    netSettlement: settlementAmount,
+    settlementDifference,
+    settlementDueAt,
+    settledAt,
+    reconciliationStatus,
+    reconciliationFlags: flags,
+    reconciliationResolvedAt: transaction.reconciliationResolvedAt,
   };
 }
 
@@ -130,6 +189,13 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
   const pendingRevenue = transactions
     .filter((transaction) => transaction.status === "pending")
     .reduce((sum, transaction) => sum + Number(transaction.amount), 0);
+  const transactionResponses = transactions.map((transaction) => transactionResponse(transaction));
+  const reconciliationIssues = transactionResponses.filter(
+    (transaction) => transaction.reconciliationStatus === "mismatch" || transaction.reconciliationStatus === "overdue",
+  ).length;
+  const overdueSettlements = transactionResponses.filter((transaction) =>
+    transaction.reconciliationFlags.includes("settlement_sla_breached"),
+  ).length;
 
   res.json(
     GetAdminOperationsResponse.parse({
@@ -149,6 +215,8 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
         placements: matchings.filter((matching) => matching.status === "placed").length,
         revenue,
         pendingRevenue,
+        reconciliationIssues,
+        overdueSettlements,
       },
       verifications: verifications.map(verificationResponse),
       programs: programs.map((program) =>
@@ -162,11 +230,7 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
         createdAt: enrollment.createdAt,
       })),
       matchings,
-      transactions: transactions.map((transaction) => ({
-        ...transaction,
-        amount: Number(transaction.amount),
-        commission: Number(transaction.commission),
-      })),
+      transactions: transactionResponses,
       auditLogs,
     }),
   );
@@ -413,12 +477,59 @@ router.patch(
       return [transaction];
     });
     res.json(
-      UpdateAdminTransactionResponse.parse({
-        ...updated,
-        amount: Number(updated.amount),
-        commission: Number(updated.commission),
-      }),
+      UpdateAdminTransactionResponse.parse(transactionResponse(updated)),
     );
+  },
+);
+
+router.patch(
+  "/admin/transactions/:id/reconciliation",
+  ...superAdminOnly,
+  async (req, res): Promise<void> => {
+    const params = ResolveAdminTransactionReconciliationParams.safeParse(req.params);
+    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
+      return;
+    }
+    const actor = getAuthenticatedUser(req);
+    const [existing] = await db
+      .select()
+      .from(transactionsTable)
+      .where(eq(transactionsTable.id, params.data.id))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "Transaksi tidak ditemukan." });
+      return;
+    }
+    const current = transactionResponse(existing);
+    if (current.reconciliationStatus === "resolved") {
+      res.status(400).json({ error: "Rekonsiliasi transaksi ini sudah diselesaikan." });
+      return;
+    }
+    const now = new Date();
+    const [updated] = await db.transaction(async (tx) => {
+      const [transaction] = await tx
+        .update(transactionsTable)
+        .set({
+          reconciliationStatus: "resolved",
+          reconciliationResolvedAt: now,
+          reconciliationResolvedByUserId: actor.id,
+          updatedAt: now,
+        })
+        .where(eq(transactionsTable.id, existing.id))
+        .returning();
+      await recordAudit(tx, actor, {
+        action: "transaction.reconciliation_resolved",
+        entityType: "transaction_reconciliation",
+        entityId: existing.id,
+        fromStatus: current.reconciliationStatus,
+        toStatus: "resolved",
+        note: body.data.note,
+      });
+      return [transaction];
+    });
+    res.json(ResolveAdminTransactionReconciliationResponse.parse(transactionResponse(updated, now)));
   },
 );
 

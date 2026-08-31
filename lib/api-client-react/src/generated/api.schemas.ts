@@ -873,6 +873,26 @@ export const TransactionKind = {
   placement: 'placement',
 } as const;
 
+export type TransactionReconciliationStatus = typeof TransactionReconciliationStatus[keyof typeof TransactionReconciliationStatus];
+
+
+export const TransactionReconciliationStatus = {
+  pending: 'pending',
+  matched: 'matched',
+  mismatch: 'mismatch',
+  overdue: 'overdue',
+  resolved: 'resolved',
+} as const;
+
+export type TransactionReconciliationFlagsItem = typeof TransactionReconciliationFlagsItem[keyof typeof TransactionReconciliationFlagsItem];
+
+
+export const TransactionReconciliationFlagsItem = {
+  settlement_missing: 'settlement_missing',
+  amount_mismatch: 'amount_mismatch',
+  settlement_sla_breached: 'settlement_sla_breached',
+} as const;
+
 export type TransactionStatus = typeof TransactionStatus[keyof typeof TransactionStatus];
 
 
@@ -888,7 +908,25 @@ export interface Transaction {
   referenceId: string;
   customerName: string;
   amount: number;
+  invoiceNumber: string;
+  invoiceAmount: number;
+  feeAmount: number;
   commission: number;
+  refundAmount: number;
+  expectedSettlement: number;
+  /** @nullable */
+  settlementAmount: number | null;
+  /** @nullable */
+  netSettlement: number | null;
+  /** @nullable */
+  settlementDifference: number | null;
+  settlementDueAt: string;
+  /** @nullable */
+  settledAt: string | null;
+  reconciliationStatus: TransactionReconciliationStatus;
+  reconciliationFlags: TransactionReconciliationFlagsItem[];
+  /** @nullable */
+  reconciliationResolvedAt: string | null;
   status: TransactionStatus;
   occurredAt: string;
   updatedAt: string;
@@ -905,6 +943,11 @@ export const TransactionUpdateStatus = {
 
 export interface TransactionUpdate {
   status: TransactionUpdateStatus;
+  /** @minLength 3 */
+  note: string;
+}
+
+export interface TransactionReconciliationResolution {
   /** @minLength 3 */
   note: string;
 }
@@ -943,6 +986,8 @@ export interface AdminSummary {
   placements: number;
   revenue: number;
   pendingRevenue: number;
+  reconciliationIssues: number;
+  overdueSettlements: number;
 }
 
 export interface AdminOperations {

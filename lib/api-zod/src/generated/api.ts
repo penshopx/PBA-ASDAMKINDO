@@ -760,7 +760,9 @@ export const GetAdminOperationsResponse = zod.object({
   "completions": zod.number(),
   "placements": zod.number(),
   "revenue": zod.number(),
-  "pendingRevenue": zod.number()
+  "pendingRevenue": zod.number(),
+  "reconciliationIssues": zod.number(),
+  "overdueSettlements": zod.number()
 }),
   "verifications": zod.array(zod.object({
   "id": zod.string(),
@@ -820,7 +822,20 @@ export const GetAdminOperationsResponse = zod.object({
   "referenceId": zod.string(),
   "customerName": zod.string(),
   "amount": zod.number(),
+  "invoiceNumber": zod.string(),
+  "invoiceAmount": zod.number(),
+  "feeAmount": zod.number(),
   "commission": zod.number(),
+  "refundAmount": zod.number(),
+  "expectedSettlement": zod.number(),
+  "settlementAmount": zod.number().nullable(),
+  "netSettlement": zod.number().nullable(),
+  "settlementDifference": zod.number().nullable(),
+  "settlementDueAt": zod.coerce.date(),
+  "settledAt": zod.coerce.date().nullable(),
+  "reconciliationStatus": zod.enum(['pending', 'matched', 'mismatch', 'overdue', 'resolved']),
+  "reconciliationFlags": zod.array(zod.enum(['settlement_missing', 'amount_mismatch', 'settlement_sla_breached'])),
+  "reconciliationResolvedAt": zod.coerce.date().nullable(),
   "status": zod.enum(['pending', 'paid', 'refunded']),
   "occurredAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -1054,7 +1069,61 @@ export const UpdateAdminTransactionResponse = zod.object({
   "referenceId": zod.string(),
   "customerName": zod.string(),
   "amount": zod.number(),
+  "invoiceNumber": zod.string(),
+  "invoiceAmount": zod.number(),
+  "feeAmount": zod.number(),
   "commission": zod.number(),
+  "refundAmount": zod.number(),
+  "expectedSettlement": zod.number(),
+  "settlementAmount": zod.number().nullable(),
+  "netSettlement": zod.number().nullable(),
+  "settlementDifference": zod.number().nullable(),
+  "settlementDueAt": zod.coerce.date(),
+  "settledAt": zod.coerce.date().nullable(),
+  "reconciliationStatus": zod.enum(['pending', 'matched', 'mismatch', 'overdue', 'resolved']),
+  "reconciliationFlags": zod.array(zod.enum(['settlement_missing', 'amount_mismatch', 'settlement_sla_breached'])),
+  "reconciliationResolvedAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['pending', 'paid', 'refunded']),
+  "occurredAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Resolve a transaction reconciliation exception
+ */
+export const ResolveAdminTransactionReconciliationParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const resolveAdminTransactionReconciliationBodyNoteMin = 3;
+
+
+
+export const ResolveAdminTransactionReconciliationBody = zod.object({
+  "note": zod.string().min(resolveAdminTransactionReconciliationBodyNoteMin)
+})
+
+export const ResolveAdminTransactionReconciliationResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['program', 'placement']),
+  "referenceId": zod.string(),
+  "customerName": zod.string(),
+  "amount": zod.number(),
+  "invoiceNumber": zod.string(),
+  "invoiceAmount": zod.number(),
+  "feeAmount": zod.number(),
+  "commission": zod.number(),
+  "refundAmount": zod.number(),
+  "expectedSettlement": zod.number(),
+  "settlementAmount": zod.number().nullable(),
+  "netSettlement": zod.number().nullable(),
+  "settlementDifference": zod.number().nullable(),
+  "settlementDueAt": zod.coerce.date(),
+  "settledAt": zod.coerce.date().nullable(),
+  "reconciliationStatus": zod.enum(['pending', 'matched', 'mismatch', 'overdue', 'resolved']),
+  "reconciliationFlags": zod.array(zod.enum(['settlement_missing', 'amount_mismatch', 'settlement_sla_breached'])),
+  "reconciliationResolvedAt": zod.coerce.date().nullable(),
   "status": zod.enum(['pending', 'paid', 'refunded']),
   "occurredAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()

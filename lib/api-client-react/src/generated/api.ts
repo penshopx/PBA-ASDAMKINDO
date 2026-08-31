@@ -62,6 +62,7 @@ import type {
   ReadinessDiagnostic,
   TalentPoolCandidate,
   Transaction,
+  TransactionReconciliationResolution,
   TransactionUpdate,
   Verification,
   VerificationDecisionInput
@@ -2569,5 +2570,77 @@ export const useUpdateAdminTransaction = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateAdminTransactionMutationOptions(options));
+    }
+
+export const getResolveAdminTransactionReconciliationUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/transactions/${id}/reconciliation`
+}
+
+/**
+ * @summary Resolve a transaction reconciliation exception
+ */
+export const resolveAdminTransactionReconciliation = async (id: string,
+    transactionReconciliationResolution: TransactionReconciliationResolution, options?: Parameters<typeof customFetch>[1]): Promise<Transaction> => {
+
+  return customFetch<Transaction>(getResolveAdminTransactionReconciliationUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transactionReconciliationResolution)
+  }
+);}
+
+
+
+
+
+export const getResolveAdminTransactionReconciliationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAdminTransactionReconciliation>>, TError,{id: string;data: BodyType<TransactionReconciliationResolution>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveAdminTransactionReconciliation>>, TError,{id: string;data: BodyType<TransactionReconciliationResolution>}, TContext> => {
+
+const mutationKey = ['resolveAdminTransactionReconciliation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveAdminTransactionReconciliation>>, {id: string;data: BodyType<TransactionReconciliationResolution>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  resolveAdminTransactionReconciliation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveAdminTransactionReconciliationMutationResult = NonNullable<Awaited<ReturnType<typeof resolveAdminTransactionReconciliation>>>
+    export type ResolveAdminTransactionReconciliationMutationBody = BodyType<TransactionReconciliationResolution>
+    export type ResolveAdminTransactionReconciliationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Resolve a transaction reconciliation exception
+ */
+export const useResolveAdminTransactionReconciliation = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAdminTransactionReconciliation>>, TError,{id: string;data: BodyType<TransactionReconciliationResolution>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveAdminTransactionReconciliation>>,
+        TError,
+        {id: string;data: BodyType<TransactionReconciliationResolution>},
+        TContext
+      > => {
+      return useMutation(getResolveAdminTransactionReconciliationMutationOptions(options));
     }
 

@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TransactionKind } from './transactionKind';
+import type { TransactionReconciliationFlagsItem } from './transactionReconciliationFlagsItem';
+import type { TransactionReconciliationStatus } from './transactionReconciliationStatus';
 import type { TransactionStatus } from './transactionStatus';
 
 export interface Transaction {
@@ -14,7 +16,25 @@ export interface Transaction {
   referenceId: string;
   customerName: string;
   amount: number;
+  invoiceNumber: string;
+  invoiceAmount: number;
+  feeAmount: number;
   commission: number;
+  refundAmount: number;
+  expectedSettlement: number;
+  /** @nullable */
+  settlementAmount: number | null;
+  /** @nullable */
+  netSettlement: number | null;
+  /** @nullable */
+  settlementDifference: number | null;
+  settlementDueAt: Date;
+  /** @nullable */
+  settledAt: Date | null;
+  reconciliationStatus: TransactionReconciliationStatus;
+  reconciliationFlags: TransactionReconciliationFlagsItem[];
+  /** @nullable */
+  reconciliationResolvedAt: Date | null;
   status: TransactionStatus;
   occurredAt: Date;
   updatedAt: Date;

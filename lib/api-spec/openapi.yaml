@@ -837,6 +837,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Transaction"
+  /admin/transactions/{id}/reconciliation:
+    patch:
+      operationId: resolveAdminTransactionReconciliation
+      tags: [admin]
+      summary: Resolve a transaction reconciliation exception
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionReconciliationResolution"
+      responses:
+        "200":
+          description: Resolved transaction reconciliation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          description: Invalid resolution note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Super admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -1767,8 +1809,41 @@ components:
           type: string
         amount:
           type: number
+        invoiceNumber:
+          type: string
+        invoiceAmount:
+          type: number
+        feeAmount:
+          type: number
         commission:
           type: number
+        refundAmount:
+          type: number
+        expectedSettlement:
+          type: number
+        settlementAmount:
+          type: ["number", "null"]
+        netSettlement:
+          type: ["number", "null"]
+        settlementDifference:
+          type: ["number", "null"]
+        settlementDueAt:
+          type: string
+          format: date-time
+        settledAt:
+          type: ["string", "null"]
+          format: date-time
+        reconciliationStatus:
+          type: string
+          enum: [pending, matched, mismatch, overdue, resolved]
+        reconciliationFlags:
+          type: array
+          items:
+            type: string
+            enum: [settlement_missing, amount_mismatch, settlement_sla_breached]
+        reconciliationResolvedAt:
+          type: ["string", "null"]
+          format: date-time
         status:
           type: string
           enum: [pending, paid, refunded]
@@ -1778,7 +1853,7 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [id, kind, referenceId, customerName, amount, commission, status, occurredAt, updatedAt]
+      required: [id, kind, referenceId, customerName, amount, invoiceNumber, invoiceAmount, feeAmount, commission, refundAmount, expectedSettlement, settlementAmount, netSettlement, settlementDifference, settlementDueAt, settledAt, reconciliationStatus, reconciliationFlags, reconciliationResolvedAt, status, occurredAt, updatedAt]
     TransactionUpdate:
       type: object
       properties:
@@ -1789,6 +1864,13 @@ components:
           type: string
           minLength: 3
       required: [status, note]
+    TransactionReconciliationResolution:
+      type: object
+      properties:
+        note:
+          type: string
+          minLength: 3
+      required: [note]
     AuditLog:
       type: object
       properties:
@@ -1849,7 +1931,11 @@ components:
           type: number
         pendingRevenue:
           type: number
-      required: [pendingVerifications, activePrograms, activeEnrollments, completions, placements, revenue, pendingRevenue]
+        reconciliationIssues:
+          type: number
+        overdueSettlements:
+          type: number
+      required: [pendingVerifications, activePrograms, activeEnrollments, completions, placements, revenue, pendingRevenue, reconciliationIssues, overdueSettlements]
     AdminOperations:
       type: object
       properties:

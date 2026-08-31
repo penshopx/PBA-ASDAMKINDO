@@ -14,4 +14,6 @@ export interface AdminSummary {
   placements: number;
   revenue: number;
   pendingRevenue: number;
+  reconciliationIssues: number;
+  overdueSettlements: number;
 }
