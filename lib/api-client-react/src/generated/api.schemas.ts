@@ -1321,6 +1321,27 @@ export interface TransactionUpdate {
   note: string;
 }
 
+/**
+ * At least one of referenceId or invoiceNumber is required. If both are supplied, they must identify the same transaction.
+ */
+export type TransactionSettlementIngest = {
+  /** @minLength 1 */
+  referenceId: string;
+  /** @minLength 1 */
+  invoiceNumber?: string;
+  /** @minimum 0 */
+  settlementAmount: number;
+  settledAt: string;
+} | {
+  /** @minLength 1 */
+  referenceId?: string;
+  /** @minLength 1 */
+  invoiceNumber: string;
+  /** @minimum 0 */
+  settlementAmount: number;
+  settledAt: string;
+};
+
 export interface TransactionReconciliationResolution {
   /** @minLength 3 */
   note: string;

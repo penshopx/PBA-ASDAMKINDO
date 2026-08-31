@@ -1413,6 +1413,60 @@ export const ListAdminAuditLogsResponse = zod.array(ListAdminAuditLogsResponseIt
 
 
 /**
+ * Match a settlement to exactly one transaction using its referenceId or invoiceNumber. Replaying the same settlement is idempotent.
+ * @summary Ingest a bank settlement from a payment source
+ */
+
+
+export const ingestAdminTransactionSettlementBodyOneSettlementAmountMin = 0;
+export const ingestAdminTransactionSettlementBodyOneSettlementAmountMultipleOf = 0.01;
+
+
+
+export const ingestAdminTransactionSettlementBodyTwoSettlementAmountMin = 0;
+export const ingestAdminTransactionSettlementBodyTwoSettlementAmountMultipleOf = 0.01;
+
+
+
+export const IngestAdminTransactionSettlementBody = zod.union([zod.object({
+  "referenceId": zod.string().min(1),
+  "invoiceNumber": zod.string().min(1).optional(),
+  "settlementAmount": zod.number().min(ingestAdminTransactionSettlementBodyOneSettlementAmountMin).multipleOf(ingestAdminTransactionSettlementBodyOneSettlementAmountMultipleOf),
+  "settledAt": zod.coerce.date()
+}),zod.object({
+  "referenceId": zod.string().min(1).optional(),
+  "invoiceNumber": zod.string().min(1),
+  "settlementAmount": zod.number().min(ingestAdminTransactionSettlementBodyTwoSettlementAmountMin).multipleOf(ingestAdminTransactionSettlementBodyTwoSettlementAmountMultipleOf),
+  "settledAt": zod.coerce.date()
+})]).describe('At least one of referenceId or invoiceNumber is required. If both are supplied, they must identify the same transaction.')
+
+export const IngestAdminTransactionSettlementResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['program', 'placement']),
+  "referenceId": zod.string(),
+  "customerName": zod.string(),
+  "amount": zod.number(),
+  "invoiceNumber": zod.string(),
+  "invoiceAmount": zod.number(),
+  "feeAmount": zod.number(),
+  "commission": zod.number(),
+  "refundAmount": zod.number(),
+  "expectedSettlement": zod.number(),
+  "settlementAmount": zod.number().nullable(),
+  "netSettlement": zod.number().nullable(),
+  "settlementDifference": zod.number().nullable(),
+  "settlementDueAt": zod.coerce.date(),
+  "settledAt": zod.coerce.date().nullable(),
+  "reconciliationStatus": zod.enum(['pending', 'matched', 'mismatch', 'overdue', 'resolved']),
+  "reconciliationFlags": zod.array(zod.enum(['settlement_missing', 'amount_mismatch', 'settlement_sla_breached'])),
+  "reconciliationResolvedAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['pending', 'paid', 'refunded']),
+  "occurredAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Approve, request changes, or reject a verification
  */
 export const DecideVerificationParams = zod.object({

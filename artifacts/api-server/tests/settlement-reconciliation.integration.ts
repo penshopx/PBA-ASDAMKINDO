@@ -9,6 +9,7 @@ import express, {
 import { and, eq, inArray } from "drizzle-orm";
 import {
   GetAdminOperationsResponse,
+  IngestAdminTransactionSettlementResponse,
   ResolveAdminTransactionReconciliationResponse,
 } from "@workspace/api-zod";
 import {
@@ -162,10 +163,12 @@ try {
       settlementAmount: "899.98",
     }),
     transaction(transactionIds.missing, {
+      invoiceNumber: `INV-MISSING-${suffix}`,
       settlementAmount: null,
       settledAt: null,
     }),
     transaction(transactionIds.overdue, {
+      invoiceNumber: `INV-OVERDUE-${suffix}`,
       settlementAmount: null,
       settledAt: null,
       settlementDueAt: new Date(now - 60 * 60 * 1000),
@@ -261,6 +264,148 @@ try {
   assert.ok(resolved.reconciliationResolvedAt);
   assert.equal(result.body.summary.reconciliationIssues >= 2, true);
   assert.equal(result.body.summary.overdueSettlements >= 2, true);
+
+  const missingSettlementAt = new Date(now - 30 * 60 * 1000).toISOString();
+  result = await requestAs(
+    memberId,
+    "/admin/transactions/settlement",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        referenceId: `reference-${transactionIds.missing}`,
+        settlementAmount: 900,
+        settledAt: missingSettlementAt,
+      }),
+    },
+  );
+  assert.equal(result.response.status, 403);
+
+  result = await request("/admin/transactions/settlement", {
+    method: "POST",
+    body: JSON.stringify({
+      settlementAmount: 900,
+      settledAt: missingSettlementAt,
+    }),
+  });
+  assert.equal(result.response.status, 400);
+
+  result = await request("/admin/transactions/settlement", {
+    method: "POST",
+    body: JSON.stringify({
+      referenceId: "reference-tidak-ada",
+      settlementAmount: 900,
+      settledAt: missingSettlementAt,
+    }),
+  });
+  assert.equal(result.response.status, 404);
+
+  result = await request("/admin/transactions/settlement", {
+    method: "POST",
+    body: JSON.stringify({
+      referenceId: `reference-${transactionIds.missing}`,
+      settlementAmount: 900.004,
+      settledAt: missingSettlementAt,
+    }),
+  });
+  assert.equal(result.response.status, 400);
+
+  for (const settledAt of [null, 0, "bukan-tanggal", "2026-02-30T12:00:00Z"]) {
+    result = await request("/admin/transactions/settlement", {
+      method: "POST",
+      body: JSON.stringify({
+        referenceId: `reference-${transactionIds.missing}`,
+        settlementAmount: 900,
+        settledAt,
+      }),
+    });
+    assert.equal(result.response.status, 400);
+  }
+
+  const concurrentIngests = await Promise.all(
+    Array.from({ length: 8 }, () =>
+      request("/admin/transactions/settlement", {
+        method: "POST",
+        body: JSON.stringify({
+          referenceId: `reference-${transactionIds.missing}`,
+          settlementAmount: 900,
+          settledAt: missingSettlementAt,
+        }),
+      }),
+    ),
+  );
+  for (const ingest of concurrentIngests) {
+    assert.equal(ingest.response.status, 200);
+    IngestAdminTransactionSettlementResponse.parse(ingest.body);
+    assert.equal(ingest.body.reconciliationStatus, "matched");
+    assert.deepEqual(ingest.body.reconciliationFlags, []);
+    assert.equal(ingest.body.settlementAmount, 900);
+    assert.equal(ingest.body.settledAt, missingSettlementAt);
+  }
+  assert.equal(new Set(concurrentIngests.map((ingest) => ingest.body.updatedAt)).size, 1);
+  assert.equal(
+    (
+      await db
+        .select()
+        .from(auditLogsTable)
+        .where(
+          and(
+            eq(auditLogsTable.entityId, transactionIds.missing),
+            eq(auditLogsTable.action, "transaction.settlement_ingested"),
+          ),
+        )
+    ).length,
+    1,
+  );
+
+  const fallbackInvoiceSettlementAt = new Date(now - 20 * 60 * 1000).toISOString();
+  result = await request("/admin/transactions/settlement", {
+    method: "POST",
+    body: JSON.stringify({
+      invoiceNumber: `INV-reference-${transactionIds.matched}`,
+      settlementAmount: 900,
+      settledAt: fallbackInvoiceSettlementAt,
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.id, transactionIds.matched);
+  assert.equal(result.body.reconciliationStatus, "matched");
+
+  const overdueSettlementAt = new Date(now).toISOString();
+  result = await request("/admin/transactions/settlement", {
+    method: "POST",
+    body: JSON.stringify({
+      invoiceNumber: `INV-OVERDUE-${suffix}`,
+      settlementAmount: 900,
+      settledAt: overdueSettlementAt,
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.reconciliationStatus, "overdue");
+  assert.deepEqual(result.body.reconciliationFlags, ["settlement_sla_breached"]);
+
+  result = await request("/admin/transactions/settlement", {
+    method: "POST",
+    body: JSON.stringify({
+      referenceId: `reference-${transactionIds.missing}`,
+      invoiceNumber: `INV-OVERDUE-${suffix}`,
+      settlementAmount: 900,
+      settledAt: overdueSettlementAt,
+    }),
+  });
+  assert.equal(result.response.status, 409);
+
+  result = await request("/admin/operations");
+  assert.equal(result.response.status, 200);
+  GetAdminOperationsResponse.parse(result.body);
+  const refreshedMissing = result.body.transactions.find(
+    (item: { id: string }) => item.id === transactionIds.missing,
+  );
+  const refreshedOverdue = result.body.transactions.find(
+    (item: { id: string }) => item.id === transactionIds.overdue,
+  );
+  assert.equal(refreshedMissing.reconciliationStatus, "matched");
+  assert.equal(refreshedOverdue.reconciliationStatus, "overdue");
+  assert.deepEqual(refreshedOverdue.reconciliationFlags, ["settlement_sla_breached"]);
 
   result = await requestAs(
     memberId,

@@ -139,6 +139,7 @@ export * from './transactionKind';
 export * from './transactionReconciliationFlagsItem';
 export * from './transactionReconciliationResolution';
 export * from './transactionReconciliationStatus';
+export * from './transactionSettlementIngest';
 export * from './transactionStatus';
 export * from './transactionUpdate';
 export * from './transactionUpdateStatus';

@@ -76,6 +76,7 @@ import type {
   TalentPoolMatchesPage,
   Transaction,
   TransactionReconciliationResolution,
+  TransactionSettlementIngest,
   TransactionUpdate,
   Verification,
   VerificationDecisionInput
@@ -2909,6 +2910,78 @@ export function useListAdminAuditLogs<TData = Awaited<ReturnType<typeof listAdmi
 
 
 
+
+export const getIngestAdminTransactionSettlementUrl = () => {
+
+
+
+
+  return `/api/admin/transactions/settlement`
+}
+
+/**
+ * Match a settlement to exactly one transaction using its referenceId or invoiceNumber. Replaying the same settlement is idempotent.
+ * @summary Ingest a bank settlement from a payment source
+ */
+export const ingestAdminTransactionSettlement = async (transactionSettlementIngest: TransactionSettlementIngest, options?: Parameters<typeof customFetch>[1]): Promise<Transaction> => {
+
+  return customFetch<Transaction>(getIngestAdminTransactionSettlementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transactionSettlementIngest)
+  }
+);}
+
+
+
+
+
+export const getIngestAdminTransactionSettlementMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestAdminTransactionSettlement>>, TError,{data: BodyType<TransactionSettlementIngest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ingestAdminTransactionSettlement>>, TError,{data: BodyType<TransactionSettlementIngest>}, TContext> => {
+
+const mutationKey = ['ingestAdminTransactionSettlement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingestAdminTransactionSettlement>>, {data: BodyType<TransactionSettlementIngest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  ingestAdminTransactionSettlement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngestAdminTransactionSettlementMutationResult = NonNullable<Awaited<ReturnType<typeof ingestAdminTransactionSettlement>>>
+    export type IngestAdminTransactionSettlementMutationBody = BodyType<TransactionSettlementIngest>
+    export type IngestAdminTransactionSettlementMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Ingest a bank settlement from a payment source
+ */
+export const useIngestAdminTransactionSettlement = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestAdminTransactionSettlement>>, TError,{data: BodyType<TransactionSettlementIngest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ingestAdminTransactionSettlement>>,
+        TError,
+        {data: BodyType<TransactionSettlementIngest>},
+        TContext
+      > => {
+      return useMutation(getIngestAdminTransactionSettlementMutationOptions(options));
+    }
 
 export const getDecideVerificationUrl = (id: string,) => {
 

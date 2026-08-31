@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateAdminProgramBody,
@@ -8,6 +8,8 @@ import {
   DecideVerificationParams,
   DecideVerificationResponse,
   GetAdminOperationsResponse,
+  IngestAdminTransactionSettlementBody,
+  IngestAdminTransactionSettlementResponse,
   ListAdminMatchingsQueryParams,
   ListAdminMatchingsResponse,
   ListAdminAuditLogsResponse,
@@ -66,8 +68,6 @@ function programResponse(
     completionCount,
     enrolledCount: enrollmentCount,
     completedCount: completionCount,
-    enrollmentCount,
-    completionCount,
   };
 }
 
@@ -82,6 +82,38 @@ function verificationResponse(verification: typeof verificationsTable.$inferSele
 
 const SETTLEMENT_SLA_DAYS = 7;
 const CENT_TOLERANCE = 0.01;
+const ISO_DATE_TIME =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
+
+function isValidIsoDateTime(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = ISO_DATE_TIME.exec(value);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  const offsetHour = match[8] === undefined ? 0 : Number(match[8]);
+  const offsetMinute = match[9] === undefined ? 0 : Number(match[9]);
+  const daysInMonth =
+    month >= 1 && month <= 12
+      ? new Date(Date.UTC(year, month, 0)).getUTCDate()
+      : 0;
+
+  return (
+    day >= 1 &&
+    day <= daysInMonth &&
+    hour <= 23 &&
+    minute <= 59 &&
+    second <= 59 &&
+    offsetHour <= 14 &&
+    offsetMinute <= 59 &&
+    (offsetHour < 14 || offsetMinute === 0)
+  );
+}
 
 function transactionResponse(transaction: typeof transactionsTable.$inferSelect, now = new Date()) {
   const amount = Number(transaction.amount);
@@ -323,6 +355,127 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
 router.get("/admin/audit-logs", ...superAdminOnly, async (_req, res): Promise<void> => {
   res.json(ListAdminAuditLogsResponse.parse(await getAuditLogs(true)));
 });
+
+router.post(
+  "/admin/transactions/settlement",
+  requireUser,
+  requireRole(...adminRoles),
+  async (req, res): Promise<void> => {
+    const rawSettledAt =
+      typeof req.body === "object" && req.body !== null
+        ? (req.body as Record<string, unknown>).settledAt
+        : undefined;
+    if (!isValidIsoDateTime(rawSettledAt)) {
+      res.status(400).json({ error: "settledAt wajib berupa ISO date-time yang valid." });
+      return;
+    }
+
+    const body = IngestAdminTransactionSettlementBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({
+        error: "Settlement wajib memiliki referenceId atau invoiceNumber, nominal, dan waktu settlement yang valid.",
+      });
+      return;
+    }
+
+    const referenceId = body.data.referenceId?.trim();
+    const invoiceNumber = body.data.invoiceNumber?.trim();
+    if (!referenceId && !invoiceNumber) {
+      res.status(400).json({ error: "referenceId atau invoiceNumber wajib diisi." });
+      return;
+    }
+
+    const actor = getAuthenticatedUser(req);
+    const settledAt = body.data.settledAt;
+    const normalizedSettlementAmount = Number(body.data.settlementAmount.toFixed(2));
+    const settlementAmount = normalizedSettlementAmount.toFixed(2);
+    const now = new Date();
+    const result = await db.transaction(async (tx) => {
+      const invoiceCondition = invoiceNumber
+        ? or(
+            eq(transactionsTable.invoiceNumber, invoiceNumber),
+            invoiceNumber.startsWith("INV-")
+              ? and(
+                  isNull(transactionsTable.invoiceNumber),
+                  eq(transactionsTable.referenceId, invoiceNumber.slice(4)),
+                )
+              : undefined,
+          )
+        : undefined;
+      const matches = await tx
+        .select()
+        .from(transactionsTable)
+        .where(
+          or(
+            referenceId ? eq(transactionsTable.referenceId, referenceId) : undefined,
+            invoiceCondition,
+          ),
+        )
+        .orderBy(transactionsTable.id)
+        .for("update");
+
+      if (matches.length === 0) return { kind: "not_found" as const };
+      if (matches.length > 1) return { kind: "ambiguous" as const };
+
+      const existing = matches[0]!;
+      const effectiveInvoiceNumber = existing.invoiceNumber ?? `INV-${existing.referenceId}`;
+      if (
+        (referenceId && existing.referenceId !== referenceId) ||
+        (invoiceNumber && effectiveInvoiceNumber !== invoiceNumber)
+      ) {
+        return { kind: "conflicting_identifiers" as const };
+      }
+
+      const isIdempotentReplay =
+        existing.settlementAmount !== null &&
+        Number(existing.settlementAmount) === normalizedSettlementAmount &&
+        existing.settledAt?.getTime() === settledAt.getTime();
+
+      if (isIdempotentReplay) {
+        return { kind: "ok" as const, transaction: existing };
+      }
+
+      const current = transactionResponse(existing, now);
+      const [transaction] = await tx
+        .update(transactionsTable)
+        .set({
+          settlementAmount,
+          settledAt,
+          reconciliationStatus: "pending",
+          reconciliationResolvedAt: null,
+          reconciliationResolvedByUserId: null,
+          updatedAt: now,
+        })
+        .where(eq(transactionsTable.id, existing.id))
+        .returning();
+      const next = transactionResponse(transaction, now);
+
+      await recordAudit(tx, actor, {
+        action: "transaction.settlement_ingested",
+        entityType: "transaction",
+        entityId: existing.id,
+        fromStatus: current.reconciliationStatus,
+        toStatus: next.reconciliationStatus,
+        note: `Settlement bank diterima melalui ${referenceId ? "referenceId" : "invoiceNumber"}.`,
+      });
+      return { kind: "ok" as const, transaction };
+    });
+
+    if (result.kind === "not_found") {
+      res.status(404).json({ error: "Transaksi dengan reference atau invoice tersebut tidak ditemukan." });
+      return;
+    }
+    if (result.kind === "ambiguous") {
+      res.status(409).json({ error: "Reference atau invoice tidak mengidentifikasi satu transaksi secara unik." });
+      return;
+    }
+    if (result.kind === "conflicting_identifiers") {
+      res.status(409).json({ error: "referenceId dan invoiceNumber tidak menunjuk ke transaksi yang sama." });
+      return;
+    }
+    res.json(IngestAdminTransactionSettlementResponse.parse(transactionResponse(result.transaction, now)));
+  },
+);
 
 router.post(
   "/admin/verifications/:id/decision",

@@ -1092,6 +1092,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/transactions/settlement:
+    post:
+      operationId: ingestAdminTransactionSettlement
+      tags: [admin]
+      summary: Ingest a bank settlement from a payment source
+      description: Match a settlement to exactly one transaction using its referenceId or invoiceNumber. Replaying the same settlement is idempotent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionSettlementIngest"
+      responses:
+        "200":
+          description: Updated transaction settlement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          description: Invalid settlement payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Settlement identifiers are ambiguous
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/verifications/{id}/decision:
     post:
       operationId: decideVerification
@@ -2691,6 +2734,41 @@ components:
           type: string
           minLength: 3
       required: [status, note]
+    TransactionSettlementIngest:
+      description: At least one of referenceId or invoiceNumber is required. If both are supplied, they must identify the same transaction.
+      anyOf:
+        - type: object
+          properties:
+            referenceId:
+              type: string
+              minLength: 1
+            invoiceNumber:
+              type: string
+              minLength: 1
+            settlementAmount:
+              type: number
+              minimum: 0
+              multipleOf: 0.01
+            settledAt:
+              type: string
+              format: date-time
+          required: [referenceId, settlementAmount, settledAt]
+        - type: object
+          properties:
+            referenceId:
+              type: string
+              minLength: 1
+            invoiceNumber:
+              type: string
+              minLength: 1
+            settlementAmount:
+              type: number
+              minimum: 0
+              multipleOf: 0.01
+            settledAt:
+              type: string
+              format: date-time
+          required: [invoiceNumber, settlementAmount, settledAt]
     TransactionReconciliationResolution:
       type: object
       properties:
