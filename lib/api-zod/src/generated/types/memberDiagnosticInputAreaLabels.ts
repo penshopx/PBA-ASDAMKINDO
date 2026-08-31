@@ -6,4 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * Optional legacy labels; the server owns the diagnostic question set and ignores client-provided labels.
+ */
 export type MemberDiagnosticInputAreaLabels = {[key: string]: string};

@@ -43,12 +43,12 @@ export async function requireUser(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const user = await resolveCurrentUser(req);
+  const authenticated = req as AuthenticatedRequest;
+  const user = authenticated.currentUser ?? await resolveCurrentUser(req);
   if (!user) {
     res.status(401).json({ error: "Silakan masuk untuk melanjutkan." });
     return;
   }
-  const authenticated = req as AuthenticatedRequest;
   authenticated.userId = user.id;
   authenticated.currentUser = user;
   next();

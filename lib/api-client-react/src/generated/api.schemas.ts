@@ -160,7 +160,9 @@ export type MemberEvidenceStatus = typeof MemberEvidenceStatus[keyof typeof Memb
 export const MemberEvidenceStatus = {
   draft: 'draft',
   submitted: 'submitted',
+  changes_requested: 'changes_requested',
   verified: 'verified',
+  rejected: 'rejected',
 } as const;
 
 export interface MemberEvidence {
@@ -638,11 +640,15 @@ export interface CompanyConsentRequest {
 
 export type MemberDiagnosticInputAnswers = {[key: string]: number};
 
+/**
+ * Optional legacy labels; the server owns the diagnostic question set and ignores client-provided labels.
+ */
 export type MemberDiagnosticInputAreaLabels = {[key: string]: string};
 
 export interface MemberDiagnosticInput {
   answers: MemberDiagnosticInputAnswers;
-  areaLabels: MemberDiagnosticInputAreaLabels;
+  /** Optional legacy labels; the server owns the diagnostic question set and ignores client-provided labels. */
+  areaLabels?: MemberDiagnosticInputAreaLabels;
 }
 
 export type MemberEvidenceInputEvidenceType = typeof MemberEvidenceInputEvidenceType[keyof typeof MemberEvidenceInputEvidenceType];
@@ -663,9 +669,15 @@ export const MemberEvidenceInputStatus = {
 } as const;
 
 export interface MemberEvidenceInput {
+  /**
+     * @minLength 8
+     * @maxLength 100
+     */
+  clientRequestId: string;
   evidenceType: MemberEvidenceInputEvidenceType;
   /** @minLength 2 */
   title: string;
+  /** @minLength 1 */
   description: string;
   /** @nullable */
   referenceUrl?: string | null;
@@ -693,6 +705,7 @@ export interface MemberEvidenceUpdate {
   evidenceType?: MemberEvidenceUpdateEvidenceType;
   /** @minLength 2 */
   title?: string;
+  /** @minLength 1 */
   description?: string;
   /** @nullable */
   referenceUrl?: string | null;

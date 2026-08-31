@@ -109,7 +109,7 @@ router.get("/dashboard/admin", requireUser, async (req, res): Promise<void> => {
     db.select({ value: count(companyProfilesTable.id) }).from(companyProfilesTable),
     db.select({ value: count(programsTable.id) }).from(programsTable).where(eq(programsTable.status, "published")),
     db.select({ value: count(verificationsTable.id) }).from(verificationsTable).where(eq(verificationsTable.status, "approved")),
-    db.select({ value: count(verificationsTable.id) }).from(verificationsTable).where(or(eq(verificationsTable.status, "pending"), eq(verificationsTable.status, "changes_requested"))),
+    db.select({ value: count(verificationsTable.id) }).from(verificationsTable).where(eq(verificationsTable.status, "pending")),
     db.select({ value: count(matchingsTable.id) }).from(matchingsTable).where(eq(matchingsTable.status, "placed")),
     db.select({ value: sum(transactionsTable.amount) }).from(transactionsTable).where(eq(transactionsTable.status, "paid")),
   ]);

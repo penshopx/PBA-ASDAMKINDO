@@ -83,6 +83,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Onboarding role has already been finalized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /onboarding/company:
     post:
       operationId: saveCompanyOnboarding
@@ -103,6 +109,12 @@ paths:
                 $ref: "#/components/schemas/CurrentUser"
         "400":
           description: Invalid onboarding data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Onboarding role has already been finalized or is unavailable
           content:
             application/json:
               schema:
@@ -191,6 +203,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: The idempotency key was already used for different evidence data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /member/evidence/{id}:
     patch:
       operationId: updateMemberEvidence
@@ -223,6 +241,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Evidence not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Evidence is under review, final, or changed concurrently
           content:
             application/json:
               schema:
@@ -914,6 +938,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Verification not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Verification is not pending or was decided concurrently
           content:
             application/json:
               schema:
@@ -1690,10 +1720,11 @@ components:
             minimum: 1
             maximum: 5
         areaLabels:
+          description: Optional legacy labels; the server owns the diagnostic question set and ignores client-provided labels.
           type: object
           additionalProperties:
             type: string
-      required: [answers, areaLabels]
+      required: [answers]
     ReadinessDiagnostic:
       type: object
       properties:
@@ -1736,7 +1767,7 @@ components:
           type: ["string", "null"]
         status:
           type: string
-          enum: [draft, submitted, verified]
+          enum: [draft, submitted, changes_requested, verified, rejected]
         submittedAt:
           type: ["string", "null"]
           format: date-time
@@ -1753,6 +1784,10 @@ components:
     MemberEvidenceInput:
       type: object
       properties:
+        clientRequestId:
+          type: string
+          minLength: 8
+          maxLength: 100
         evidenceType:
           type: string
           enum: [project, certification, work]
@@ -1761,12 +1796,13 @@ components:
           minLength: 2
         description:
           type: string
+          minLength: 1
         referenceUrl:
           type: ["string", "null"]
         status:
           type: string
           enum: [draft, submitted]
-      required: [evidenceType, title, description, status]
+      required: [clientRequestId, evidenceType, title, description, status]
     MemberEvidenceUpdate:
       type: object
       properties:
@@ -1778,6 +1814,7 @@ components:
           minLength: 2
         description:
           type: string
+          minLength: 1
         referenceUrl:
           type: ["string", "null"]
         status:

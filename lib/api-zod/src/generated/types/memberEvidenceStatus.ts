@@ -12,5 +12,7 @@ export type MemberEvidenceStatus = typeof MemberEvidenceStatus[keyof typeof Memb
 export const MemberEvidenceStatus = {
   draft: 'draft',
   submitted: 'submitted',
+  changes_requested: 'changes_requested',
   verified: 'verified',
+  rejected: 'rejected',
 } as const;

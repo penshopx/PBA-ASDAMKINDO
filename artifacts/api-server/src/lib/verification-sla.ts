@@ -17,7 +17,7 @@ export function getVerificationSla(
   verification: typeof verificationsTable.$inferSelect,
   now = new Date(),
 ) {
-  const isPending = verification.status === "pending" || verification.status === "changes_requested";
+  const isPending = verification.status === "pending";
   const slaDueAt = new Date(verification.submittedAt.getTime() + VERIFICATION_SLA_HOURS * 60 * 60 * 1000);
   const pendingAgeHours = Math.max(
     0,
@@ -45,7 +45,7 @@ export async function syncVerificationSlaReminders(
       : db
           .select()
           .from(verificationsTable)
-          .where(or(eq(verificationsTable.status, "pending"), eq(verificationsTable.status, "changes_requested"))),
+          .where(eq(verificationsTable.status, "pending")),
     db
       .select({ id: usersTable.id })
       .from(usersTable)

@@ -9,9 +9,15 @@ import type { MemberEvidenceInputEvidenceType } from './memberEvidenceInputEvide
 import type { MemberEvidenceInputStatus } from './memberEvidenceInputStatus';
 
 export interface MemberEvidenceInput {
+  /**
+     * @minLength 8
+     * @maxLength 100
+     */
+  clientRequestId: string;
   evidenceType: MemberEvidenceInputEvidenceType;
   /** @minLength 2 */
   title: string;
+  /** @minLength 1 */
   description: string;
   /** @nullable */
   referenceUrl?: string | null;

@@ -10,5 +10,6 @@ import type { MemberDiagnosticInputAreaLabels } from './memberDiagnosticInputAre
 
 export interface MemberDiagnosticInput {
   answers: MemberDiagnosticInputAnswers;
-  areaLabels: MemberDiagnosticInputAreaLabels;
+  /** Optional legacy labels; the server owns the diagnostic question set and ignores client-provided labels. */
+  areaLabels?: MemberDiagnosticInputAreaLabels;
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateAdminProgramBody,
@@ -30,6 +30,7 @@ import {
   db,
   enrollmentsTable,
   matchingsTable,
+  memberEvidenceTable,
   programsTable,
   transactionsTable,
   usersTable,
@@ -271,17 +272,49 @@ router.post(
       res.status(404).json({ error: "Item verifikasi tidak ditemukan." });
       return;
     }
-    const [updated] = await db.transaction(async (tx) => {
+    if (existing.status !== "pending") {
+      res.status(409).json({ error: "Item verifikasi ini tidak sedang menunggu keputusan Admin." });
+      return;
+    }
+    if (existing.subjectType === "competency") {
+      const [evidence] = await db
+        .select()
+        .from(memberEvidenceTable)
+        .where(and(eq(memberEvidenceTable.id, existing.subjectId), eq(memberEvidenceTable.memberUserId, existing.submittedByUserId)))
+        .limit(1);
+      if (!evidence) {
+        res.status(404).json({ error: "Bukti kompetensi terkait tidak ditemukan." });
+        return;
+      }
+    }
+    const updated = await db.transaction(async (tx) => {
+      const now = new Date();
       const [next] = await tx
         .update(verificationsTable)
         .set({
           status: body.data.status,
           reviewedByUserId: actor.id,
-          reviewedAt: new Date(),
+           reviewedAt: now,
           reviewNote: body.data.note,
         })
-        .where(eq(verificationsTable.id, existing.id))
+        .where(and(eq(verificationsTable.id, existing.id), eq(verificationsTable.status, existing.status)))
         .returning();
+      if (!next) return null;
+      if (next.subjectType === "competency") {
+        await tx
+          .update(memberEvidenceTable)
+          .set({
+            status: body.data.status === "approved"
+              ? "verified"
+              : body.data.status,
+            verifiedAt: body.data.status === "approved" ? now : null,
+            updatedAt: now,
+          })
+          .where(and(
+            eq(memberEvidenceTable.id, next.subjectId),
+            eq(memberEvidenceTable.memberUserId, next.submittedByUserId),
+          ));
+      }
       await recordAudit(tx, actor, {
         action: "verification.decision",
         entityType: existing.subjectType,
@@ -290,8 +323,12 @@ router.post(
         toStatus: body.data.status,
         note: body.data.note,
       });
-      return [next];
+      return next;
     });
+    if (!updated) {
+      res.status(409).json({ error: "Item verifikasi ini tidak sedang menunggu keputusan Admin." });
+      return;
+    }
     res.json(DecideVerificationResponse.parse(verificationResponse(updated)));
   },
 );

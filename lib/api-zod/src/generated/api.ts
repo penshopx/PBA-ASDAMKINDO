@@ -145,7 +145,7 @@ export const GetMemberJourneyResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "referenceUrl": zod.string().nullable(),
-  "status": zod.enum(['draft', 'submitted', 'verified']),
+  "status": zod.enum(['draft', 'submitted', 'changes_requested', 'verified', 'rejected']),
   "submittedAt": zod.coerce.date().nullable(),
   "verifiedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -198,7 +198,7 @@ export const saveMemberDiagnosticBodyAnswersMaxOne = 5;
 
 export const SaveMemberDiagnosticBody = zod.object({
   "answers": zod.record(zod.string(), zod.number().min(1).max(saveMemberDiagnosticBodyAnswersMaxOne)),
-  "areaLabels": zod.record(zod.string(), zod.string())
+  "areaLabels": zod.record(zod.string(), zod.string()).optional().describe('Optional legacy labels; the server owns the diagnostic question set and ignores client-provided labels.')
 })
 
 export const SaveMemberDiagnosticResponse = zod.object({
@@ -215,14 +215,19 @@ export const SaveMemberDiagnosticResponse = zod.object({
 /**
  * @summary Save a project, certification, or work evidence item
  */
+export const saveMemberEvidenceBodyClientRequestIdMin = 8;
+export const saveMemberEvidenceBodyClientRequestIdMax = 100;
+
 export const saveMemberEvidenceBodyTitleMin = 2;
 
 
 
+
 export const SaveMemberEvidenceBody = zod.object({
+  "clientRequestId": zod.string().min(saveMemberEvidenceBodyClientRequestIdMin).max(saveMemberEvidenceBodyClientRequestIdMax),
   "evidenceType": zod.enum(['project', 'certification', 'work']),
   "title": zod.string().min(saveMemberEvidenceBodyTitleMin),
-  "description": zod.string(),
+  "description": zod.string().min(1),
   "referenceUrl": zod.string().nullish(),
   "status": zod.enum(['draft', 'submitted'])
 })
@@ -234,7 +239,7 @@ export const SaveMemberEvidenceResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "referenceUrl": zod.string().nullable(),
-  "status": zod.enum(['draft', 'submitted', 'verified']),
+  "status": zod.enum(['draft', 'submitted', 'changes_requested', 'verified', 'rejected']),
   "submittedAt": zod.coerce.date().nullable(),
   "verifiedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -253,10 +258,11 @@ export const updateMemberEvidenceBodyTitleMin = 2;
 
 
 
+
 export const UpdateMemberEvidenceBody = zod.object({
   "evidenceType": zod.enum(['project', 'certification', 'work']).optional(),
   "title": zod.string().min(updateMemberEvidenceBodyTitleMin).optional(),
-  "description": zod.string().optional(),
+  "description": zod.string().min(1).optional(),
   "referenceUrl": zod.string().nullish(),
   "status": zod.enum(['draft', 'submitted']).optional()
 })
@@ -268,7 +274,7 @@ export const UpdateMemberEvidenceResponse = zod.object({
   "title": zod.string(),
   "description": zod.string(),
   "referenceUrl": zod.string().nullable(),
-  "status": zod.enum(['draft', 'submitted', 'verified']),
+  "status": zod.enum(['draft', 'submitted', 'changes_requested', 'verified', 'rejected']),
   "submittedAt": zod.coerce.date().nullable(),
   "verifiedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),

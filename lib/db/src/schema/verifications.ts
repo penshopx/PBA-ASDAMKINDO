@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { index, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -20,6 +20,7 @@ export const verificationsTable = pgTable(
   },
   (table) => ({
     pendingQueueIdx: index("verifications_pending_queue_idx").on(table.status, table.submittedAt),
+    subjectUniqueIdx: uniqueIndex("verifications_subject_unique_idx").on(table.subjectType, table.subjectId),
   }),
 );
 

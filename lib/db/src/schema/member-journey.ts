@@ -1,4 +1,4 @@
-import { integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { programsTable } from "./programs";
@@ -14,19 +14,29 @@ export const readinessDiagnosticsTable = pgTable("readiness_diagnostics", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const memberEvidenceTable = pgTable("member_evidence", {
-  id: text("id").primaryKey(),
-  memberUserId: text("member_user_id").notNull().references(() => usersTable.id),
-  evidenceType: text("evidence_type").notNull(),
-  title: text("title").notNull(),
-  description: text("description").notNull().default(""),
-  referenceUrl: text("reference_url"),
-  status: text("status").notNull().default("draft"),
-  submittedAt: timestamp("submitted_at", { withTimezone: true }),
-  verifiedAt: timestamp("verified_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const memberEvidenceTable = pgTable(
+  "member_evidence",
+  {
+    id: text("id").primaryKey(),
+    memberUserId: text("member_user_id").notNull().references(() => usersTable.id),
+    clientRequestId: text("client_request_id"),
+    evidenceType: text("evidence_type").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    referenceUrl: text("reference_url"),
+    status: text("status").notNull().default("draft"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    memberRequestUniqueIdx: uniqueIndex("member_evidence_member_request_unique_idx").on(
+      table.memberUserId,
+      table.clientRequestId,
+    ),
+  }),
+);
 
 export const programProgressTable = pgTable("program_progress", {
   id: text("id").primaryKey(),

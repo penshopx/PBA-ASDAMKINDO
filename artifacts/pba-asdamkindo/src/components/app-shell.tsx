@@ -41,6 +41,10 @@ export function Protected({ children }: { children: ReactNode }) {
     }
     if (!isLoading && user && !user.onboardingComplete && !location.startsWith('/onboarding/')) {
       setLocation(user.role === 'company' ? '/onboarding/company' : '/onboarding/member');
+      return;
+    }
+    if (!isLoading && user?.onboardingComplete && user.role === 'member' && location === '/onboarding/company') {
+      setLocation('/403');
     }
   }, [isLoaded, isLoading, isSignedIn, location, setLocation, user]);
   if (!isLoaded || (isSignedIn && isLoading)) return <div className="grid min-h-[100dvh] place-items-center bg-background p-6"><div className="w-full max-w-sm space-y-3"><Skeleton className="mx-auto h-10 w-10 rounded-xl" /><Skeleton className="h-5 w-2/3 mx-auto" /><Skeleton className="h-3 w-1/2 mx-auto" /></div></div>;

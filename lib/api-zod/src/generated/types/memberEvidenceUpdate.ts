@@ -12,6 +12,7 @@ export interface MemberEvidenceUpdate {
   evidenceType?: MemberEvidenceUpdateEvidenceType;
   /** @minLength 2 */
   title?: string;
+  /** @minLength 1 */
   description?: string;
   /** @nullable */
   referenceUrl?: string | null;
