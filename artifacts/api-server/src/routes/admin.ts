@@ -47,9 +47,14 @@ import {
   verificationsTable,
 } from "@workspace/db";
 import { getAuthenticatedUser, requireRole, requireUser } from "../lib/auth";
+import { logger } from "../lib/logger";
 import { expireCompanyTalentConsents } from "../lib/talent-consent";
 import { listTalentMatches } from "../lib/talent-matching";
-import { getVerificationSla, syncVerificationSlaReminders } from "../lib/verification-sla";
+import {
+  getVerificationSla,
+  getVerificationSlaReminderWorkerStatus,
+  syncVerificationSlaReminders,
+} from "../lib/verification-sla";
 
 const router: IRouter = Router();
 const adminRoles = ["admin", "super_admin"] as const;
@@ -213,7 +218,7 @@ router.get("/admin/matchings", requireUser, requireRole(...adminRoles), async (r
     res.status(400).json({ error: "Filter matching tidak valid." });
     return;
   }
-  const actor = getAuthenticatedUser(req);
+    const actor = getAuthenticatedUser(req);
   await expireCompanyTalentConsents();
   const page = await listTalentMatches({
     requirementId: query.data.requirementId,
@@ -289,7 +294,14 @@ router.get("/admin/funnel", requireUser, requireRole(...adminRoles), async (_req
 
 router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (req, res): Promise<void> => {
   const user = getAuthenticatedUser(req);
-  await syncVerificationSlaReminders();
+  try {
+    await syncVerificationSlaReminders();
+  } catch (error) {
+    logger.error(
+      { err: error },
+      "Failed to synchronize verification SLA reminders from admin workspace",
+    );
+  }
   await expireCompanyTalentConsents();
   const [verifications, programs, enrollments, matchings, transactions, auditLogs] = await Promise.all([
     db.select().from(verificationsTable).orderBy(desc(verificationsTable.submittedAt)).limit(100),
@@ -333,7 +345,7 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
     }
   }
 
-  const now = new Date();
+    const now = new Date();
   const verificationResponses = verifications.map((verification) => verificationResponse(verification, now));
   const pendingVerificationRows = verificationResponses.filter(
     (verification) => verification.slaStatus !== "resolved",
@@ -381,6 +393,7 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
         reconciliationIssues,
         overdueSettlements,
       },
+      verificationSlaWorker: getVerificationSlaReminderWorkerStatus(),
       verifications: verificationResponses,
       programs: programs.map((program) =>
         programResponse(program, enrollmentCounts.get(program.id) ?? 0, completionCounts.get(program.id) ?? 0),
@@ -417,7 +430,7 @@ router.post(
       return;
     }
 
-    const body = IngestAdminTransactionSettlementBody.safeParse(req.body);
+    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
     if (!body.success) {
       res.status(400).json({
         error: "Settlement wajib memiliki referenceId atau invoiceNumber, nominal, dan waktu settlement yang valid.",
@@ -529,17 +542,17 @@ router.post(
   requireUser,
   requireRole(...adminRoles),
   async (req, res): Promise<void> => {
-    const params = DecideVerificationParams.safeParse(req.params);
-    const body = DecideVerificationBody.safeParse(req.body);
+    const params = ResolveAdminTransactionReconciliationParams.safeParse(req.params);
+    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
     if (!params.success || !body.success) {
-      res.status(400).json({ error: "Keputusan verifikasi atau catatan tidak valid." });
+      res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
       return;
     }
     const actor = getAuthenticatedUser(req);
     const [existing] = await db
       .select()
-      .from(verificationsTable)
-      .where(eq(verificationsTable.id, params.data.id))
+      .from(transactionsTable)
+      .where(eq(transactionsTable.id, params.data.id))
       .limit(1);
     if (!existing) {
       res.status(404).json({ error: "Item verifikasi tidak ditemukan." });
@@ -639,80 +652,90 @@ router.patch(
   requireUser,
   requireRole(...adminRoles),
   async (req, res): Promise<void> => {
-    const params = UpdateAdminProgramParams.safeParse(req.params);
-    const body = UpdateAdminProgramBody.safeParse(req.body);
-    if (!params.success || !body.success || Object.keys(body.data).length === 0) {
-      res.status(400).json({ error: "Perubahan program tidak valid." });
+    const params = ResolveAdminTransactionReconciliationParams.safeParse(req.params);
+    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
       return;
     }
     const actor = getAuthenticatedUser(req);
-    const [existing] = await db.select().from(programsTable).where(eq(programsTable.id, params.data.id)).limit(1);
+    const [existing] = await db
+      .select()
+      .from(transactionsTable)
+      .where(eq(transactionsTable.id, params.data.id))
+      .limit(1);
     if (!existing) {
-      res.status(404).json({ error: "Program tidak ditemukan." });
+      res.status(404).json({ error: "Transaksi tidak ditemukan." });
       return;
     }
     const [updated] = await db.transaction(async (tx) => {
-      const [program] = await tx
-        .update(programsTable)
+      const [transaction] = await tx
+        .update(transactionsTable)
         .set({
-          ...body.data,
-          ...(body.data.price === undefined ? {} : { price: String(body.data.price) }),
-          updatedAt: new Date(),
-        } as any)
-        .where(eq(programsTable.id, existing.id))
+          reconciliationStatus: "resolved",
+          reconciliationResolvedAt: now,
+          reconciliationResolvedByUserId: actor.id,
+          updatedAt: now,
+        })
+        .where(eq(transactionsTable.id, existing.id))
         .returning();
       await recordAudit(tx, actor, {
-        action: "program.updated",
-        entityType: "program",
+        action: "transaction.reconciliation_resolved",
+        entityType: "transaction_reconciliation",
         entityId: existing.id,
-        fromStatus: existing.status,
-        toStatus: program.status,
-        note: "Detail program atau publikasi diperbarui.",
+        fromStatus: current.reconciliationStatus,
+        toStatus: "resolved",
+        note: body.data.note,
       });
-      return [program];
+      return [transaction];
     });
-    res.json(UpdateAdminProgramResponse.parse(programResponse(updated)));
+    res.json(
+      UpdateAdminTransactionResponse.parse(transactionResponse(updated)),
+    );
   },
 );
 
 router.patch(
-  "/admin/enrollments/:id",
-  requireUser,
-  requireRole(...adminRoles),
+  "/admin/transactions/:id/reconciliation",
+  ...superAdminOnly,
   async (req, res): Promise<void> => {
-    const params = UpdateAdminEnrollmentParams.safeParse(req.params);
-    const body = UpdateAdminEnrollmentBody.safeParse(req.body);
+    const params = ResolveAdminTransactionReconciliationParams.safeParse(req.params);
+    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
     if (!params.success || !body.success) {
-      res.status(400).json({ error: "Status enrollment tidak valid." });
+      res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
       return;
     }
     const actor = getAuthenticatedUser(req);
-    const [existing] = await db.select().from(enrollmentsTable).where(eq(enrollmentsTable.id, params.data.id)).limit(1);
+    const [existing] = await db
+      .select()
+      .from(transactionsTable)
+      .where(eq(transactionsTable.id, params.data.id))
+      .limit(1);
     if (!existing) {
       res.status(404).json({ error: "Enrollment tidak ditemukan." });
       return;
     }
     const now = new Date();
     const [updated] = await db.transaction(async (tx) => {
-      const [enrollment] = await tx
-        .update(enrollmentsTable)
+      const [transaction] = await tx
+        .update(transactionsTable)
         .set({
-          status: body.data.status,
-          enrolledAt: body.data.status === "enrolled" ? existing.enrolledAt ?? now : existing.enrolledAt,
-          completedAt: body.data.status === "completed" ? now : null,
+          reconciliationStatus: "resolved",
+          reconciliationResolvedAt: now,
+          reconciliationResolvedByUserId: actor.id,
           updatedAt: now,
         })
-        .where(eq(enrollmentsTable.id, existing.id))
+        .where(eq(transactionsTable.id, existing.id))
         .returning();
       await recordAudit(tx, actor, {
-        action: "enrollment.status_changed",
-        entityType: "enrollment",
+        action: "transaction.reconciliation_resolved",
+        entityType: "transaction_reconciliation",
         entityId: existing.id,
-        fromStatus: existing.status,
-        toStatus: body.data.status,
+        fromStatus: current.reconciliationStatus,
+        toStatus: "resolved",
         note: body.data.note,
       });
-      return [enrollment];
+      return [transaction];
     });
     const [program] = await db.select().from(programsTable).where(eq(programsTable.id, updated.programId)).limit(1);
     res.json(
@@ -732,10 +755,10 @@ router.patch(
   requireUser,
   requireRole(...adminRoles),
   async (req, res): Promise<void> => {
-    const params = UpdateAdminMatchingParams.safeParse(req.params);
-    const body = UpdateAdminMatchingBody.safeParse(req.body);
+    const params = ResolveAdminTransactionReconciliationParams.safeParse(req.params);
+    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
     if (!params.success || !body.success) {
-      res.status(400).json({ error: "Status matching tidak valid." });
+      res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
       return;
     }
     const actor = getAuthenticatedUser(req);
@@ -767,37 +790,48 @@ router.patch(
       return;
     }
     const [updated] = await db.transaction(async (tx) => {
-      const [matching] = await tx
-        .update(matchingsTable)
-        .set({ status: body.data.status, updatedAt: new Date() })
-        .where(eq(matchingsTable.id, existing.id))
+      const [transaction] = await tx
+        .update(transactionsTable)
+        .set({
+          reconciliationStatus: "resolved",
+          reconciliationResolvedAt: now,
+          reconciliationResolvedByUserId: actor.id,
+          updatedAt: now,
+        })
+        .where(eq(transactionsTable.id, existing.id))
         .returning();
       await recordAudit(tx, actor, {
-        action: "matching.pipeline_changed",
-        entityType: "matching",
+        action: "transaction.reconciliation_resolved",
+        entityType: "transaction_reconciliation",
         entityId: existing.id,
-        fromStatus: existing.status,
-        toStatus: body.data.status,
+        fromStatus: current.reconciliationStatus,
+        toStatus: "resolved",
         note: body.data.note,
       });
-      return [matching];
+      return [transaction];
     });
-    res.json(UpdateAdminMatchingResponse.parse(updated));
+    res.json(
+      UpdateAdminTransactionResponse.parse(transactionResponse(updated)),
+    );
   },
 );
 
 router.patch(
-  "/admin/transactions/:id",
+  "/admin/transactions/:id/reconciliation",
   ...superAdminOnly,
   async (req, res): Promise<void> => {
-    const params = UpdateAdminTransactionParams.safeParse(req.params);
-    const body = UpdateAdminTransactionBody.safeParse(req.body);
+    const params = ResolveAdminTransactionReconciliationParams.safeParse(req.params);
+    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
     if (!params.success || !body.success) {
-      res.status(400).json({ error: "Status transaksi dan catatan wajib diisi." });
+      res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
       return;
     }
     const actor = getAuthenticatedUser(req);
-    const [existing] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, params.data.id)).limit(1);
+    const [existing] = await db
+      .select()
+      .from(transactionsTable)
+      .where(eq(transactionsTable.id, params.data.id))
+      .limit(1);
     if (!existing) {
       res.status(404).json({ error: "Transaksi tidak ditemukan." });
       return;
@@ -805,15 +839,20 @@ router.patch(
     const [updated] = await db.transaction(async (tx) => {
       const [transaction] = await tx
         .update(transactionsTable)
-        .set({ status: body.data.status, updatedAt: new Date() })
+        .set({
+          reconciliationStatus: "resolved",
+          reconciliationResolvedAt: now,
+          reconciliationResolvedByUserId: actor.id,
+          updatedAt: now,
+        })
         .where(eq(transactionsTable.id, existing.id))
         .returning();
       await recordAudit(tx, actor, {
-        action: "transaction.status_changed",
-        entityType: "transaction",
+        action: "transaction.reconciliation_resolved",
+        entityType: "transaction_reconciliation",
         entityId: existing.id,
-        fromStatus: existing.status,
-        toStatus: body.data.status,
+        fromStatus: current.reconciliationStatus,
+        toStatus: "resolved",
         note: body.data.note,
       });
       return [transaction];

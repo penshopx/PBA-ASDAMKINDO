@@ -13,6 +13,7 @@ import type { Enrollment } from './enrollment';
 import type { Matching } from './matching';
 import type { Transaction } from './transaction';
 import type { Verification } from './verification';
+import type { VerificationSlaWorkerStatus } from './verificationSlaWorkerStatus';
 
 export interface AdminOperations {
   permissions: AdminPermissions;
@@ -23,4 +24,5 @@ export interface AdminOperations {
   matchings: Matching[];
   transactions: Transaction[];
   auditLogs: AuditLog[];
+  verificationSlaWorker: VerificationSlaWorkerStatus;
 }

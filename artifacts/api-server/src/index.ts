@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { expireCompanyTalentConsents } from "./lib/talent-consent";
+import { startVerificationSlaReminderWorker } from "./lib/verification-sla";
 
 const rawPort = process.env["PORT"];
 
@@ -26,6 +27,10 @@ app.listen(port, (err) => {
 });
 
 const expiryTimer = setInterval(() => {
-  void expireCompanyTalentConsents().catch((err) => logger.error({ err }, "Failed to expire company talent consents"));
+  void expireCompanyTalentConsents().catch((err) =>
+    logger.error({ err }, "Failed to expire company talent consents"),
+  );
 }, 60_000);
 expiryTimer.unref();
+
+startVerificationSlaReminderWorker();

@@ -151,5 +151,8 @@ export * from './verificationDecisionInput';
 export * from './verificationDecisionInputStatus';
 export * from './verificationSlaPriority';
 export * from './verificationSlaStatus';
+export * from './verificationSlaWorkerStatus';
+export * from './verificationSlaWorkerStatusLastRun';
+export * from './verificationSlaWorkerStatusState';
 export * from './verificationStatus';
 export * from './verificationSubjectType';

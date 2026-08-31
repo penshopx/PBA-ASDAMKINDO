@@ -195,6 +195,7 @@ try {
     "programs",
     "summary",
     "transactions",
+    "verificationSlaWorker",
     "verifications",
   ]);
   assert.deepEqual(Object.keys(result.body.permissions).sort(), [

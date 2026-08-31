@@ -4,3 +4,4 @@
 - [Clerk E2E preview auth](clerk-e2e-preview-auth.md) — programmatic Clerk browser login may not authenticate API calls through the path-routed preview; keep a deterministic router test fallback.
 - [Development schema drift](development-schema-drift.md) — integration failures can come from unapplied additive schema changes; compare live metadata with source before debugging routes.
 - [OpenAPI identifier unions](openapi-identifier-unions.md) — avoid sibling anyOf constraints beside date-coercing request fields; define complete object variants for stable Zod output.
+- [Scheduled reminder concurrency](scheduled-reminder-concurrency.md) — lock and recheck source state in the same transaction as reminder creation; dedupe keys alone cannot prevent stale reminders.

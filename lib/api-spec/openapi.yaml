@@ -2908,7 +2908,51 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AuditLog"
-      required: [permissions, summary, verifications, programs, enrollments, matchings, transactions, auditLogs]
+        verificationSlaWorker:
+          $ref: "#/components/schemas/VerificationSlaWorkerStatus"
+      required: [permissions, summary, verifications, programs, enrollments, matchings, transactions, auditLogs, verificationSlaWorker]
+    VerificationSlaWorkerStatus:
+      type: object
+      properties:
+        state:
+          type: string
+          enum: [idle, running, succeeded, failed]
+        intervalMs:
+          type: number
+        lastStartedAt:
+          type: ["string", "null"]
+          format: date-time
+        lastCompletedAt:
+          type: ["string", "null"]
+          format: date-time
+        lastSuccessAt:
+          type: ["string", "null"]
+          format: date-time
+        lastFailureAt:
+          type: ["string", "null"]
+          format: date-time
+        consecutiveFailures:
+          type: number
+        skippedRuns:
+          type: number
+        lastError:
+          type: ["string", "null"]
+        lastRun:
+          type: ["object", "null"]
+          properties:
+            evaluatedAt:
+              type: string
+              format: date-time
+            pendingVerifications:
+              type: number
+            approachingReminders:
+              type: number
+            overdueReminders:
+              type: number
+            remindersCreated:
+              type: number
+          required: [evaluatedAt, pendingVerifications, approachingReminders, overdueReminders, remindersCreated]
+      required: [state, intervalMs, lastStartedAt, lastCompletedAt, lastSuccessAt, lastFailureAt, consecutiveFailures, skippedRuns, lastError, lastRun]
     AdminFunnelMetric:
       type: object
       description: One aggregate funnel metric. This response deliberately contains no internal identifiers.

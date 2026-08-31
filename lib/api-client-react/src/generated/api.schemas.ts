@@ -1399,6 +1399,46 @@ export interface AdminSummary {
   overdueSettlements: number;
 }
 
+export type VerificationSlaWorkerStatusState = typeof VerificationSlaWorkerStatusState[keyof typeof VerificationSlaWorkerStatusState];
+
+
+export const VerificationSlaWorkerStatusState = {
+  idle: 'idle',
+  running: 'running',
+  succeeded: 'succeeded',
+  failed: 'failed',
+} as const;
+
+/**
+ * @nullable
+ */
+export type VerificationSlaWorkerStatusLastRun = {
+  evaluatedAt: string;
+  pendingVerifications: number;
+  approachingReminders: number;
+  overdueReminders: number;
+  remindersCreated: number;
+} | null;
+
+export interface VerificationSlaWorkerStatus {
+  state: VerificationSlaWorkerStatusState;
+  intervalMs: number;
+  /** @nullable */
+  lastStartedAt: string | null;
+  /** @nullable */
+  lastCompletedAt: string | null;
+  /** @nullable */
+  lastSuccessAt: string | null;
+  /** @nullable */
+  lastFailureAt: string | null;
+  consecutiveFailures: number;
+  skippedRuns: number;
+  /** @nullable */
+  lastError: string | null;
+  /** @nullable */
+  lastRun: VerificationSlaWorkerStatusLastRun;
+}
+
 export interface AdminOperations {
   permissions: AdminPermissions;
   summary: AdminSummary;
@@ -1408,6 +1448,7 @@ export interface AdminOperations {
   matchings: Matching[];
   transactions: Transaction[];
   auditLogs: AuditLog[];
+  verificationSlaWorker: VerificationSlaWorkerStatus;
 }
 
 export type AdminFunnelMetricKey = typeof AdminFunnelMetricKey[keyof typeof AdminFunnelMetricKey];
@@ -1694,4 +1735,3 @@ export type ListProgramsParams = {
 category?: string;
 mode?: string;
 };
-

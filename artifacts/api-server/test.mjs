@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { rm } from "node:fs/promises";
 
+process.env.NODE_ENV = "test";
+
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.resolve(artifactDir, ".test-dist");
 
@@ -15,6 +17,7 @@ const testFiles = requestedTests.length
       "member-journey.integration",
       "company-security.integration",
       "settlement-reconciliation.integration",
+      "verification-sla-reminder.integration",
     ];
 
 try {

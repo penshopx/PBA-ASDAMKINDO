@@ -1389,7 +1389,25 @@ export const GetAdminOperationsResponse = zod.object({
   "toStatus": zod.string().nullable(),
   "note": zod.string().nullable(),
   "createdAt": zod.coerce.date()
-}))
+})),
+  "verificationSlaWorker": zod.object({
+  "state": zod.enum(['idle', 'running', 'succeeded', 'failed']),
+  "intervalMs": zod.number(),
+  "lastStartedAt": zod.coerce.date().nullable(),
+  "lastCompletedAt": zod.coerce.date().nullable(),
+  "lastSuccessAt": zod.coerce.date().nullable(),
+  "lastFailureAt": zod.coerce.date().nullable(),
+  "consecutiveFailures": zod.number(),
+  "skippedRuns": zod.number(),
+  "lastError": zod.string().nullable(),
+  "lastRun": zod.object({
+  "evaluatedAt": zod.coerce.date(),
+  "pendingVerifications": zod.number(),
+  "approachingReminders": zod.number(),
+  "overdueReminders": zod.number(),
+  "remindersCreated": zod.number()
+}).nullable()
+})
 })
 
 
@@ -1482,8 +1500,6 @@ export const IngestAdminTransactionSettlementResponse = zod.object({
   "occurredAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
-
-
 /**
  * @summary Approve, request changes, or reject a verification
  */

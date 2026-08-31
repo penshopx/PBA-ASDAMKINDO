@@ -3,6 +3,7 @@ import { Router, type IRouter } from "express";
 import { ListNotificationsResponse, MarkNotificationReadParams, MarkNotificationReadResponse } from "@workspace/api-zod";
 import { auditLogsTable, db, notificationsTable } from "@workspace/db";
 import { getAuthenticatedUser, requireUser } from "../lib/auth";
+import { logger } from "../lib/logger";
 import { syncVerificationSlaReminders } from "../lib/verification-sla";
 
 const router: IRouter = Router();
@@ -10,7 +11,14 @@ const router: IRouter = Router();
 router.get("/notifications", requireUser, async (req, res): Promise<void> => {
   const user = getAuthenticatedUser(req);
   if (user.role === "admin" || user.role === "super_admin") {
-    await syncVerificationSlaReminders();
+    try {
+      await syncVerificationSlaReminders();
+    } catch (error) {
+      logger.error(
+        { err: error, userId: user.id },
+        "Failed to synchronize verification SLA reminders from notifications",
+      );
+    }
   }
   const notifications = await db
     .select()
