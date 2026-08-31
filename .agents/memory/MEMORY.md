@@ -2,3 +2,4 @@
 - [Workspace Zod compatibility](workspace-zod-compatibility.md) — Drizzle-generated insert schemas require the workspace’s Zod v4 compatibility import.
 - [Passport visibility boundaries](passport-visibility-boundaries.md) — public-link visibility and company Talent Pool consent are independent privacy controls.
 - [Clerk E2E preview auth](clerk-e2e-preview-auth.md) — programmatic Clerk browser login may not authenticate API calls through the path-routed preview; keep a deterministic router test fallback.
+- [Development schema drift](development-schema-drift.md) — integration failures can come from unapplied additive schema changes; compare live metadata with source before debugging routes.

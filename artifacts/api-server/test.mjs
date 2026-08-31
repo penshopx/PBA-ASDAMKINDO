@@ -6,26 +6,33 @@ import { rm } from "node:fs/promises";
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.resolve(artifactDir, ".test-dist");
 
+const requestedTests = process.argv.slice(2).filter((argument) => argument !== "--");
+const testFiles = requestedTests.length
+  ? requestedTests
+  : ["member-journey.integration", "company-security.integration"];
+
 try {
   await rm(outDir, { recursive: true, force: true });
-  await build({
-    entryPoints: [path.resolve(artifactDir, "tests/member-journey.integration.ts")],
-    platform: "node",
-    bundle: true,
-    format: "esm",
-    outfile: path.resolve(outDir, "member-journey.integration.mjs"),
-    external: ["*.node", "pg-native"],
-    logLevel: "warning",
-    banner: {
-      js: `import { createRequire as __createRequire } from "node:module";
+  for (const testFile of testFiles) {
+    await build({
+      entryPoints: [path.resolve(artifactDir, `tests/${testFile}.ts`)],
+      platform: "node",
+      bundle: true,
+      format: "esm",
+      outfile: path.resolve(outDir, `${testFile}.mjs`),
+      external: ["*.node", "pg-native"],
+      logLevel: "warning",
+      banner: {
+        js: `import { createRequire as __createRequire } from "node:module";
 import __path from "node:path";
 import __url from "node:url";
 globalThis.require = __createRequire(import.meta.url);
 globalThis.__filename = __url.fileURLToPath(import.meta.url);
 globalThis.__dirname = __path.dirname(globalThis.__filename);`,
-    },
-  });
-  await import(path.resolve(outDir, "member-journey.integration.mjs"));
+      },
+    });
+    await import(path.resolve(outDir, `${testFile}.mjs`));
+  }
 } finally {
   await rm(outDir, { recursive: true, force: true });
 }
