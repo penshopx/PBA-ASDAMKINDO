@@ -55,6 +55,12 @@ app.use(async (req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 app.use("/api", passportRouter, companyRouter, adminRouter);
+app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
+  if (req.header("x-test-fail-notification") !== "true") {
+    console.error(`Unexpected ${req.method} ${req.path} failure`, error);
+  }
+  res.status(500).json({ error: "Terjadi kesalahan pada server." });
+});
 
 const server = app.listen(0);
 await new Promise<void>((resolve) => server.once("listening", resolve));
@@ -566,6 +572,27 @@ try {
   assert.equal(recruitmentNotifications.length, 4);
   assert.equal(recruitmentNotifications.some((notification) => notification.userId === companyAId && notification.title === "Pipeline kandidat diperbarui" && notification.description.includes("interview")), true);
   assert.equal(recruitmentNotifications.some((notification) => notification.userId === strongMemberId && notification.title === "Status peluang diperbarui" && notification.description.includes("interview")), true);
+
+  const failedPipelineUpdate = await request(`/company/shortlist/${matchingAId}`, {
+    method: "PATCH",
+    headers: { "x-test-fail-notification": "true" },
+    body: JSON.stringify({ status: "placed", note: "Uji rollback notifikasi" }),
+  });
+  assert.equal(failedPipelineUpdate.response.status, 500);
+  assert.equal(failedPipelineUpdate.body.error, "Terjadi kesalahan pada server.");
+
+  const [matchingAfterNotificationFailure] = await db
+    .select()
+    .from(matchingsTable)
+    .where(eq(matchingsTable.id, matchingAId))
+    .limit(1);
+  assert.equal(matchingAfterNotificationFailure.status, "interview");
+  const recruitmentNotificationsAfterFailure = await db
+    .select()
+    .from(notificationsTable)
+    .where(and(inArray(notificationsTable.userId, [companyAId, strongMemberId]), eq(notificationsTable.type, "recruitment")));
+  assert.equal(recruitmentNotificationsAfterFailure.length, 4);
+  console.log("pipeline transaction rollback integration assertions passed");
 
   actor = await loadUser(adminId);
   result = await request("/admin/funnel");

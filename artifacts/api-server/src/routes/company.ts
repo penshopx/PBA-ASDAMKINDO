@@ -414,27 +414,49 @@ router.patch("/company/shortlist/:id", ...companyOnly, async (req, res): Promise
       return;
     }
   }
-  const [updated] = await db
-    .update(matchingsTable)
-    .set({ status: body.data.status, updatedAt: new Date() })
-    .where(eq(matchingsTable.id, existing.id))
-    .returning();
-  await db.insert(notificationsTable).values({
-    id: `notification-${randomUUID()}`,
-    userId: user.id,
-    title: "Pipeline kandidat diperbarui",
-    description: `${existing.candidateName} untuk ${existing.requirement} sekarang berstatus ${body.data.status}.`,
-    type: "recruitment",
+  const updated = await db.transaction(async (tx) => {
+    const [updatedMatching] = await tx
+      .update(matchingsTable)
+      .set({ status: body.data.status, updatedAt: new Date() })
+      .where(eq(matchingsTable.id, existing.id))
+      .returning();
+    if (!updatedMatching) {
+      throw new Error("Matching shortlist tidak ditemukan saat memperbarui status.");
+    }
+
+    const notificationValues = [
+      {
+        id: `notification-${randomUUID()}`,
+        userId: user.id,
+        title: "Pipeline kandidat diperbarui",
+        description: `${existing.candidateName} untuk ${existing.requirement} sekarang berstatus ${body.data.status}.`,
+        type: "recruitment",
+      },
+      ...(existing.candidateUserId
+        ? [{
+            id: `notification-${randomUUID()}`,
+            userId: existing.candidateUserId,
+            title: "Status peluang diperbarui",
+            description: `Status tinjauan perusahaan untuk ${existing.requirement} berubah menjadi ${body.data.status}.`,
+            type: "recruitment",
+          }]
+        : []),
+    ];
+
+    // This controlled failure seam is available only to the integration test.
+    if (process.env.NODE_ENV === "test" && req.header("x-test-fail-notification") === "true") {
+      notificationValues.push({
+        id: `notification-${randomUUID()}`,
+        userId: `missing-notification-user-${randomUUID()}`,
+        title: "Notifikasi gagal",
+        description: "Kegagalan notifikasi yang disengaja untuk menguji rollback.",
+        type: "recruitment",
+      });
+    }
+
+    await tx.insert(notificationsTable).values(notificationValues);
+    return updatedMatching;
   });
-  if (existing.candidateUserId) {
-    await db.insert(notificationsTable).values({
-      id: `notification-${randomUUID()}`,
-      userId: existing.candidateUserId,
-      title: "Status peluang diperbarui",
-      description: `Status tinjauan perusahaan untuk ${existing.requirement} berubah menjadi ${body.data.status}.`,
-      type: "recruitment",
-    });
-  }
   res.json(UpdateCompanyShortlistResponse.parse(matchingResponse(updated)));
 });
 
