@@ -20,5 +20,6 @@ export interface CompanyTalentCandidate {
   availabilityStatus: CompanyTalentCandidateAvailabilityStatus;
   /** @nullable */
   publicUrl: string | null;
+  consentExpiresAt: Date;
   updatedAt: Date;
 }

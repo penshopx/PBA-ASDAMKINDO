@@ -22,16 +22,23 @@ import type {
 import type {
   AdminDashboard,
   AdminOperations,
-  AdminTalentCandidate,
+  AdminTalentConsent,
+  AdminTalentConsentOverride,
+  AdminTalentConsentPage,
   AuditLog,
+  CompanyConsentRequest,
+  CompanyConsentRequestInput,
   CompanyDashboard,
+  CompanyDirectoryEntry,
+  CompanyMatching,
   CompanyOnboardingInput,
   CompanyRequirement,
   CompanyRequirementInput,
   CompanyRequirementUpdate,
   CompanyShortlistInput,
   CompanyShortlistUpdate,
-  CompanyTalentCandidate,
+  CompanyTalentConsent,
+  CompanyTalentPoolPage,
   CurrentUser,
   Enrollment,
   EnrollmentUpdate,
@@ -43,6 +50,8 @@ import type {
   ListProgramsParams,
   Matching,
   MatchingUpdate,
+  MemberCompanyConsentCreate,
+  MemberCompanyConsentUpdate,
   MemberDashboard,
   MemberDiagnosticInput,
   MemberEvidence,
@@ -52,14 +61,14 @@ import type {
   MemberOnboardingInput,
   MemberPassport,
   Notification,
-  PassportConsent,
-  PassportConsentUpdate,
   ProfessionalPassportUpdate,
   Program,
   ProgramInput,
   ProgramUpdate,
   PublicPassport,
   ReadinessDiagnostic,
+  TalentConsentSettings,
+  TalentConsentSettingsUpdate,
   TalentPoolCandidate,
   Transaction,
   TransactionReconciliationResolution,
@@ -909,25 +918,25 @@ export const useUpdateMemberPassport = <TError = ErrorType<ErrorResponse>,
       return useMutation(getUpdateMemberPassportMutationOptions(options));
     }
 
-export const getUpdateMemberPassportConsentUrl = () => {
+export const getGrantMemberCompanyConsentUrl = () => {
 
 
 
 
-  return `/api/member/passport/consent`
+  return `/api/member/passport/consents`
 }
 
 /**
- * @summary Grant or revoke Talent Pool consent
+ * @summary Grant Talent Pool consent to one company
  */
-export const updateMemberPassportConsent = async (passportConsentUpdate: PassportConsentUpdate, options?: Parameters<typeof customFetch>[1]): Promise<PassportConsent> => {
+export const grantMemberCompanyConsent = async (memberCompanyConsentCreate: MemberCompanyConsentCreate, options?: Parameters<typeof customFetch>[1]): Promise<CompanyTalentConsent> => {
 
-  return customFetch<PassportConsent>(getUpdateMemberPassportConsentUrl(),
+  return customFetch<CompanyTalentConsent>(getGrantMemberCompanyConsentUrl(),
   {
     ...options,
-    method: 'PATCH',
+    method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(passportConsentUpdate)
+    body: JSON.stringify(memberCompanyConsentCreate)
   }
 );}
 
@@ -935,11 +944,11 @@ export const updateMemberPassportConsent = async (passportConsentUpdate: Passpor
 
 
 
-export const getUpdateMemberPassportConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberPassportConsent>>, TError,{data: BodyType<PassportConsentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof updateMemberPassportConsent>>, TError,{data: BodyType<PassportConsentUpdate>}, TContext> => {
+export const getGrantMemberCompanyConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof grantMemberCompanyConsent>>, TError,{data: BodyType<MemberCompanyConsentCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof grantMemberCompanyConsent>>, TError,{data: BodyType<MemberCompanyConsentCreate>}, TContext> => {
 
-const mutationKey = ['updateMemberPassportConsent'];
+const mutationKey = ['grantMemberCompanyConsent'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -949,10 +958,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMemberPassportConsent>>, {data: BodyType<PassportConsentUpdate>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof grantMemberCompanyConsent>>, {data: BodyType<MemberCompanyConsentCreate>}> = (props) => {
           const {data} = props ?? {};
 
-          return  updateMemberPassportConsent(data,requestOptions)
+          return  grantMemberCompanyConsent(data,requestOptions)
         }
 
 
@@ -962,23 +971,172 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type UpdateMemberPassportConsentMutationResult = NonNullable<Awaited<ReturnType<typeof updateMemberPassportConsent>>>
-    export type UpdateMemberPassportConsentMutationBody = BodyType<PassportConsentUpdate>
-    export type UpdateMemberPassportConsentMutationError = ErrorType<ErrorResponse>
+    export type GrantMemberCompanyConsentMutationResult = NonNullable<Awaited<ReturnType<typeof grantMemberCompanyConsent>>>
+    export type GrantMemberCompanyConsentMutationBody = BodyType<MemberCompanyConsentCreate>
+    export type GrantMemberCompanyConsentMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Grant or revoke Talent Pool consent
+ * @summary Grant Talent Pool consent to one company
  */
-export const useUpdateMemberPassportConsent = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberPassportConsent>>, TError,{data: BodyType<PassportConsentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useGrantMemberCompanyConsent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof grantMemberCompanyConsent>>, TError,{data: BodyType<MemberCompanyConsentCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof updateMemberPassportConsent>>,
+        Awaited<ReturnType<typeof grantMemberCompanyConsent>>,
         TError,
-        {data: BodyType<PassportConsentUpdate>},
+        {data: BodyType<MemberCompanyConsentCreate>},
         TContext
       > => {
-      return useMutation(getUpdateMemberPassportConsentMutationOptions(options));
+      return useMutation(getGrantMemberCompanyConsentMutationOptions(options));
     }
+
+export const getUpdateMemberCompanyConsentUrl = (id: string,) => {
+
+
+
+
+  return `/api/member/passport/consents/${id}`
+}
+
+/**
+ * @summary Grant, deny, or revoke one company consent
+ */
+export const updateMemberCompanyConsent = async (id: string,
+    memberCompanyConsentUpdate: MemberCompanyConsentUpdate, options?: Parameters<typeof customFetch>[1]): Promise<CompanyTalentConsent> => {
+
+  return customFetch<CompanyTalentConsent>(getUpdateMemberCompanyConsentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(memberCompanyConsentUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateMemberCompanyConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberCompanyConsent>>, TError,{id: string;data: BodyType<MemberCompanyConsentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMemberCompanyConsent>>, TError,{id: string;data: BodyType<MemberCompanyConsentUpdate>}, TContext> => {
+
+const mutationKey = ['updateMemberCompanyConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMemberCompanyConsent>>, {id: string;data: BodyType<MemberCompanyConsentUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMemberCompanyConsent(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMemberCompanyConsentMutationResult = NonNullable<Awaited<ReturnType<typeof updateMemberCompanyConsent>>>
+    export type UpdateMemberCompanyConsentMutationBody = BodyType<MemberCompanyConsentUpdate>
+    export type UpdateMemberCompanyConsentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Grant, deny, or revoke one company consent
+ */
+export const useUpdateMemberCompanyConsent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberCompanyConsent>>, TError,{id: string;data: BodyType<MemberCompanyConsentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMemberCompanyConsent>>,
+        TError,
+        {id: string;data: BodyType<MemberCompanyConsentUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateMemberCompanyConsentMutationOptions(options));
+    }
+
+export const getListMemberCompaniesUrl = () => {
+
+
+
+
+  return `/api/member/companies`
+}
+
+/**
+ * @summary List companies available for proactive member consent
+ */
+export const listMemberCompanies = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyDirectoryEntry[]> => {
+
+  return customFetch<CompanyDirectoryEntry[]>(getListMemberCompaniesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMemberCompaniesQueryKey = () => {
+    return [
+    `/api/member/companies`
+    ] as const;
+    }
+
+
+export const getListMemberCompaniesQueryOptions = <TData = Awaited<ReturnType<typeof listMemberCompanies>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMemberCompanies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMemberCompaniesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMemberCompanies>>> = ({ signal }) => listMemberCompanies({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMemberCompanies>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMemberCompaniesQueryResult = NonNullable<Awaited<ReturnType<typeof listMemberCompanies>>>
+export type ListMemberCompaniesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List companies available for proactive member consent
+ */
+
+export function useListMemberCompanies<TData = Awaited<ReturnType<typeof listMemberCompanies>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMemberCompanies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMemberCompaniesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetPublicPassportUrl = (slug: string,) => {
 
@@ -1075,9 +1233,9 @@ export const getGetAdminTalentPoolUrl = (params?: GetAdminTalentPoolParams,) => 
 /**
  * @summary Filter member passports for Admin PBA
  */
-export const getAdminTalentPool = async (params?: GetAdminTalentPoolParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminTalentCandidate[]> => {
+export const getAdminTalentPool = async (params?: GetAdminTalentPoolParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminTalentConsentPage> => {
 
-  return customFetch<AdminTalentCandidate[]>(getGetAdminTalentPoolUrl(params),
+  return customFetch<AdminTalentConsentPage>(getGetAdminTalentPoolUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1141,6 +1299,226 @@ export function useGetAdminTalentPool<TData = Awaited<ReturnType<typeof getAdmin
 
 
 
+export const getOverrideAdminTalentConsentUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/talent-pool/consents/${id}`
+}
+
+/**
+ * @summary Revoke or change expiry of one company consent
+ */
+export const overrideAdminTalentConsent = async (id: string,
+    adminTalentConsentOverride: AdminTalentConsentOverride, options?: Parameters<typeof customFetch>[1]): Promise<AdminTalentConsent> => {
+
+  return customFetch<AdminTalentConsent>(getOverrideAdminTalentConsentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminTalentConsentOverride)
+  }
+);}
+
+
+
+
+
+export const getOverrideAdminTalentConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof overrideAdminTalentConsent>>, TError,{id: string;data: BodyType<AdminTalentConsentOverride>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof overrideAdminTalentConsent>>, TError,{id: string;data: BodyType<AdminTalentConsentOverride>}, TContext> => {
+
+const mutationKey = ['overrideAdminTalentConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof overrideAdminTalentConsent>>, {id: string;data: BodyType<AdminTalentConsentOverride>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  overrideAdminTalentConsent(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OverrideAdminTalentConsentMutationResult = NonNullable<Awaited<ReturnType<typeof overrideAdminTalentConsent>>>
+    export type OverrideAdminTalentConsentMutationBody = BodyType<AdminTalentConsentOverride>
+    export type OverrideAdminTalentConsentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Revoke or change expiry of one company consent
+ */
+export const useOverrideAdminTalentConsent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof overrideAdminTalentConsent>>, TError,{id: string;data: BodyType<AdminTalentConsentOverride>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof overrideAdminTalentConsent>>,
+        TError,
+        {id: string;data: BodyType<AdminTalentConsentOverride>},
+        TContext
+      > => {
+      return useMutation(getOverrideAdminTalentConsentMutationOptions(options));
+    }
+
+export const getGetAdminTalentConsentSettingsUrl = () => {
+
+
+
+
+  return `/api/admin/talent-pool/settings`
+}
+
+/**
+ * @summary Get default Talent Pool consent duration
+ */
+export const getAdminTalentConsentSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<TalentConsentSettings> => {
+
+  return customFetch<TalentConsentSettings>(getGetAdminTalentConsentSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminTalentConsentSettingsQueryKey = () => {
+    return [
+    `/api/admin/talent-pool/settings`
+    ] as const;
+    }
+
+
+export const getGetAdminTalentConsentSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminTalentConsentSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminTalentConsentSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminTalentConsentSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminTalentConsentSettings>>> = ({ signal }) => getAdminTalentConsentSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminTalentConsentSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminTalentConsentSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminTalentConsentSettings>>>
+export type GetAdminTalentConsentSettingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get default Talent Pool consent duration
+ */
+
+export function useGetAdminTalentConsentSettings<TData = Awaited<ReturnType<typeof getAdminTalentConsentSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminTalentConsentSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminTalentConsentSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminTalentConsentSettingsUrl = () => {
+
+
+
+
+  return `/api/admin/talent-pool/settings`
+}
+
+/**
+ * @summary Update default Talent Pool consent duration
+ */
+export const updateAdminTalentConsentSettings = async (talentConsentSettingsUpdate: TalentConsentSettingsUpdate, options?: Parameters<typeof customFetch>[1]): Promise<TalentConsentSettings> => {
+
+  return customFetch<TalentConsentSettings>(getUpdateAdminTalentConsentSettingsUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(talentConsentSettingsUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminTalentConsentSettingsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminTalentConsentSettings>>, TError,{data: BodyType<TalentConsentSettingsUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminTalentConsentSettings>>, TError,{data: BodyType<TalentConsentSettingsUpdate>}, TContext> => {
+
+const mutationKey = ['updateAdminTalentConsentSettings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminTalentConsentSettings>>, {data: BodyType<TalentConsentSettingsUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAdminTalentConsentSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminTalentConsentSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminTalentConsentSettings>>>
+    export type UpdateAdminTalentConsentSettingsMutationBody = BodyType<TalentConsentSettingsUpdate>
+    export type UpdateAdminTalentConsentSettingsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update default Talent Pool consent duration
+ */
+export const useUpdateAdminTalentConsentSettings = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminTalentConsentSettings>>, TError,{data: BodyType<TalentConsentSettingsUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminTalentConsentSettings>>,
+        TError,
+        {data: BodyType<TalentConsentSettingsUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminTalentConsentSettingsMutationOptions(options));
+    }
+
 export const getGetCompanyTalentPoolUrl = (params?: GetCompanyTalentPoolParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -1159,9 +1537,9 @@ export const getGetCompanyTalentPoolUrl = (params?: GetCompanyTalentPoolParams,)
 /**
  * @summary List only candidates with active Talent Pool consent
  */
-export const getCompanyTalentPool = async (params?: GetCompanyTalentPoolParams, options?: Parameters<typeof customFetch>[1]): Promise<CompanyTalentCandidate[]> => {
+export const getCompanyTalentPool = async (params?: GetCompanyTalentPoolParams, options?: Parameters<typeof customFetch>[1]): Promise<CompanyTalentPoolPage> => {
 
-  return customFetch<CompanyTalentCandidate[]>(getGetCompanyTalentPoolUrl(params),
+  return customFetch<CompanyTalentPoolPage>(getGetCompanyTalentPoolUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1224,6 +1602,154 @@ export function useGetCompanyTalentPool<TData = Awaited<ReturnType<typeof getCom
 
 
 
+
+export const getListCompanyConsentRequestsUrl = () => {
+
+
+
+
+  return `/api/company/talent-pool/consent-requests`
+}
+
+/**
+ * @summary List consent requests made by the current company
+ */
+export const listCompanyConsentRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<CompanyConsentRequest[]> => {
+
+  return customFetch<CompanyConsentRequest[]>(getListCompanyConsentRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCompanyConsentRequestsQueryKey = () => {
+    return [
+    `/api/company/talent-pool/consent-requests`
+    ] as const;
+    }
+
+
+export const getListCompanyConsentRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCompanyConsentRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyConsentRequests>>> = ({ signal }) => listCompanyConsentRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCompanyConsentRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listCompanyConsentRequests>>>
+export type ListCompanyConsentRequestsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List consent requests made by the current company
+ */
+
+export function useListCompanyConsentRequests<TData = Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCompanyConsentRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRequestCompanyTalentConsentUrl = () => {
+
+
+
+
+  return `/api/company/talent-pool/consent-requests`
+}
+
+/**
+ * @summary Request consent using a member-shared passport slug
+ */
+export const requestCompanyTalentConsent = async (companyConsentRequestInput: CompanyConsentRequestInput, options?: Parameters<typeof customFetch>[1]): Promise<CompanyConsentRequest> => {
+
+  return customFetch<CompanyConsentRequest>(getRequestCompanyTalentConsentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(companyConsentRequestInput)
+  }
+);}
+
+
+
+
+
+export const getRequestCompanyTalentConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestCompanyTalentConsent>>, TError,{data: BodyType<CompanyConsentRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestCompanyTalentConsent>>, TError,{data: BodyType<CompanyConsentRequestInput>}, TContext> => {
+
+const mutationKey = ['requestCompanyTalentConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestCompanyTalentConsent>>, {data: BodyType<CompanyConsentRequestInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestCompanyTalentConsent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestCompanyTalentConsentMutationResult = NonNullable<Awaited<ReturnType<typeof requestCompanyTalentConsent>>>
+    export type RequestCompanyTalentConsentMutationBody = BodyType<CompanyConsentRequestInput>
+    export type RequestCompanyTalentConsentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Request consent using a member-shared passport slug
+ */
+export const useRequestCompanyTalentConsent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestCompanyTalentConsent>>, TError,{data: BodyType<CompanyConsentRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestCompanyTalentConsent>>,
+        TError,
+        {data: BodyType<CompanyConsentRequestInput>},
+        TContext
+      > => {
+      return useMutation(getRequestCompanyTalentConsentMutationOptions(options));
+    }
 
 export const getGetCompanyDashboardUrl = () => {
 
@@ -1617,9 +2143,9 @@ export const getCreateCompanyShortlistUrl = () => {
 /**
  * @summary Save a consented candidate to the company's shortlist
  */
-export const createCompanyShortlist = async (companyShortlistInput: CompanyShortlistInput, options?: Parameters<typeof customFetch>[1]): Promise<Matching> => {
+export const createCompanyShortlist = async (companyShortlistInput: CompanyShortlistInput, options?: Parameters<typeof customFetch>[1]): Promise<CompanyMatching> => {
 
-  return customFetch<Matching>(getCreateCompanyShortlistUrl(),
+  return customFetch<CompanyMatching>(getCreateCompanyShortlistUrl(),
   {
     ...options,
     method: 'POST',
@@ -1689,9 +2215,9 @@ export const getUpdateCompanyShortlistUrl = (id: string,) => {
  * @summary Move a company shortlist item through review, interview, and placement
  */
 export const updateCompanyShortlist = async (id: string,
-    companyShortlistUpdate: CompanyShortlistUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Matching> => {
+    companyShortlistUpdate: CompanyShortlistUpdate, options?: Parameters<typeof customFetch>[1]): Promise<CompanyMatching> => {
 
-  return customFetch<Matching>(getUpdateCompanyShortlistUrl(id),
+  return customFetch<CompanyMatching>(getUpdateCompanyShortlistUrl(id),
   {
     ...options,
     method: 'PATCH',

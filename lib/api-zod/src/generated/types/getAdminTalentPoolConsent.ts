@@ -11,6 +11,9 @@ export type GetAdminTalentPoolConsent = typeof GetAdminTalentPoolConsent[keyof t
 
 export const GetAdminTalentPoolConsent = {
   all: 'all',
+  requested: 'requested',
   active: 'active',
+  denied: 'denied',
   revoked: 'revoked',
+  expired: 'expired',
 } as const;

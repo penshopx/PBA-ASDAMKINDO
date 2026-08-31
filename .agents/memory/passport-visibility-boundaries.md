@@ -5,6 +5,8 @@ description: Privacy semantics for public Professional Passport links and compan
 
 Public-link visibility and Talent Pool consent are independent controls. Turning off the public link does not revoke active company access, while revoking Talent Pool consent does not automatically hide a public passport.
 
-**Why:** Members need separate control over open-web sharing and access granted to companies inside PBA. Coupling the switches would make one privacy action silently change the other.
+Company Talent Pool access is always scoped to one member-company pair and requires an active, unexpired grant. Legacy global consent must never be backfilled into company access because it does not identify an intended recipient.
 
-**How to apply:** Any matching, consent-expiry, or company-access feature must require active Talent Pool consent for company discovery. Public passport routes must require public visibility, regardless of consent status.
+**Why:** Members need separate control over open-web sharing and access granted to companies inside PBA. Coupling the switches would make one privacy action silently change the other, while translating a global consent into company grants would silently broaden access.
+
+**How to apply:** Any matching, shortlist, or company-access feature must filter by the requesting company, active status, and future expiry in the database. Public passport routes must require public visibility regardless of consent status.

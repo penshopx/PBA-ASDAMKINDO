@@ -11,4 +11,13 @@ export type GetCompanyTalentPoolParams = {
 search?: string;
 availability?: GetCompanyTalentPoolAvailability;
 location?: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
 };

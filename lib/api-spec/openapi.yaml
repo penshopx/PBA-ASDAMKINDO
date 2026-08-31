@@ -274,30 +274,74 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /member/passport/consent:
-    patch:
-      operationId: updateMemberPassportConsent
-      tags: [passport]
-      summary: Grant or revoke Talent Pool consent
+  /member/passport/consents:
+    post:
+      operationId: grantMemberCompanyConsent
+      tags: [passport, talent-pool]
+      summary: Grant Talent Pool consent to one company
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PassportConsentUpdate"
+              $ref: "#/components/schemas/MemberCompanyConsentCreate"
       responses:
-        "200":
-          description: Updated consent state
+        "201":
+          description: Created or renewed company consent
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PassportConsent"
+                $ref: "#/components/schemas/CompanyTalentConsent"
         "403":
           description: Member role required
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /member/passport/consents/{id}:
+    patch:
+      operationId: updateMemberCompanyConsent
+      tags: [passport, talent-pool]
+      summary: Grant, deny, or revoke one company consent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberCompanyConsentUpdate"
+      responses:
+        "200":
+          description: Updated company consent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyTalentConsent"
+        "404":
+          description: Consent not found for this member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /member/companies:
+    get:
+      operationId: listMemberCompanies
+      tags: [passport, talent-pool]
+      summary: List companies available for proactive member consent
+      responses:
+        "200":
+          description: Safe company directory
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyDirectoryEntry"
   /passport/{slug}:
     get:
       operationId: getPublicPassport
@@ -344,28 +388,105 @@ paths:
           required: false
           schema:
             type: string
-            enum: [all, active, revoked]
+            enum: [all, requested, active, denied, revoked, expired]
             default: all
+        - name: companyId
+          in: query
+          required: false
+          schema:
+            type: string
         - name: location
           in: query
           required: false
           schema:
             type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
       responses:
         "200":
           description: Admin Talent Pool results
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AdminTalentCandidate"
+                $ref: "#/components/schemas/AdminTalentConsentPage"
         "403":
           description: Admin role required
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/talent-pool/consents/{id}:
+    patch:
+      operationId: overrideAdminTalentConsent
+      tags: [talent-pool, admin]
+      summary: Revoke or change expiry of one company consent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminTalentConsentOverride"
+      responses:
+        "200":
+          description: Updated consent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminTalentConsent"
+        "404":
+          description: Consent not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/talent-pool/settings:
+    get:
+      operationId: getAdminTalentConsentSettings
+      tags: [talent-pool, admin]
+      summary: Get default Talent Pool consent duration
+      responses:
+        "200":
+          description: Consent settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TalentConsentSettings"
+    patch:
+      operationId: updateAdminTalentConsentSettings
+      tags: [talent-pool, admin]
+      summary: Update default Talent Pool consent duration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TalentConsentSettingsUpdate"
+      responses:
+        "200":
+          description: Updated consent settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TalentConsentSettings"
   /company/talent-pool:
     get:
       operationId: getCompanyTalentPool
@@ -388,17 +509,67 @@ paths:
           required: false
           schema:
             type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
       responses:
         "200":
           description: Consent-approved candidates
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CompanyTalentCandidate"
+                $ref: "#/components/schemas/CompanyTalentPoolPage"
         "403":
           description: Company role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /company/talent-pool/consent-requests:
+    get:
+      operationId: listCompanyConsentRequests
+      tags: [talent-pool]
+      summary: List consent requests made by the current company
+      responses:
+        "200":
+          description: Company consent requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyConsentRequest"
+    post:
+      operationId: requestCompanyTalentConsent
+      tags: [talent-pool]
+      summary: Request consent using a member-shared passport slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyConsentRequestInput"
+      responses:
+        "201":
+          description: Created or refreshed consent request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyConsentRequest"
+        "404":
+          description: Passport not found
           content:
             application/json:
               schema:
@@ -543,7 +714,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Matching"
+                $ref: "#/components/schemas/CompanyMatching"
         "400":
           description: Invalid shortlist
           content:
@@ -579,7 +750,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Matching"
+                $ref: "#/components/schemas/CompanyMatching"
         "400":
           description: Invalid shortlist update
           content:
@@ -1083,6 +1254,94 @@ components:
           type: string
           format: date-time
       required: [id, scope, status, grantedAt, revokedAt, updatedAt]
+    CompanyTalentConsent:
+      type: object
+      properties:
+        id:
+          type: string
+        companyId:
+          type: string
+        companyName:
+          type: string
+        companyType:
+          type: string
+        status:
+          type: string
+          enum: [requested, active, denied, revoked, expired]
+        requestedAt:
+          type: string
+          format: date-time
+        grantedAt:
+          type: ["string", "null"]
+          format: date-time
+        revokedAt:
+          type: ["string", "null"]
+          format: date-time
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+        consentVersion:
+          type: integer
+        requestNote:
+          type: ["string", "null"]
+        decisionNote:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, companyId, companyName, companyType, status, requestedAt, grantedAt, revokedAt, expiresAt, consentVersion, requestNote, decisionNote, updatedAt]
+    TalentConsentSettings:
+      type: object
+      properties:
+        defaultDurationDays:
+          type: integer
+          minimum: 1
+          maximum: 365
+        updatedAt:
+          type: string
+          format: date-time
+      required: [defaultDurationDays, updatedAt]
+    TalentConsentSettingsUpdate:
+      type: object
+      properties:
+        defaultDurationDays:
+          type: integer
+          minimum: 1
+          maximum: 365
+        note:
+          type: string
+          minLength: 3
+          maxLength: 300
+      required: [defaultDurationDays, note]
+    MemberCompanyConsentCreate:
+      type: object
+      properties:
+        companyId:
+          type: string
+        note:
+          type: string
+          maxLength: 300
+      required: [companyId]
+    MemberCompanyConsentUpdate:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [grant, deny, revoke]
+        note:
+          type: string
+          maxLength: 300
+      required: [action]
+    CompanyDirectoryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        companyName:
+          type: string
+        companyType:
+          type: string
+      required: [id, companyName, companyType]
     MemberPassport:
       type: object
       properties:
@@ -1115,15 +1374,19 @@ components:
           enum: [available, open_to_offer, unavailable]
         publicUrl:
           type: string
-        consent:
-          $ref: "#/components/schemas/PassportConsent"
+        consents:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyTalentConsent"
+        consentSettings:
+          $ref: "#/components/schemas/TalentConsentSettings"
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
-      required: [id, memberUserId, slug, isPublic, headline, bio, preferredRoles, preferredLocations, preferredWorkModes, availabilityStatus, publicUrl, consent, createdAt, updatedAt]
+      required: [id, memberUserId, slug, isPublic, headline, bio, preferredRoles, preferredLocations, preferredWorkModes, availabilityStatus, publicUrl, consents, consentSettings, createdAt, updatedAt]
     ProfessionalPassportUpdate:
       type: object
       properties:
@@ -1256,6 +1519,75 @@ components:
           type: string
           format: date-time
       required: [id, memberUserId, name, headline, expertise, domicile, experienceYears, preferredRoles, preferredLocations, preferredWorkModes, availabilityStatus, isPublic, consentStatus, consentGrantedAt, publicUrl, updatedAt]
+    AdminTalentConsent:
+      type: object
+      properties:
+        id:
+          type: string
+        memberUserId:
+          type: string
+        memberName:
+          type: string
+        companyUserId:
+          type: string
+        companyName:
+          type: string
+        status:
+          type: string
+          enum: [requested, active, denied, revoked, expired]
+        grantedAt:
+          type: ["string", "null"]
+          format: date-time
+        revokedAt:
+          type: ["string", "null"]
+          format: date-time
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+        consentVersion:
+          type: integer
+        grantedBy:
+          type: ["string", "null"]
+        revokedBy:
+          type: ["string", "null"]
+        requestNote:
+          type: ["string", "null"]
+        decisionNote:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, memberUserId, memberName, companyUserId, companyName, status, grantedAt, revokedAt, expiresAt, consentVersion, grantedBy, revokedBy, requestNote, decisionNote, updatedAt]
+    AdminTalentConsentPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminTalentConsent"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+      required: [items, page, pageSize, total, totalPages]
+    AdminTalentConsentOverride:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [revoke, set_expiry]
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+        note:
+          type: string
+          minLength: 3
+          maxLength: 300
+      required: [action, note]
     CompanyTalentCandidate:
       type: object
       properties:
@@ -1288,10 +1620,66 @@ components:
           enum: [available, open_to_offer, unavailable]
         publicUrl:
           type: ["string", "null"]
+        consentExpiresAt:
+          type: string
+          format: date-time
         updatedAt:
           type: string
           format: date-time
-      required: [id, name, headline, expertise, domicile, experienceYears, preferredRoles, preferredLocations, preferredWorkModes, availabilityStatus, publicUrl, updatedAt]
+      required: [id, name, headline, expertise, domicile, experienceYears, preferredRoles, preferredLocations, preferredWorkModes, availabilityStatus, publicUrl, consentExpiresAt, updatedAt]
+    CompanyTalentPoolPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyTalentCandidate"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+      required: [items, page, pageSize, total, totalPages]
+    CompanyConsentRequestInput:
+      type: object
+      properties:
+        passportSlug:
+          type: string
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        note:
+          type: string
+          maxLength: 300
+      required: [passportSlug]
+    CompanyConsentRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        passportSlug:
+          type: string
+        status:
+          type: string
+          enum: [requested, active, denied, revoked, expired]
+        requestedAt:
+          type: string
+          format: date-time
+        grantedAt:
+          type: ["string", "null"]
+          format: date-time
+        expiresAt:
+          type: ["string", "null"]
+          format: date-time
+        consentVersion:
+          type: integer
+        requestNote:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, passportSlug, status, requestedAt, grantedAt, expiresAt, consentVersion, requestNote, updatedAt]
     MemberDiagnosticInput:
       type: object
       properties:
@@ -1548,7 +1936,7 @@ components:
     TalentPoolCandidate:
       type: object
       properties:
-        memberUserId:
+        candidateId:
           type: string
         name:
           type: string
@@ -1573,15 +1961,15 @@ components:
         status:
           type: string
           enum: [new, review, shortlisted, interview, placed, declined]
-      required: [memberUserId, name, domicile, expertise, experienceYears, readinessScore, readinessLabel, score, matchReasons, matchingId, status]
+      required: [candidateId, name, domicile, expertise, experienceYears, readinessScore, readinessLabel, score, matchReasons, matchingId, status]
     CompanyShortlistInput:
       type: object
       properties:
         requirementId:
           type: string
-        memberUserId:
+        candidateId:
           type: string
-      required: [requirementId, memberUserId]
+      required: [requirementId, candidateId]
     CompanyShortlistUpdate:
       type: object
       properties:
@@ -1821,6 +2209,26 @@ components:
           type: string
           format: date-time
       required: [id, requirement, companyName, candidateUserId, candidateName, score, status, updatedAt]
+    CompanyMatching:
+      type: object
+      properties:
+        id:
+          type: string
+        requirement:
+          type: string
+        companyName:
+          type: string
+        candidateName:
+          type: string
+        score:
+          type: number
+        status:
+          type: string
+          enum: [new, review, shortlisted, interview, placed, declined]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, requirement, companyName, candidateName, score, status, updatedAt]
     MatchingUpdate:
       type: object
       properties:

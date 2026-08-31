@@ -283,6 +283,87 @@ export interface PassportConsent {
   updatedAt: string;
 }
 
+export type CompanyTalentConsentStatus = typeof CompanyTalentConsentStatus[keyof typeof CompanyTalentConsentStatus];
+
+
+export const CompanyTalentConsentStatus = {
+  requested: 'requested',
+  active: 'active',
+  denied: 'denied',
+  revoked: 'revoked',
+  expired: 'expired',
+} as const;
+
+export interface CompanyTalentConsent {
+  id: string;
+  companyId: string;
+  companyName: string;
+  companyType: string;
+  status: CompanyTalentConsentStatus;
+  requestedAt: string;
+  /** @nullable */
+  grantedAt: string | null;
+  /** @nullable */
+  revokedAt: string | null;
+  /** @nullable */
+  expiresAt: string | null;
+  consentVersion: number;
+  /** @nullable */
+  requestNote: string | null;
+  /** @nullable */
+  decisionNote: string | null;
+  updatedAt: string;
+}
+
+export interface TalentConsentSettings {
+  /**
+     * @minimum 1
+     * @maximum 365
+     */
+  defaultDurationDays: number;
+  updatedAt: string;
+}
+
+export interface TalentConsentSettingsUpdate {
+  /**
+     * @minimum 1
+     * @maximum 365
+     */
+  defaultDurationDays: number;
+  /**
+     * @minLength 3
+     * @maxLength 300
+     */
+  note: string;
+}
+
+export interface MemberCompanyConsentCreate {
+  companyId: string;
+  /** @maxLength 300 */
+  note?: string;
+}
+
+export type MemberCompanyConsentUpdateAction = typeof MemberCompanyConsentUpdateAction[keyof typeof MemberCompanyConsentUpdateAction];
+
+
+export const MemberCompanyConsentUpdateAction = {
+  grant: 'grant',
+  deny: 'deny',
+  revoke: 'revoke',
+} as const;
+
+export interface MemberCompanyConsentUpdate {
+  action: MemberCompanyConsentUpdateAction;
+  /** @maxLength 300 */
+  note?: string;
+}
+
+export interface CompanyDirectoryEntry {
+  id: string;
+  companyName: string;
+  companyType: string;
+}
+
 export type MemberPassportAvailabilityStatus = typeof MemberPassportAvailabilityStatus[keyof typeof MemberPassportAvailabilityStatus];
 
 
@@ -304,7 +385,8 @@ export interface MemberPassport {
   preferredWorkModes: string[];
   availabilityStatus: MemberPassportAvailabilityStatus;
   publicUrl: string;
-  consent: PassportConsent;
+  consents: CompanyTalentConsent[];
+  consentSettings: TalentConsentSettings;
   createdAt: string;
   updatedAt: string;
 }
@@ -424,6 +506,69 @@ export interface AdminTalentCandidate {
   updatedAt: string;
 }
 
+export type AdminTalentConsentStatus = typeof AdminTalentConsentStatus[keyof typeof AdminTalentConsentStatus];
+
+
+export const AdminTalentConsentStatus = {
+  requested: 'requested',
+  active: 'active',
+  denied: 'denied',
+  revoked: 'revoked',
+  expired: 'expired',
+} as const;
+
+export interface AdminTalentConsent {
+  id: string;
+  memberUserId: string;
+  memberName: string;
+  companyUserId: string;
+  companyName: string;
+  status: AdminTalentConsentStatus;
+  /** @nullable */
+  grantedAt: string | null;
+  /** @nullable */
+  revokedAt: string | null;
+  /** @nullable */
+  expiresAt: string | null;
+  consentVersion: number;
+  /** @nullable */
+  grantedBy: string | null;
+  /** @nullable */
+  revokedBy: string | null;
+  /** @nullable */
+  requestNote: string | null;
+  /** @nullable */
+  decisionNote: string | null;
+  updatedAt: string;
+}
+
+export interface AdminTalentConsentPage {
+  items: AdminTalentConsent[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export type AdminTalentConsentOverrideAction = typeof AdminTalentConsentOverrideAction[keyof typeof AdminTalentConsentOverrideAction];
+
+
+export const AdminTalentConsentOverrideAction = {
+  revoke: 'revoke',
+  set_expiry: 'set_expiry',
+} as const;
+
+export interface AdminTalentConsentOverride {
+  action: AdminTalentConsentOverrideAction;
+  /** @nullable */
+  expiresAt?: string | null;
+  /**
+     * @minLength 3
+     * @maxLength 300
+     */
+  note: string;
+}
+
 export type CompanyTalentCandidateAvailabilityStatus = typeof CompanyTalentCandidateAvailabilityStatus[keyof typeof CompanyTalentCandidateAvailabilityStatus];
 
 
@@ -446,6 +591,48 @@ export interface CompanyTalentCandidate {
   availabilityStatus: CompanyTalentCandidateAvailabilityStatus;
   /** @nullable */
   publicUrl: string | null;
+  consentExpiresAt: string;
+  updatedAt: string;
+}
+
+export interface CompanyTalentPoolPage {
+  items: CompanyTalentCandidate[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface CompanyConsentRequestInput {
+  /** @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$ */
+  passportSlug: string;
+  /** @maxLength 300 */
+  note?: string;
+}
+
+export type CompanyConsentRequestStatus = typeof CompanyConsentRequestStatus[keyof typeof CompanyConsentRequestStatus];
+
+
+export const CompanyConsentRequestStatus = {
+  requested: 'requested',
+  active: 'active',
+  denied: 'denied',
+  revoked: 'revoked',
+  expired: 'expired',
+} as const;
+
+export interface CompanyConsentRequest {
+  id: string;
+  passportSlug: string;
+  status: CompanyConsentRequestStatus;
+  requestedAt: string;
+  /** @nullable */
+  grantedAt: string | null;
+  /** @nullable */
+  expiresAt: string | null;
+  consentVersion: number;
+  /** @nullable */
+  requestNote: string | null;
   updatedAt: string;
 }
 
@@ -654,7 +841,7 @@ export const TalentPoolCandidateStatus = {
 } as const;
 
 export interface TalentPoolCandidate {
-  memberUserId: string;
+  candidateId: string;
   name: string;
   domicile: string;
   expertise: string;
@@ -670,7 +857,7 @@ export interface TalentPoolCandidate {
 
 export interface CompanyShortlistInput {
   requirementId: string;
-  memberUserId: string;
+  candidateId: string;
 }
 
 export type CompanyShortlistUpdateStatus = typeof CompanyShortlistUpdateStatus[keyof typeof CompanyShortlistUpdateStatus];
@@ -871,6 +1058,28 @@ export interface EnrollmentUpdate {
   note?: string;
 }
 
+export type CompanyMatchingStatus = typeof CompanyMatchingStatus[keyof typeof CompanyMatchingStatus];
+
+
+export const CompanyMatchingStatus = {
+  new: 'new',
+  review: 'review',
+  shortlisted: 'shortlisted',
+  interview: 'interview',
+  placed: 'placed',
+  declined: 'declined',
+} as const;
+
+export interface CompanyMatching {
+  id: string;
+  requirement: string;
+  companyName: string;
+  candidateName: string;
+  score: number;
+  status: CompanyMatchingStatus;
+  updatedAt: string;
+}
+
 export type MatchingUpdateStatus = typeof MatchingUpdateStatus[keyof typeof MatchingUpdateStatus];
 
 
@@ -1052,7 +1261,17 @@ export type GetAdminTalentPoolParams = {
 search?: string;
 availability?: GetAdminTalentPoolAvailability;
 consent?: GetAdminTalentPoolConsent;
+companyId?: string;
 location?: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
 };
 
 export type GetAdminTalentPoolAvailability = typeof GetAdminTalentPoolAvailability[keyof typeof GetAdminTalentPoolAvailability];
@@ -1069,14 +1288,26 @@ export type GetAdminTalentPoolConsent = typeof GetAdminTalentPoolConsent[keyof t
 
 export const GetAdminTalentPoolConsent = {
   all: 'all',
+  requested: 'requested',
   active: 'active',
+  denied: 'denied',
   revoked: 'revoked',
+  expired: 'expired',
 } as const;
 
 export type GetCompanyTalentPoolParams = {
 search?: string;
 availability?: GetCompanyTalentPoolAvailability;
 location?: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
 };
 
 export type GetCompanyTalentPoolAvailability = typeof GetCompanyTalentPoolAvailability[keyof typeof GetCompanyTalentPoolAvailability];

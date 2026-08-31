@@ -8,7 +8,7 @@
 import type { TalentPoolCandidateStatus } from './talentPoolCandidateStatus';
 
 export interface TalentPoolCandidate {
-  memberUserId: string;
+  candidateId: string;
   name: string;
   domicile: string;
   expertise: string;

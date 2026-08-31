@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateCompanyRequirementBody,
@@ -19,14 +19,17 @@ import {
 import {
   companyProfilesTable,
   companyRequirementsTable,
+  companyTalentConsentsTable,
   db,
   matchingsTable,
   memberProfilesTable,
   notificationsTable,
+  professionalPassportsTable,
   readinessDiagnosticsTable,
   usersTable,
 } from "@workspace/db";
 import { getAuthenticatedUser, requireRole, requireUser } from "../lib/auth";
+import { expireCompanyTalentConsents } from "../lib/talent-consent";
 
 const router: IRouter = Router();
 const companyOnly = [requireUser, requireRole("company")];
@@ -69,7 +72,6 @@ function matchingResponse(matching: typeof matchingsTable.$inferSelect) {
     id: matching.id,
     requirement: matching.requirement,
     companyName: matching.companyName,
-    candidateUserId: matching.candidateUserId,
     candidateName: matching.candidateName,
     score: matching.score,
     status: matching.status,
@@ -184,6 +186,7 @@ router.get("/company/talent-pool/matches", ...companyOnly, async (req, res): Pro
     return;
   }
   const user = getAuthenticatedUser(req);
+  await expireCompanyTalentConsents();
   const [requirement] = await db
     .select()
     .from(companyRequirementsTable)
@@ -197,11 +200,22 @@ router.get("/company/talent-pool/matches", ...companyOnly, async (req, res): Pro
     .select({
       user: usersTable,
       profile: memberProfilesTable,
+      passport: professionalPassportsTable,
       diagnostic: readinessDiagnosticsTable,
       matching: matchingsTable,
     })
     .from(memberProfilesTable)
     .innerJoin(usersTable, and(eq(memberProfilesTable.userId, usersTable.id), eq(usersTable.role, "member")))
+    .innerJoin(professionalPassportsTable, eq(professionalPassportsTable.memberUserId, memberProfilesTable.userId))
+    .innerJoin(
+      companyTalentConsentsTable,
+      and(
+        eq(companyTalentConsentsTable.memberUserId, memberProfilesTable.userId),
+        eq(companyTalentConsentsTable.companyUserId, user.id),
+        eq(companyTalentConsentsTable.status, "active"),
+        gt(companyTalentConsentsTable.expiresAt, new Date()),
+      ),
+    )
     .leftJoin(readinessDiagnosticsTable, eq(readinessDiagnosticsTable.memberUserId, memberProfilesTable.userId))
     .leftJoin(
       matchingsTable,
@@ -211,13 +225,13 @@ router.get("/company/talent-pool/matches", ...companyOnly, async (req, res): Pro
         eq(matchingsTable.companyUserId, user.id),
       ),
     )
-    .where(eq(memberProfilesTable.dataConsent, true));
+    .where(eq(usersTable.role, "member"));
   const candidates = rows
-    .map(({ user: member, profile, diagnostic, matching }) => {
+    .map(({ user: member, profile, passport, diagnostic, matching }) => {
       const readinessScore = diagnostic?.score ?? 0;
       const scored = scoreCandidate(requirement, profile, readinessScore);
       return {
-        memberUserId: member.id,
+        candidateId: passport.id,
         name: member.name,
         domicile: profile.domicile,
         expertise: profile.expertise,
@@ -241,6 +255,7 @@ router.post("/company/shortlist", ...companyOnly, async (req, res): Promise<void
     return;
   }
   const user = getAuthenticatedUser(req);
+  await expireCompanyTalentConsents();
   const [requirement] = await db
     .select()
     .from(companyRequirementsTable)
@@ -248,10 +263,20 @@ router.post("/company/shortlist", ...companyOnly, async (req, res): Promise<void
     .limit(1);
   const [candidate] = await db
     .select({ user: usersTable, profile: memberProfilesTable, diagnostic: readinessDiagnosticsTable })
-    .from(memberProfilesTable)
+    .from(professionalPassportsTable)
+    .innerJoin(memberProfilesTable, eq(memberProfilesTable.userId, professionalPassportsTable.memberUserId))
     .innerJoin(usersTable, and(eq(memberProfilesTable.userId, usersTable.id), eq(usersTable.role, "member")))
+    .innerJoin(
+      companyTalentConsentsTable,
+      and(
+        eq(companyTalentConsentsTable.memberUserId, memberProfilesTable.userId),
+        eq(companyTalentConsentsTable.companyUserId, user.id),
+        eq(companyTalentConsentsTable.status, "active"),
+        gt(companyTalentConsentsTable.expiresAt, new Date()),
+      ),
+    )
     .leftJoin(readinessDiagnosticsTable, eq(readinessDiagnosticsTable.memberUserId, memberProfilesTable.userId))
-    .where(and(eq(memberProfilesTable.userId, body.data.memberUserId), eq(memberProfilesTable.dataConsent, true)))
+    .where(eq(professionalPassportsTable.id, body.data.candidateId))
     .limit(1);
   if (!requirement || !candidate) {
     res.status(404).json({ error: "Kebutuhan atau kandidat tidak ditemukan." });
@@ -326,6 +351,25 @@ router.patch("/company/shortlist/:id", ...companyOnly, async (req, res): Promise
   if (!existing) {
     res.status(404).json({ error: "Item shortlist tidak ditemukan." });
     return;
+  }
+  if (existing.candidateUserId) {
+    await expireCompanyTalentConsents();
+    const [activeConsent] = await db
+      .select({ id: companyTalentConsentsTable.id })
+      .from(companyTalentConsentsTable)
+      .where(
+        and(
+          eq(companyTalentConsentsTable.memberUserId, existing.candidateUserId),
+          eq(companyTalentConsentsTable.companyUserId, user.id),
+          eq(companyTalentConsentsTable.status, "active"),
+          gt(companyTalentConsentsTable.expiresAt, new Date()),
+        ),
+      )
+      .limit(1);
+    if (!activeConsent) {
+      res.status(404).json({ error: "Akses kandidat tidak lagi aktif." });
+      return;
+    }
   }
   const [updated] = await db
     .update(matchingsTable)

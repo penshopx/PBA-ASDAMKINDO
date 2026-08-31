@@ -5,8 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CompanyTalentConsent } from './companyTalentConsent';
 import type { MemberPassportAvailabilityStatus } from './memberPassportAvailabilityStatus';
-import type { PassportConsent } from './passportConsent';
+import type { TalentConsentSettings } from './talentConsentSettings';
 
 export interface MemberPassport {
   id: string;
@@ -20,7 +21,8 @@ export interface MemberPassport {
   preferredWorkModes: string[];
   availabilityStatus: MemberPassportAvailabilityStatus;
   publicUrl: string;
-  consent: PassportConsent;
+  consents: CompanyTalentConsent[];
+  consentSettings: TalentConsentSettings;
   createdAt: Date;
   updatedAt: Date;
 }

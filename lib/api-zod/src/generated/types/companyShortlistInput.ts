@@ -8,5 +8,5 @@
 
 export interface CompanyShortlistInput {
   requirementId: string;
-  memberUserId: string;
+  candidateId: string;
 }

@@ -1,4 +1,4 @@
-import { Bell, CheckCheck, ChevronRight, FileCheck2, GraduationCap, Megaphone, UserRound, UsersRound } from 'lucide-react';
+import { Bell, CheckCheck, ChevronRight, FileCheck2, GraduationCap, Megaphone, ShieldCheck, UserRound, UsersRound } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getListNotificationsQueryKey, useListNotifications, useMarkNotificationRead } from '@workspace/api-client-react';
@@ -6,7 +6,7 @@ import type { Notification } from '@workspace/api-client-react';
 import { QueryState } from '@/components/ui-kit';
 import { useToast } from '@/hooks/use-toast';
 
-const iconMap = { profile: UserRound, document: FileCheck2, program: GraduationCap, learning: GraduationCap, recruitment: UsersRound, system: Megaphone };
+const iconMap: Record<string, React.ElementType> = { profile: UserRound, document: FileCheck2, program: GraduationCap, learning: GraduationCap, recruitment: UsersRound, system: Megaphone, consent: ShieldCheck };
 export function Notifications() {
   const query = useListNotifications({ query: { queryKey: ['/api/notifications'] } });
   const queryClient = useQueryClient();
