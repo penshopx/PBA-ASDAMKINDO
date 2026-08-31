@@ -8,3 +8,4 @@ export * from "./enrollments";
 export * from "./matchings";
 export * from "./transactions";
 export * from "./audit-logs";
+export * from "./member-journey";

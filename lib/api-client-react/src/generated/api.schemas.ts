@@ -133,26 +133,95 @@ export interface MemberDashboard {
   notificationsCount: number;
 }
 
-export interface CompanyDashboard {
-  greeting: string;
-  metrics: Metric[];
-  nextAction: ActionItem;
-  activeRequirements: number;
-  matchingCandidates: number;
-  shortlistCount: number;
-  notificationsCount: number;
+export type ReadinessDiagnosticAnswers = {[key: string]: number};
+
+export interface ReadinessDiagnostic {
+  id: string;
+  memberUserId: string;
+  score: number;
+  answers: ReadinessDiagnosticAnswers;
+  focusAreas: string[];
+  completedAt: string;
+  updatedAt: string;
 }
 
-export interface AdminDashboard {
-  greeting: string;
-  metrics: Metric[];
-  nextAction: ActionItem;
-  pendingVerifications: number;
-  activeMembers: number;
-  activeCompanies: number;
-  activeRequirements: number;
-  placements: number;
-  revenue: string;
+export type MemberEvidenceEvidenceType = typeof MemberEvidenceEvidenceType[keyof typeof MemberEvidenceEvidenceType];
+
+
+export const MemberEvidenceEvidenceType = {
+  project: 'project',
+  certification: 'certification',
+  work: 'work',
+} as const;
+
+export type MemberEvidenceStatus = typeof MemberEvidenceStatus[keyof typeof MemberEvidenceStatus];
+
+
+export const MemberEvidenceStatus = {
+  draft: 'draft',
+  submitted: 'submitted',
+  verified: 'verified',
+} as const;
+
+export interface MemberEvidence {
+  id: string;
+  memberUserId: string;
+  evidenceType: MemberEvidenceEvidenceType;
+  title: string;
+  description: string;
+  /** @nullable */
+  referenceUrl: string | null;
+  status: MemberEvidenceStatus;
+  /** @nullable */
+  submittedAt: string | null;
+  /** @nullable */
+  verifiedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type LearningProgressStatus = typeof LearningProgressStatus[keyof typeof LearningProgressStatus];
+
+
+export const LearningProgressStatus = {
+  pending: 'pending',
+  enrolled: 'enrolled',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface LearningProgress {
+  id: string;
+  programId: string;
+  programName: string;
+  status: LearningProgressStatus;
+  progress: number;
+  currentMilestone: string;
+  milestones: string[];
+  updatedAt: string;
+}
+
+export type MatchingStatus = typeof MatchingStatus[keyof typeof MatchingStatus];
+
+
+export const MatchingStatus = {
+  new: 'new',
+  shortlisted: 'shortlisted',
+  interview: 'interview',
+  placed: 'placed',
+  declined: 'declined',
+} as const;
+
+export interface Matching {
+  id: string;
+  requirement: string;
+  companyName: string;
+  /** @nullable */
+  candidateUserId: string | null;
+  candidateName: string;
+  score: number;
+  status: MatchingStatus;
+  updatedAt: string;
 }
 
 export type ProgramStatus = typeof ProgramStatus[keyof typeof ProgramStatus];
@@ -177,6 +246,99 @@ export interface Program {
   capacity: number;
   enrolledCount: number;
   completedCount: number;
+}
+
+export interface MemberJourney {
+  diagnostic: ReadinessDiagnostic | null;
+  evidences: MemberEvidence[];
+  learningProgress: LearningProgress[];
+  opportunities: Matching[];
+  recommendedPrograms: Program[];
+}
+
+export type MemberDiagnosticInputAnswers = {[key: string]: number};
+
+export type MemberDiagnosticInputAreaLabels = {[key: string]: string};
+
+export interface MemberDiagnosticInput {
+  answers: MemberDiagnosticInputAnswers;
+  areaLabels: MemberDiagnosticInputAreaLabels;
+}
+
+export type MemberEvidenceInputEvidenceType = typeof MemberEvidenceInputEvidenceType[keyof typeof MemberEvidenceInputEvidenceType];
+
+
+export const MemberEvidenceInputEvidenceType = {
+  project: 'project',
+  certification: 'certification',
+  work: 'work',
+} as const;
+
+export type MemberEvidenceInputStatus = typeof MemberEvidenceInputStatus[keyof typeof MemberEvidenceInputStatus];
+
+
+export const MemberEvidenceInputStatus = {
+  draft: 'draft',
+  submitted: 'submitted',
+} as const;
+
+export interface MemberEvidenceInput {
+  evidenceType: MemberEvidenceInputEvidenceType;
+  /** @minLength 2 */
+  title: string;
+  description: string;
+  /** @nullable */
+  referenceUrl?: string | null;
+  status: MemberEvidenceInputStatus;
+}
+
+export type MemberEvidenceUpdateEvidenceType = typeof MemberEvidenceUpdateEvidenceType[keyof typeof MemberEvidenceUpdateEvidenceType];
+
+
+export const MemberEvidenceUpdateEvidenceType = {
+  project: 'project',
+  certification: 'certification',
+  work: 'work',
+} as const;
+
+export type MemberEvidenceUpdateStatus = typeof MemberEvidenceUpdateStatus[keyof typeof MemberEvidenceUpdateStatus];
+
+
+export const MemberEvidenceUpdateStatus = {
+  draft: 'draft',
+  submitted: 'submitted',
+} as const;
+
+export interface MemberEvidenceUpdate {
+  evidenceType?: MemberEvidenceUpdateEvidenceType;
+  /** @minLength 2 */
+  title?: string;
+  description?: string;
+  /** @nullable */
+  referenceUrl?: string | null;
+  status?: MemberEvidenceUpdateStatus;
+}
+
+export interface CompanyDashboard {
+  greeting: string;
+  metrics: Metric[];
+  nextAction: ActionItem;
+  activeRequirements: number;
+  matchingCandidates: number;
+  shortlistCount: number;
+  notificationsCount: number;
+}
+
+export interface AdminDashboard {
+  greeting: string;
+  metrics: Metric[];
+  nextAction: ActionItem;
+  pendingVerifications: number;
+  activeMembers: number;
+  activeCompanies: number;
+  activeRequirements: number;
+  placements: number;
+  revenue: string;
 }
 
 export type ProgramInputStatus = typeof ProgramInputStatus[keyof typeof ProgramInputStatus];
@@ -321,29 +483,6 @@ export interface EnrollmentUpdate {
   status: EnrollmentUpdateStatus;
   /** @minLength 3 */
   note?: string;
-}
-
-export type MatchingStatus = typeof MatchingStatus[keyof typeof MatchingStatus];
-
-
-export const MatchingStatus = {
-  new: 'new',
-  shortlisted: 'shortlisted',
-  interview: 'interview',
-  placed: 'placed',
-  declined: 'declined',
-} as const;
-
-export interface Matching {
-  id: string;
-  requirement: string;
-  companyName: string;
-  /** @nullable */
-  candidateUserId: string | null;
-  candidateName: string;
-  score: number;
-  status: MatchingStatus;
-  updatedAt: string;
 }
 
 export type MatchingUpdateStatus = typeof MatchingUpdateStatus[keyof typeof MatchingUpdateStatus];

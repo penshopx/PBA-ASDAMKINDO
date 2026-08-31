@@ -1,4 +1,4 @@
-import { Bell, BookOpen, ChevronDown, ClipboardCheck, Compass, House, LogOut, Menu, Search, X } from 'lucide-react';
+import { Bell, BookOpen, ChevronDown, ClipboardCheck, Compass, House, LogOut, Menu, Search, Sparkles, X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useClerk } from '@clerk/react';
@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui-kit';
 const memberNav = [
   { href: '/member/dashboard', label: 'Ringkasan', icon: House },
   { href: '/programs', label: 'Program belajar', icon: BookOpen },
+  { href: '/member/journey', label: 'Perjalanan kompetensi', icon: Sparkles },
   { href: '/notifications', label: 'Notifikasi', icon: Bell },
 ];
 const companyNav = [

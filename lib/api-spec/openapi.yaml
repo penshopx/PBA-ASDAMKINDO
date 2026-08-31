@@ -119,6 +119,108 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /member/journey:
+    get:
+      operationId: getMemberJourney
+      tags: [dashboards]
+      summary: Get the complete member competency journey
+      responses:
+        "200":
+          description: Diagnostic, evidence, learning progress, opportunities, and recommendations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberJourney"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /member/diagnostics:
+    post:
+      operationId: saveMemberDiagnostic
+      tags: [dashboards]
+      summary: Save a member readiness diagnostic
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberDiagnosticInput"
+      responses:
+        "200":
+          description: Saved readiness diagnostic
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessDiagnostic"
+        "400":
+          description: Invalid diagnostic
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /member/evidence:
+    post:
+      operationId: saveMemberEvidence
+      tags: [dashboards]
+      summary: Save a project, certification, or work evidence item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberEvidenceInput"
+      responses:
+        "201":
+          description: Saved evidence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberEvidence"
+        "400":
+          description: Invalid evidence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /member/evidence/{id}:
+    patch:
+      operationId: updateMemberEvidence
+      tags: [dashboards]
+      summary: Update or submit a member evidence item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberEvidenceUpdate"
+      responses:
+        "200":
+          description: Updated evidence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberEvidence"
+        "400":
+          description: Invalid evidence update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Evidence not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /dashboard/company:
     get:
       operationId: getCompanyDashboard
@@ -517,6 +619,157 @@ components:
         notificationsCount:
           type: number
       required: [greeting, profileCompletion, readinessScore, readinessLabel, metrics, nextAction, activeProgram, progress, notificationsCount]
+    MemberJourney:
+      type: object
+      properties:
+        diagnostic:
+          oneOf:
+            - $ref: "#/components/schemas/ReadinessDiagnostic"
+            - type: "null"
+        evidences:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberEvidence"
+        learningProgress:
+          type: array
+          items:
+            $ref: "#/components/schemas/LearningProgress"
+        opportunities:
+          type: array
+          items:
+            $ref: "#/components/schemas/Matching"
+        recommendedPrograms:
+          type: array
+          items:
+            $ref: "#/components/schemas/Program"
+      required: [diagnostic, evidences, learningProgress, opportunities, recommendedPrograms]
+    MemberDiagnosticInput:
+      type: object
+      properties:
+        answers:
+          type: object
+          additionalProperties:
+            type: number
+            minimum: 1
+            maximum: 5
+        areaLabels:
+          type: object
+          additionalProperties:
+            type: string
+      required: [answers, areaLabels]
+    ReadinessDiagnostic:
+      type: object
+      properties:
+        id:
+          type: string
+        memberUserId:
+          type: string
+        score:
+          type: number
+        answers:
+          type: object
+          additionalProperties:
+            type: number
+        focusAreas:
+          type: array
+          items:
+            type: string
+        completedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, memberUserId, score, answers, focusAreas, completedAt, updatedAt]
+    MemberEvidence:
+      type: object
+      properties:
+        id:
+          type: string
+        memberUserId:
+          type: string
+        evidenceType:
+          type: string
+          enum: [project, certification, work]
+        title:
+          type: string
+        description:
+          type: string
+        referenceUrl:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [draft, submitted, verified]
+        submittedAt:
+          type: ["string", "null"]
+          format: date-time
+        verifiedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, memberUserId, evidenceType, title, description, referenceUrl, status, submittedAt, verifiedAt, createdAt, updatedAt]
+    MemberEvidenceInput:
+      type: object
+      properties:
+        evidenceType:
+          type: string
+          enum: [project, certification, work]
+        title:
+          type: string
+          minLength: 2
+        description:
+          type: string
+        referenceUrl:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [draft, submitted]
+      required: [evidenceType, title, description, status]
+    MemberEvidenceUpdate:
+      type: object
+      properties:
+        evidenceType:
+          type: string
+          enum: [project, certification, work]
+        title:
+          type: string
+          minLength: 2
+        description:
+          type: string
+        referenceUrl:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [draft, submitted]
+    LearningProgress:
+      type: object
+      properties:
+        id:
+          type: string
+        programId:
+          type: string
+        programName:
+          type: string
+        status:
+          type: string
+          enum: [pending, enrolled, completed, cancelled]
+        progress:
+          type: number
+        currentMilestone:
+          type: string
+        milestones:
+          type: array
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, programId, programName, status, progress, currentMilestone, milestones, updatedAt]
     CompanyDashboard:
       type: object
       properties:

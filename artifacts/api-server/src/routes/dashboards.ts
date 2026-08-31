@@ -1,4 +1,4 @@
-import { count, eq, or, sum } from "drizzle-orm";
+import { count, desc, eq, or, sum } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   GetAdminDashboardResponse,
@@ -8,9 +8,13 @@ import {
 import {
   companyProfilesTable,
   db,
+  enrollmentsTable,
   matchingsTable,
+  memberEvidenceTable,
   memberProfilesTable,
+  programProgressTable,
   programsTable,
+  readinessDiagnosticsTable,
   transactionsTable,
   usersTable,
   verificationsTable,
@@ -22,34 +26,46 @@ const numberFromCount = (value: string | number): number => Number(value);
 
 router.get("/dashboard/member", requireUser, async (req, res): Promise<void> => {
   const user = getAuthenticatedUser(req);
-  const [profile] = await db
-    .select()
-    .from(memberProfilesTable)
-    .where(eq(memberProfilesTable.userId, user.id))
-    .limit(1);
+  const [[profile], [diagnostic], [evidenceSummary], enrollments, progressRows, opportunities] = await Promise.all([
+    db.select().from(memberProfilesTable).where(eq(memberProfilesTable.userId, user.id)).limit(1),
+    db.select().from(readinessDiagnosticsTable).where(eq(readinessDiagnosticsTable.memberUserId, user.id)).limit(1),
+    db.select({ value: count(memberEvidenceTable.id) }).from(memberEvidenceTable).where(eq(memberEvidenceTable.memberUserId, user.id)),
+    db.select().from(enrollmentsTable).where(eq(enrollmentsTable.memberUserId, user.id)).orderBy(desc(enrollmentsTable.updatedAt)),
+    db.select().from(programProgressTable).where(eq(programProgressTable.memberUserId, user.id)),
+    db.select().from(matchingsTable).where(eq(matchingsTable.candidateUserId, user.id)),
+  ]);
   const profileCompletion = profile
     ? [profile.phone, profile.domicile, profile.education, profile.expertise].filter(Boolean).length * 20
     : 20;
+  const activeEnrollment = enrollments.find((enrollment) => enrollment.status === "enrolled" || enrollment.status === "pending");
+  const [activeProgram] = activeEnrollment
+    ? await db.select().from(programsTable).where(eq(programsTable.id, activeEnrollment.programId)).limit(1)
+    : [];
+  const storedProgress = activeEnrollment ? progressRows.find((row) => row.programId === activeEnrollment.programId) : undefined;
+  const progress = storedProgress?.progress ?? (activeEnrollment?.status === "enrolled" ? 24 : 0);
+  const readinessScore = diagnostic?.score ?? 0;
+  const readinessLabel = readinessScore >= 80 ? "Sangat Siap" : readinessScore >= 60 ? "Cukup Siap" : readinessScore > 0 ? "Perlu Diperkuat" : "Belum Dinilai";
+  const evidenceCount = Number(evidenceSummary?.value ?? 0);
   res.json(
     GetMemberDashboardResponse.parse({
       greeting: `Selamat datang, ${user.name.split(" ")[0]}`,
       profileCompletion: Math.min(profileCompletion, 100),
-      readinessScore: 72,
-      readinessLabel: "Cukup Siap",
+      readinessScore,
+      readinessLabel,
       metrics: [
         { label: "Kelengkapan profil", value: `${Math.min(profileCompletion, 100)}%`, change: "Lengkapi untuk diverifikasi", tone: profileCompletion < 80 ? "warning" : "positive" },
-        { label: "Readiness score", value: "72", change: "Diagnostik terakhir", tone: "positive" },
-        { label: "Peluang relevan", value: "4", change: "Berdasarkan profil Anda", tone: "neutral" },
+        { label: "Readiness score", value: diagnostic ? String(readinessScore) : "—", change: diagnostic ? "Diagnostik terakhir" : "Belum dikerjakan", tone: diagnostic ? "positive" : "warning" },
+        { label: "Peluang relevan", value: String(opportunities.length), change: "Berdasarkan profil Anda", tone: opportunities.length ? "positive" : "neutral" },
       ],
       nextAction: {
-        title: profileCompletion < 80 ? "Lengkapi pengalaman proyek" : "Mulai diagnostik kompetensi",
-        description: profileCompletion < 80 ? "Profil yang lebih lengkap membantu Admin melakukan verifikasi." : "Pahami kesiapan Anda sebelum memilih program Bimtek.",
-        href: profileCompletion < 80 ? "/member/profile" : "/member/diagnostics",
+        title: !diagnostic ? "Mulai diagnostik kompetensi" : evidenceCount === 0 ? "Tambahkan bukti pengalaman" : !activeProgram ? "Pilih program yang sesuai" : "Lanjutkan perjalanan kompetensi",
+        description: !diagnostic ? "Pahami kesiapan Anda sebelum memilih program Bimtek." : evidenceCount === 0 ? "Satu bukti kerja membuat profil Anda lebih kuat." : !activeProgram ? "Tutup gap kompetensi dengan program yang paling relevan." : "Pantau progres, bukti, dan peluang Anda dalam satu tempat.",
+        href: !activeProgram && diagnostic && evidenceCount > 0 ? "/programs" : "/member/journey",
         tone: "primary",
       },
-      activeProgram: "Pengawas Lapangan Madya",
-      progress: 68,
-      notificationsCount: 3,
+      activeProgram: activeProgram?.name ?? null,
+      progress,
+      notificationsCount: evidenceCount + opportunities.length,
     }),
   );
 });

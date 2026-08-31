@@ -34,11 +34,17 @@ import type {
   Matching,
   MatchingUpdate,
   MemberDashboard,
+  MemberDiagnosticInput,
+  MemberEvidence,
+  MemberEvidenceInput,
+  MemberEvidenceUpdate,
+  MemberJourney,
   MemberOnboardingInput,
   Notification,
   Program,
   ProgramInput,
   ProgramUpdate,
+  ReadinessDiagnostic,
   Transaction,
   TransactionUpdate,
   Verification,
@@ -446,6 +452,297 @@ export function useGetMemberDashboard<TData = Awaited<ReturnType<typeof getMembe
 
 
 
+
+export const getGetMemberJourneyUrl = () => {
+
+
+
+
+  return `/api/member/journey`
+}
+
+/**
+ * @summary Get the complete member competency journey
+ */
+export const getMemberJourney = async ( options?: Parameters<typeof customFetch>[1]): Promise<MemberJourney> => {
+
+  return customFetch<MemberJourney>(getGetMemberJourneyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMemberJourneyQueryKey = () => {
+    return [
+    `/api/member/journey`
+    ] as const;
+    }
+
+
+export const getGetMemberJourneyQueryOptions = <TData = Awaited<ReturnType<typeof getMemberJourney>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMemberJourney>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMemberJourneyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMemberJourney>>> = ({ signal }) => getMemberJourney({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMemberJourney>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMemberJourneyQueryResult = NonNullable<Awaited<ReturnType<typeof getMemberJourney>>>
+export type GetMemberJourneyQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the complete member competency journey
+ */
+
+export function useGetMemberJourney<TData = Awaited<ReturnType<typeof getMemberJourney>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMemberJourney>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMemberJourneyQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveMemberDiagnosticUrl = () => {
+
+
+
+
+  return `/api/member/diagnostics`
+}
+
+/**
+ * @summary Save a member readiness diagnostic
+ */
+export const saveMemberDiagnostic = async (memberDiagnosticInput: MemberDiagnosticInput, options?: Parameters<typeof customFetch>[1]): Promise<ReadinessDiagnostic> => {
+
+  return customFetch<ReadinessDiagnostic>(getSaveMemberDiagnosticUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(memberDiagnosticInput)
+  }
+);}
+
+
+
+
+
+export const getSaveMemberDiagnosticMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveMemberDiagnostic>>, TError,{data: BodyType<MemberDiagnosticInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveMemberDiagnostic>>, TError,{data: BodyType<MemberDiagnosticInput>}, TContext> => {
+
+const mutationKey = ['saveMemberDiagnostic'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveMemberDiagnostic>>, {data: BodyType<MemberDiagnosticInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveMemberDiagnostic(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveMemberDiagnosticMutationResult = NonNullable<Awaited<ReturnType<typeof saveMemberDiagnostic>>>
+    export type SaveMemberDiagnosticMutationBody = BodyType<MemberDiagnosticInput>
+    export type SaveMemberDiagnosticMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save a member readiness diagnostic
+ */
+export const useSaveMemberDiagnostic = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveMemberDiagnostic>>, TError,{data: BodyType<MemberDiagnosticInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveMemberDiagnostic>>,
+        TError,
+        {data: BodyType<MemberDiagnosticInput>},
+        TContext
+      > => {
+      return useMutation(getSaveMemberDiagnosticMutationOptions(options));
+    }
+
+export const getSaveMemberEvidenceUrl = () => {
+
+
+
+
+  return `/api/member/evidence`
+}
+
+/**
+ * @summary Save a project, certification, or work evidence item
+ */
+export const saveMemberEvidence = async (memberEvidenceInput: MemberEvidenceInput, options?: Parameters<typeof customFetch>[1]): Promise<MemberEvidence> => {
+
+  return customFetch<MemberEvidence>(getSaveMemberEvidenceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(memberEvidenceInput)
+  }
+);}
+
+
+
+
+
+export const getSaveMemberEvidenceMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveMemberEvidence>>, TError,{data: BodyType<MemberEvidenceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveMemberEvidence>>, TError,{data: BodyType<MemberEvidenceInput>}, TContext> => {
+
+const mutationKey = ['saveMemberEvidence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveMemberEvidence>>, {data: BodyType<MemberEvidenceInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveMemberEvidence(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveMemberEvidenceMutationResult = NonNullable<Awaited<ReturnType<typeof saveMemberEvidence>>>
+    export type SaveMemberEvidenceMutationBody = BodyType<MemberEvidenceInput>
+    export type SaveMemberEvidenceMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save a project, certification, or work evidence item
+ */
+export const useSaveMemberEvidence = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveMemberEvidence>>, TError,{data: BodyType<MemberEvidenceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveMemberEvidence>>,
+        TError,
+        {data: BodyType<MemberEvidenceInput>},
+        TContext
+      > => {
+      return useMutation(getSaveMemberEvidenceMutationOptions(options));
+    }
+
+export const getUpdateMemberEvidenceUrl = (id: string,) => {
+
+
+
+
+  return `/api/member/evidence/${id}`
+}
+
+/**
+ * @summary Update or submit a member evidence item
+ */
+export const updateMemberEvidence = async (id: string,
+    memberEvidenceUpdate: MemberEvidenceUpdate, options?: Parameters<typeof customFetch>[1]): Promise<MemberEvidence> => {
+
+  return customFetch<MemberEvidence>(getUpdateMemberEvidenceUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(memberEvidenceUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateMemberEvidenceMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberEvidence>>, TError,{id: string;data: BodyType<MemberEvidenceUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMemberEvidence>>, TError,{id: string;data: BodyType<MemberEvidenceUpdate>}, TContext> => {
+
+const mutationKey = ['updateMemberEvidence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMemberEvidence>>, {id: string;data: BodyType<MemberEvidenceUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMemberEvidence(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMemberEvidenceMutationResult = NonNullable<Awaited<ReturnType<typeof updateMemberEvidence>>>
+    export type UpdateMemberEvidenceMutationBody = BodyType<MemberEvidenceUpdate>
+    export type UpdateMemberEvidenceMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update or submit a member evidence item
+ */
+export const useUpdateMemberEvidence = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberEvidence>>, TError,{id: string;data: BodyType<MemberEvidenceUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMemberEvidence>>,
+        TError,
+        {id: string;data: BodyType<MemberEvidenceUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateMemberEvidenceMutationOptions(options));
+    }
 
 export const getGetCompanyDashboardUrl = () => {
 

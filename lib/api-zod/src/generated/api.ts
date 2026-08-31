@@ -15,6 +15,8 @@ import * as zod from 'zod';
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
+
+
 /**
  * Returns the signed-in user's role and onboarding profile.
  * @summary Get current user
@@ -28,6 +30,8 @@ export const GetCurrentUserResponse = zod.object({
   "avatarUrl": zod.string().nullable(),
   "organization": zod.string().nullable()
 })
+
+
 /**
  * @summary Save member onboarding
  */
@@ -52,7 +56,7 @@ export const SaveMemberOnboardingBody = zod.object({
   "primaryGoal": zod.enum(['skk', 'competency', 'job', 'career']),
   "dataConsent": zod.boolean()
 })
-// End of generated schema.
+
 export const SaveMemberOnboardingResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -118,6 +122,157 @@ export const GetMemberDashboardResponse = zod.object({
   "activeProgram": zod.string().nullable(),
   "progress": zod.number(),
   "notificationsCount": zod.number()
+})
+
+
+/**
+ * @summary Get the complete member competency journey
+ */
+export const GetMemberJourneyResponse = zod.object({
+  "diagnostic": zod.union([zod.object({
+  "id": zod.string(),
+  "memberUserId": zod.string(),
+  "score": zod.number(),
+  "answers": zod.record(zod.string(), zod.number()),
+  "focusAreas": zod.array(zod.string()),
+  "completedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
+  "evidences": zod.array(zod.object({
+  "id": zod.string(),
+  "memberUserId": zod.string(),
+  "evidenceType": zod.enum(['project', 'certification', 'work']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "referenceUrl": zod.string().nullable(),
+  "status": zod.enum(['draft', 'submitted', 'verified']),
+  "submittedAt": zod.coerce.date().nullable(),
+  "verifiedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "learningProgress": zod.array(zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "programName": zod.string(),
+  "status": zod.enum(['pending', 'enrolled', 'completed', 'cancelled']),
+  "progress": zod.number(),
+  "currentMilestone": zod.string(),
+  "milestones": zod.array(zod.string()),
+  "updatedAt": zod.coerce.date()
+})),
+  "opportunities": zod.array(zod.object({
+  "id": zod.string(),
+  "requirement": zod.string(),
+  "companyName": zod.string(),
+  "candidateUserId": zod.string().nullable(),
+  "candidateName": zod.string(),
+  "score": zod.number(),
+  "status": zod.enum(['new', 'shortlisted', 'interview', 'placed', 'declined']),
+  "updatedAt": zod.coerce.date()
+})),
+  "recommendedPrograms": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.string(),
+  "mode": zod.string(),
+  "schedule": zod.string(),
+  "duration": zod.string(),
+  "price": zod.number(),
+  "instructor": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['draft', 'published']),
+  "capacity": zod.number(),
+  "enrolledCount": zod.number(),
+  "completedCount": zod.number()
+}))
+})
+
+
+/**
+ * @summary Save a member readiness diagnostic
+ */
+export const saveMemberDiagnosticBodyAnswersMaxOne = 5;
+
+
+
+export const SaveMemberDiagnosticBody = zod.object({
+  "answers": zod.record(zod.string(), zod.number().min(1).max(saveMemberDiagnosticBodyAnswersMaxOne)),
+  "areaLabels": zod.record(zod.string(), zod.string())
+})
+
+export const SaveMemberDiagnosticResponse = zod.object({
+  "id": zod.string(),
+  "memberUserId": zod.string(),
+  "score": zod.number(),
+  "answers": zod.record(zod.string(), zod.number()),
+  "focusAreas": zod.array(zod.string()),
+  "completedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Save a project, certification, or work evidence item
+ */
+export const saveMemberEvidenceBodyTitleMin = 2;
+
+
+
+export const SaveMemberEvidenceBody = zod.object({
+  "evidenceType": zod.enum(['project', 'certification', 'work']),
+  "title": zod.string().min(saveMemberEvidenceBodyTitleMin),
+  "description": zod.string(),
+  "referenceUrl": zod.string().nullish(),
+  "status": zod.enum(['draft', 'submitted'])
+})
+
+export const SaveMemberEvidenceResponse = zod.object({
+  "id": zod.string(),
+  "memberUserId": zod.string(),
+  "evidenceType": zod.enum(['project', 'certification', 'work']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "referenceUrl": zod.string().nullable(),
+  "status": zod.enum(['draft', 'submitted', 'verified']),
+  "submittedAt": zod.coerce.date().nullable(),
+  "verifiedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update or submit a member evidence item
+ */
+export const UpdateMemberEvidenceParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateMemberEvidenceBodyTitleMin = 2;
+
+
+
+export const UpdateMemberEvidenceBody = zod.object({
+  "evidenceType": zod.enum(['project', 'certification', 'work']).optional(),
+  "title": zod.string().min(updateMemberEvidenceBodyTitleMin).optional(),
+  "description": zod.string().optional(),
+  "referenceUrl": zod.string().nullish(),
+  "status": zod.enum(['draft', 'submitted']).optional()
+})
+
+export const UpdateMemberEvidenceResponse = zod.object({
+  "id": zod.string(),
+  "memberUserId": zod.string(),
+  "evidenceType": zod.enum(['project', 'certification', 'work']),
+  "title": zod.string(),
+  "description": zod.string(),
+  "referenceUrl": zod.string().nullable(),
+  "status": zod.enum(['draft', 'submitted', 'verified']),
+  "submittedAt": zod.coerce.date().nullable(),
+  "verifiedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })
 
 
@@ -500,6 +655,7 @@ export const UpdateAdminMatchingResponse = zod.object({
   "status": zod.enum(['new', 'shortlisted', 'interview', 'placed', 'declined']),
   "updatedAt": zod.coerce.date()
 })
+
 
 /**
  * @summary Update a transaction settlement status
