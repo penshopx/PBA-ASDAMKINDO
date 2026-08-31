@@ -313,7 +313,7 @@ router.post("/company/shortlist", ...companyOnly, async (req, res): Promise<void
   }
   const score = scoreCandidate(requirement, candidate.profile, candidate.passport);
   const [companyProfile] = await db.select().from(companyProfilesTable).where(eq(companyProfilesTable.userId, user.id)).limit(1);
-  const [created] = await db.transaction(async (tx) => {
+  const { matching, created } = await db.transaction(async (tx) => {
     const [matching] = await tx
       .insert(matchingsTable)
       .values({
@@ -327,7 +327,31 @@ router.post("/company/shortlist", ...companyOnly, async (req, res): Promise<void
         score: score.score,
         status: "shortlisted",
       })
+      .onConflictDoNothing({
+        target: [
+          matchingsTable.requirementId,
+          matchingsTable.companyUserId,
+          matchingsTable.candidateUserId,
+        ],
+      })
       .returning();
+    if (!matching) {
+      const [existing] = await tx
+        .select()
+        .from(matchingsTable)
+        .where(
+          and(
+            eq(matchingsTable.requirementId, requirement.id),
+            eq(matchingsTable.companyUserId, user.id),
+            eq(matchingsTable.candidateUserId, candidate.user.id),
+          ),
+        )
+        .limit(1);
+      if (!existing) {
+        throw new Error("Matching shortlist tidak ditemukan setelah konflik insert.");
+      }
+      return { matching: existing, created: false };
+    }
     await tx.insert(notificationsTable).values([
       {
         id: `notification-${randomUUID()}`,
@@ -344,9 +368,9 @@ router.post("/company/shortlist", ...companyOnly, async (req, res): Promise<void
         type: "recruitment",
       },
     ]);
-    return [matching];
+    return { matching, created: true };
   });
-  res.status(201).json(CreateCompanyShortlistResponse.parse(matchingResponse(created)));
+  res.status(created ? 201 : 200).json(CreateCompanyShortlistResponse.parse(matchingResponse(matching)));
 });
 
 router.patch("/company/shortlist/:id", ...companyOnly, async (req, res): Promise<void> => {

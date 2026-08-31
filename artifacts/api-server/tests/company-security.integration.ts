@@ -505,13 +505,35 @@ try {
     .set({ competencies: ["TypeScript", "Security"] })
     .where(eq(companyRequirementsTable.id, requirementAId));
 
-  result = await request("/company/shortlist", {
-    method: "POST",
-    body: JSON.stringify({ requirementId: requirementAId, candidateId: strongPassportId }),
-  });
-  assert.equal(result.response.status, 201);
-  assert.equal(result.body.status, "shortlisted");
-  const matchingAId = result.body.id as string;
+  const concurrentShortlistResults = await Promise.all([
+    request("/company/shortlist", {
+      method: "POST",
+      body: JSON.stringify({ requirementId: requirementAId, candidateId: strongPassportId }),
+    }),
+    request("/company/shortlist", {
+      method: "POST",
+      body: JSON.stringify({ requirementId: requirementAId, candidateId: strongPassportId }),
+    }),
+  ]);
+  assert.deepEqual(
+    concurrentShortlistResults.map(({ response }) => response.status).sort(),
+    [200, 201],
+  );
+  assert.equal(concurrentShortlistResults[0].body.status, "shortlisted");
+  assert.equal(concurrentShortlistResults[1].body.status, "shortlisted");
+  assert.equal(concurrentShortlistResults[0].body.id, concurrentShortlistResults[1].body.id);
+  const matchingAId = concurrentShortlistResults[0].body.id as string;
+  const [shortlistCountAfterRace] = await db
+    .select({ value: count(matchingsTable.id) })
+    .from(matchingsTable)
+    .where(
+      and(
+        eq(matchingsTable.requirementId, requirementAId),
+        eq(matchingsTable.companyUserId, companyAId),
+        eq(matchingsTable.candidateUserId, strongMemberId),
+      ),
+    );
+  assert.equal(shortlistCountAfterRace.value, 1);
   result = await request("/company/shortlist");
   assert.equal(result.response.status, 200);
   assert.equal(result.body.some((matching: { id: string }) => matching.id === matchingAId), true);
