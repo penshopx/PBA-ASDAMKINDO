@@ -1,0 +1,50 @@
+Consent granular sudah lulus, jadi sekarang masuk ke **Task berikutnya: Talent Matching perusahaan**. Kirim prompt ini ke Replit:
+
+```text
+Lanjutkan ke Task berikutnya: implementasi Talent Matching perusahaan.
+
+Gunakan algoritme matching yang sudah ada, jangan mengubah bobot tanpa alasan. Pastikan setiap query kandidat hanya mengembalikan anggota yang:
+1. Memiliki consent aktif untuk perusahaan yang sedang login.
+2. Belum melewati expiresAt.
+3. Memiliki passport atau profil yang aktif.
+4. Tidak menampilkan email, telepon, Clerk ID, memberUserId, data pembayaran, atau detail consent internal.
+
+Implementasikan end-to-end:
+1. Company dapat melihat kandidat cocok untuk kebutuhan tenaga miliknya sendiri.
+2. Admin PBA dapat melihat hasil matching lintas kebutuhan sesuai kewenangannya.
+3. Kandidat memiliki match score 0 sampai 100.
+4. Tampilkan alasan skor secara transparan:
+   - Jabatan kerja: 25 poin.
+   - Jenjang SKK: 20 poin.
+   - Kompetensi wajib: 20 poin.
+   - Pengalaman: 15 poin.
+   - Lokasi atau relokasi: 10 poin.
+   - Ketersediaan: 10 poin.
+5. Tampilkan kompetensi yang cocok dan yang belum terpenuhi.
+6. Gunakan pagination dan filtering langsung di database.
+7. Gunakan candidateId opaque, bukan memberUserId.
+8. Jangan memperluas akses data hanya karena kandidat cocok.
+9. Catat match generated, viewed, dan refreshed di audit log.
+10. Jika consent dicabut atau expired, kandidat langsung tidak boleh muncul lagi.
+
+Buat UI:
+1. Daftar kebutuhan tenaga perusahaan.
+2. Detail kebutuhan dengan daftar kandidat cocok.
+3. Filter score minimum, lokasi, jenjang, pengalaman, dan ketersediaan.
+4. Candidate detail terbatas.
+5. Tombol “Tambahkan ke Shortlist” hanya jika consent aktif.
+6. Empty state yang menjelaskan bahwa kandidat mungkin belum tersedia atau belum memberikan consent.
+
+Jangan implementasikan contact action, invite, pesan langsung, atau penempatan otomatis dulu. Shortlist boleh dibuat hanya sebagai status internal perusahaan dan harus memakai permission serta audit log yang sama.
+
+Validasi wajib:
+1. Dua perusahaan tidak dapat melihat kandidat dari kebutuhan perusahaan lain.
+2. Candidate match hanya muncul dengan consent aktif perusahaan tersebut.
+3. Revoke atau expiry langsung menghapus kandidat dari hasil match dan shortlist aktif.
+4. Anggota tidak dapat mengakses endpoint Company.
+5. Company tidak dapat mengakses data internal anggota.
+6. Admin dapat memfilter dan meninjau hasil sesuai kewenangan.
+7. Jalankan migration, OpenAPI/codegen, full typecheck, git diff --check, browser E2E tiga role, pagination test, ownership test, consent revoke/expiry test, dan payload privacy test.
+
+Setelah selesai, laporkan file yang berubah, migration, endpoint baru, skenario uji, dan risiko tersisa. Jangan lanjut ke contact, placement, atau settlement sebelum quality gate matching lulus.
+```
