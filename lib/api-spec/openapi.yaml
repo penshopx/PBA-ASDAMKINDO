@@ -1103,6 +1103,204 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/pilot-evaluation/options:
+    get:
+      operationId: getAdminPilotEvaluationOptions
+      tags: [admin]
+      summary: List safe anchors for the pilot evaluation
+      description: Lists published Bimtek programs and open company requirements that an Admin may select as the pilot anchors. These option identifiers are only for making the protected selection request; the evaluation report itself is aggregate-only.
+      responses:
+        "200":
+          description: Pilot evaluation anchor options
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPilotEvaluationOptions"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/pilot-evaluation:
+    get:
+      operationId: getAdminPilotEvaluation
+      tags: [admin]
+      summary: Get aggregate metrics for one pilot cohort
+      description: The cohort is the non-cancelled enrollment set for one selected program. The report contains no participant-level data, Clerk identifiers, company or member internal identifiers, or consent detail.
+      parameters:
+        - name: programId
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: requirementId
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Aggregate pilot evaluation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPilotEvaluation"
+        "400":
+          description: Invalid or unavailable pilot anchors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/pilot-feedback:
+    get:
+      operationId: listAdminPilotFeedback
+      tags: [admin]
+      summary: List feedback items for one pilot anchor
+      parameters:
+        - name: programId
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: requirementId
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Pilot feedback items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminPilotFeedback"
+        "400":
+          description: Invalid pilot anchors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createAdminPilotFeedback
+      tags: [admin]
+      summary: Record non-sensitive pilot feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPilotFeedbackInput"
+      responses:
+        "201":
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPilotFeedbackCreated"
+        "400":
+          description: Invalid pilot feedback or unavailable anchor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/pilot-feedback/{id}:
+    patch:
+      operationId: resolveAdminPilotFeedback
+      tags: [admin]
+      summary: Resolve one pilot feedback item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPilotFeedbackUpdate"
+      responses:
+        "200":
+          description: Feedback resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPilotFeedbackCreated"
+        "400":
+          description: Invalid feedback resolution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Feedback item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/audit-logs:
     get:
       operationId: listAdminAuditLogs
@@ -2978,6 +3176,161 @@ components:
           items:
             $ref: "#/components/schemas/AdminFunnelMetric"
       required: [metrics]
+    AdminPilotProgramOption:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+      required: [id, name, category]
+    AdminPilotRequirementOption:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        companyName:
+          type: string
+      required: [id, title, companyName]
+    AdminPilotEvaluationOptions:
+      type: object
+      description: Opsi anchor untuk memilih satu program dan satu kebutuhan perusahaan pada UI Admin.
+      properties:
+        programs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPilotProgramOption"
+        requirements:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPilotRequirementOption"
+      required: [programs, requirements]
+    AdminPilotMetric:
+      type: object
+      description: Satu metrik evaluasi pilot yang hanya berisi angka agregat.
+      properties:
+        key:
+          type: string
+          enum: [registrations, completedDiagnostics, paidParticipants, completionRate, activeConsent, verifiedTalent, matchedCandidates, shortlistPipeline, placementSimulation, complaints, adminResponseTimeHours]
+        label:
+          type: string
+        value:
+          type: ["number", "null"]
+          minimum: 0
+        unit:
+          type: string
+          enum: [count, percentage, hours]
+        denominator:
+          type: ["integer", "null"]
+          minimum: 0
+        definition:
+          type: string
+      required: [key, label, value, unit, denominator, definition]
+    AdminPilotFunnelStage:
+      type: object
+      description: Satu tahap funnel cohort dengan jumlah dan persentase terhadap cohort.
+      properties:
+        key:
+          type: string
+          enum: [registrations, completedDiagnostics, paidParticipants, completedProgram, activeConsent, matchedCandidates, shortlistPipeline, placementSimulation]
+        label:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+        percentage:
+          type: number
+          minimum: 0
+          maximum: 100
+        definition:
+          type: string
+      required: [key, label, count, percentage, definition]
+    AdminPilotCohort:
+      type: object
+      description: Konteks aman cohort tanpa identifier internal.
+      properties:
+        programName:
+          type: string
+        requirementTitle:
+          type: string
+        companyName:
+          type: string
+        participantCount:
+          type: integer
+          minimum: 0
+      required: [programName, requirementTitle, companyName, participantCount]
+    AdminPilotEvaluation:
+      type: object
+      description: Laporan aggregate-only untuk evaluasi pilot terbatas.
+      properties:
+        targetParticipants:
+          type: integer
+          minimum: 1
+        cohort:
+          $ref: "#/components/schemas/AdminPilotCohort"
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPilotMetric"
+        funnel:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPilotFunnelStage"
+      required: [targetParticipants, cohort, metrics, funnel]
+    AdminPilotFeedback:
+      type: object
+      description: Feedback operasional non-sensitif; endpoint ini terpisah dari laporan aggregate-only.
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [open, resolved]
+        note:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: ["string", "null"]
+          format: date-time
+      required: [id, status, note, createdAt, resolvedAt]
+    AdminPilotFeedbackInput:
+      type: object
+      properties:
+        programId:
+          type: string
+          minLength: 1
+        requirementId:
+          type: string
+          minLength: 1
+        note:
+          type: string
+          minLength: 3
+          maxLength: 500
+      required: [programId, requirementId, note]
+    AdminPilotFeedbackUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [resolved]
+        note:
+          type: string
+          minLength: 3
+          maxLength: 500
+      required: [status]
+    AdminPilotFeedbackCreated:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [recorded, resolved]
+      required: [status]
     Notification:
       type: object
       properties:

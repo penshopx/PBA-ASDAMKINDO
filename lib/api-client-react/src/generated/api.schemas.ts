@@ -1484,6 +1484,184 @@ export interface AdminFunnel {
   metrics: AdminFunnelMetric[];
 }
 
+export interface AdminPilotProgramOption {
+  id: string;
+  name: string;
+  category: string;
+}
+
+export interface AdminPilotRequirementOption {
+  id: string;
+  title: string;
+  companyName: string;
+}
+
+/**
+ * Opsi anchor untuk memilih satu program dan satu kebutuhan perusahaan pada UI Admin.
+ */
+export interface AdminPilotEvaluationOptions {
+  programs: AdminPilotProgramOption[];
+  requirements: AdminPilotRequirementOption[];
+}
+
+export type AdminPilotMetricKey = typeof AdminPilotMetricKey[keyof typeof AdminPilotMetricKey];
+
+
+export const AdminPilotMetricKey = {
+  registrations: 'registrations',
+  completedDiagnostics: 'completedDiagnostics',
+  paidParticipants: 'paidParticipants',
+  completionRate: 'completionRate',
+  activeConsent: 'activeConsent',
+  verifiedTalent: 'verifiedTalent',
+  matchedCandidates: 'matchedCandidates',
+  shortlistPipeline: 'shortlistPipeline',
+  placementSimulation: 'placementSimulation',
+  complaints: 'complaints',
+  adminResponseTimeHours: 'adminResponseTimeHours',
+} as const;
+
+export type AdminPilotMetricUnit = typeof AdminPilotMetricUnit[keyof typeof AdminPilotMetricUnit];
+
+
+export const AdminPilotMetricUnit = {
+  count: 'count',
+  percentage: 'percentage',
+  hours: 'hours',
+} as const;
+
+/**
+ * Satu metrik evaluasi pilot yang hanya berisi angka agregat.
+ */
+export interface AdminPilotMetric {
+  key: AdminPilotMetricKey;
+  label: string;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  value: number | null;
+  unit: AdminPilotMetricUnit;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  denominator: number | null;
+  definition: string;
+}
+
+export type AdminPilotFunnelStageKey = typeof AdminPilotFunnelStageKey[keyof typeof AdminPilotFunnelStageKey];
+
+
+export const AdminPilotFunnelStageKey = {
+  registrations: 'registrations',
+  completedDiagnostics: 'completedDiagnostics',
+  paidParticipants: 'paidParticipants',
+  completedProgram: 'completedProgram',
+  activeConsent: 'activeConsent',
+  matchedCandidates: 'matchedCandidates',
+  shortlistPipeline: 'shortlistPipeline',
+  placementSimulation: 'placementSimulation',
+} as const;
+
+/**
+ * Satu tahap funnel cohort dengan jumlah dan persentase terhadap cohort.
+ */
+export interface AdminPilotFunnelStage {
+  key: AdminPilotFunnelStageKey;
+  label: string;
+  /** @minimum 0 */
+  count: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  percentage: number;
+  definition: string;
+}
+
+/**
+ * Konteks aman cohort tanpa identifier internal.
+ */
+export interface AdminPilotCohort {
+  programName: string;
+  requirementTitle: string;
+  companyName: string;
+  /** @minimum 0 */
+  participantCount: number;
+}
+
+/**
+ * Laporan aggregate-only untuk evaluasi pilot terbatas.
+ */
+export interface AdminPilotEvaluation {
+  /** @minimum 1 */
+  targetParticipants: number;
+  cohort: AdminPilotCohort;
+  metrics: AdminPilotMetric[];
+  funnel: AdminPilotFunnelStage[];
+}
+
+export type AdminPilotFeedbackStatus = typeof AdminPilotFeedbackStatus[keyof typeof AdminPilotFeedbackStatus];
+
+
+export const AdminPilotFeedbackStatus = {
+  open: 'open',
+  resolved: 'resolved',
+} as const;
+
+/**
+ * Feedback operasional non-sensitif; endpoint ini terpisah dari laporan aggregate-only.
+ */
+export interface AdminPilotFeedback {
+  id: string;
+  status: AdminPilotFeedbackStatus;
+  note: string;
+  createdAt: string;
+  /** @nullable */
+  resolvedAt: string | null;
+}
+
+export interface AdminPilotFeedbackInput {
+  /** @minLength 1 */
+  programId: string;
+  /** @minLength 1 */
+  requirementId: string;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  note: string;
+}
+
+export type AdminPilotFeedbackUpdateStatus = typeof AdminPilotFeedbackUpdateStatus[keyof typeof AdminPilotFeedbackUpdateStatus];
+
+
+export const AdminPilotFeedbackUpdateStatus = {
+  resolved: 'resolved',
+} as const;
+
+export interface AdminPilotFeedbackUpdate {
+  status: AdminPilotFeedbackUpdateStatus;
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  note?: string;
+}
+
+export type AdminPilotFeedbackCreatedStatus = typeof AdminPilotFeedbackCreatedStatus[keyof typeof AdminPilotFeedbackCreatedStatus];
+
+
+export const AdminPilotFeedbackCreatedStatus = {
+  recorded: 'recorded',
+  resolved: 'resolved',
+} as const;
+
+export interface AdminPilotFeedbackCreated {
+  status: AdminPilotFeedbackCreatedStatus;
+}
+
 export type NotificationType = typeof NotificationType[keyof typeof NotificationType];
 
 
@@ -1735,3 +1913,26 @@ export type ListProgramsParams = {
 category?: string;
 mode?: string;
 };
+
+export type GetAdminPilotEvaluationParams = {
+/**
+ * @minLength 1
+ */
+programId: string;
+/**
+ * @minLength 1
+ */
+requirementId: string;
+};
+
+export type ListAdminPilotFeedbackParams = {
+/**
+ * @minLength 1
+ */
+programId: string;
+/**
+ * @minLength 1
+ */
+requirementId: string;
+};
+

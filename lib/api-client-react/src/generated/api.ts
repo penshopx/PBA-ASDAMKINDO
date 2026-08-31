@@ -24,6 +24,12 @@ import type {
   AdminFunnel,
   AdminMatchingPage,
   AdminOperations,
+  AdminPilotEvaluation,
+  AdminPilotEvaluationOptions,
+  AdminPilotFeedback,
+  AdminPilotFeedbackCreated,
+  AdminPilotFeedbackInput,
+  AdminPilotFeedbackUpdate,
   AdminTalentConsent,
   AdminTalentConsentOverride,
   AdminTalentConsentPage,
@@ -46,10 +52,12 @@ import type {
   Enrollment,
   EnrollmentUpdate,
   ErrorResponse,
+  GetAdminPilotEvaluationParams,
   GetAdminTalentPoolParams,
   GetCompanyTalentPoolParams,
   HealthStatus,
   ListAdminMatchingsParams,
+  ListAdminPilotFeedbackParams,
   ListCompanyConsentRequestsParams,
   ListCompanyTalentPoolParams,
   ListProgramsParams,
@@ -2912,6 +2920,396 @@ export function useGetAdminFunnel<TData = Awaited<ReturnType<typeof getAdminFunn
 
 
 
+
+export const getGetAdminPilotEvaluationOptionsUrl = () => {
+
+
+
+
+  return `/api/admin/pilot-evaluation/options`
+}
+
+/**
+ * Lists published Bimtek programs and open company requirements that an Admin may select as the pilot anchors. These option identifiers are only for making the protected selection request; the evaluation report itself is aggregate-only.
+ * @summary List safe anchors for the pilot evaluation
+ */
+export const getAdminPilotEvaluationOptions = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminPilotEvaluationOptions> => {
+
+  return customFetch<AdminPilotEvaluationOptions>(getGetAdminPilotEvaluationOptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminPilotEvaluationOptionsQueryKey = () => {
+    return [
+    `/api/admin/pilot-evaluation/options`
+    ] as const;
+    }
+
+
+export const getGetAdminPilotEvaluationOptionsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminPilotEvaluationOptions>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminPilotEvaluationOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminPilotEvaluationOptionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminPilotEvaluationOptions>>> = ({ signal }) => getAdminPilotEvaluationOptions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminPilotEvaluationOptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminPilotEvaluationOptionsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminPilotEvaluationOptions>>>
+export type GetAdminPilotEvaluationOptionsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List safe anchors for the pilot evaluation
+ */
+
+export function useGetAdminPilotEvaluationOptions<TData = Awaited<ReturnType<typeof getAdminPilotEvaluationOptions>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminPilotEvaluationOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminPilotEvaluationOptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminPilotEvaluationUrl = (params: GetAdminPilotEvaluationParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/pilot-evaluation?${stringifiedParams}` : `/api/admin/pilot-evaluation`
+}
+
+/**
+ * The cohort is the non-cancelled enrollment set for one selected program. The report contains no participant-level data, Clerk identifiers, company or member internal identifiers, or consent detail.
+ * @summary Get aggregate metrics for one pilot cohort
+ */
+export const getAdminPilotEvaluation = async (params: GetAdminPilotEvaluationParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminPilotEvaluation> => {
+
+  return customFetch<AdminPilotEvaluation>(getGetAdminPilotEvaluationUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminPilotEvaluationQueryKey = (params?: GetAdminPilotEvaluationParams,) => {
+    return [
+    `/api/admin/pilot-evaluation`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminPilotEvaluationQueryOptions = <TData = Awaited<ReturnType<typeof getAdminPilotEvaluation>>, TError = ErrorType<ErrorResponse>>(params: GetAdminPilotEvaluationParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminPilotEvaluation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminPilotEvaluationQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminPilotEvaluation>>> = ({ signal }) => getAdminPilotEvaluation(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminPilotEvaluation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminPilotEvaluationQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminPilotEvaluation>>>
+export type GetAdminPilotEvaluationQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get aggregate metrics for one pilot cohort
+ */
+
+export function useGetAdminPilotEvaluation<TData = Awaited<ReturnType<typeof getAdminPilotEvaluation>>, TError = ErrorType<ErrorResponse>>(
+ params: GetAdminPilotEvaluationParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminPilotEvaluation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminPilotEvaluationQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminPilotFeedbackUrl = (params: ListAdminPilotFeedbackParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/pilot-feedback?${stringifiedParams}` : `/api/admin/pilot-feedback`
+}
+
+/**
+ * @summary List feedback items for one pilot anchor
+ */
+export const listAdminPilotFeedback = async (params: ListAdminPilotFeedbackParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminPilotFeedback[]> => {
+
+  return customFetch<AdminPilotFeedback[]>(getListAdminPilotFeedbackUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminPilotFeedbackQueryKey = (params?: ListAdminPilotFeedbackParams,) => {
+    return [
+    `/api/admin/pilot-feedback`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminPilotFeedbackQueryOptions = <TData = Awaited<ReturnType<typeof listAdminPilotFeedback>>, TError = ErrorType<ErrorResponse>>(params: ListAdminPilotFeedbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminPilotFeedback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminPilotFeedbackQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminPilotFeedback>>> = ({ signal }) => listAdminPilotFeedback(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminPilotFeedback>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminPilotFeedbackQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminPilotFeedback>>>
+export type ListAdminPilotFeedbackQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List feedback items for one pilot anchor
+ */
+
+export function useListAdminPilotFeedback<TData = Awaited<ReturnType<typeof listAdminPilotFeedback>>, TError = ErrorType<ErrorResponse>>(
+ params: ListAdminPilotFeedbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminPilotFeedback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminPilotFeedbackQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminPilotFeedbackUrl = () => {
+
+
+
+
+  return `/api/admin/pilot-feedback`
+}
+
+/**
+ * @summary Record non-sensitive pilot feedback
+ */
+export const createAdminPilotFeedback = async (adminPilotFeedbackInput: AdminPilotFeedbackInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminPilotFeedbackCreated> => {
+
+  return customFetch<AdminPilotFeedbackCreated>(getCreateAdminPilotFeedbackUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminPilotFeedbackInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminPilotFeedbackMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminPilotFeedback>>, TError,{data: BodyType<AdminPilotFeedbackInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminPilotFeedback>>, TError,{data: BodyType<AdminPilotFeedbackInput>}, TContext> => {
+
+const mutationKey = ['createAdminPilotFeedback'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminPilotFeedback>>, {data: BodyType<AdminPilotFeedbackInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminPilotFeedback(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminPilotFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminPilotFeedback>>>
+    export type CreateAdminPilotFeedbackMutationBody = BodyType<AdminPilotFeedbackInput>
+    export type CreateAdminPilotFeedbackMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Record non-sensitive pilot feedback
+ */
+export const useCreateAdminPilotFeedback = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminPilotFeedback>>, TError,{data: BodyType<AdminPilotFeedbackInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminPilotFeedback>>,
+        TError,
+        {data: BodyType<AdminPilotFeedbackInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminPilotFeedbackMutationOptions(options));
+    }
+
+export const getResolveAdminPilotFeedbackUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/pilot-feedback/${id}`
+}
+
+/**
+ * @summary Resolve one pilot feedback item
+ */
+export const resolveAdminPilotFeedback = async (id: string,
+    adminPilotFeedbackUpdate: AdminPilotFeedbackUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminPilotFeedbackCreated> => {
+
+  return customFetch<AdminPilotFeedbackCreated>(getResolveAdminPilotFeedbackUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminPilotFeedbackUpdate)
+  }
+);}
+
+
+
+
+
+export const getResolveAdminPilotFeedbackMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAdminPilotFeedback>>, TError,{id: string;data: BodyType<AdminPilotFeedbackUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveAdminPilotFeedback>>, TError,{id: string;data: BodyType<AdminPilotFeedbackUpdate>}, TContext> => {
+
+const mutationKey = ['resolveAdminPilotFeedback'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveAdminPilotFeedback>>, {id: string;data: BodyType<AdminPilotFeedbackUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  resolveAdminPilotFeedback(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveAdminPilotFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof resolveAdminPilotFeedback>>>
+    export type ResolveAdminPilotFeedbackMutationBody = BodyType<AdminPilotFeedbackUpdate>
+    export type ResolveAdminPilotFeedbackMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Resolve one pilot feedback item
+ */
+export const useResolveAdminPilotFeedback = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAdminPilotFeedback>>, TError,{id: string;data: BodyType<AdminPilotFeedbackUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveAdminPilotFeedback>>,
+        TError,
+        {id: string;data: BodyType<AdminPilotFeedbackUpdate>},
+        TContext
+      > => {
+      return useMutation(getResolveAdminPilotFeedbackMutationOptions(options));
+    }
 
 export const getListAdminAuditLogsUrl = () => {
 

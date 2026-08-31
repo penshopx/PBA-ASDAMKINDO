@@ -20,9 +20,9 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import {
   getGetAdminOperationsQueryKey,
   getGetAdminFunnelQueryKey,
@@ -38,6 +38,13 @@ import {
   useListAdminMatchings,
   getListAdminMatchingsQueryKey,
   listAdminMatchings,
+  useGetAdminPilotEvaluationOptions,
+  useGetAdminPilotEvaluation,
+  getGetAdminPilotEvaluationQueryKey,
+  useListAdminPilotFeedback,
+  getListAdminPilotFeedbackQueryKey,
+  useCreateAdminPilotFeedback,
+  useResolveAdminPilotFeedback,
 } from "@workspace/api-client-react";
 import type {
   AdminOperations,
@@ -48,15 +55,17 @@ import type {
   Verification,
   AdminMatchingCandidate,
   AdminFunnel,
+  AdminPilotFeedback,
 } from "@workspace/api-client-react";
 import { QueryState } from "@/components/ui-kit";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 
-type Tab = "funnel" | "verifications" | "programs" | "pipeline" | "revenue" | "audit";
+type Tab = "funnel" | "pilot" | "verifications" | "programs" | "pipeline" | "revenue" | "audit";
 
 const tabs: Array<{ id: Tab; label: string; icon: typeof ClipboardCheck }> = [
   { id: "funnel", label: "Funnel bisnis", icon: UsersRound },
+  { id: "pilot", label: "Evaluasi pilot", icon: Sparkles },
   { id: "verifications", label: "Verifikasi", icon: FileCheck2 },
   { id: "programs", label: "Program & enrollment", icon: BookOpen },
   { id: "pipeline", label: "Matching / placement", icon: UsersRound },
@@ -72,7 +81,7 @@ function formatIdr(value: number) {
   }).format(value);
 }
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null | undefined) {
   if (!value) return "—";
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
 }
@@ -161,6 +170,7 @@ export function AdminOperations() {
         <section className="min-w-0">
           {tab === "verifications" && <VerificationQueue items={data.verifications} mutation={review} />}
           {tab === "funnel" && <FunnelWorkspace />}
+          {tab === "pilot" && <PilotWorkspace />}
           {tab === "programs" && <ProgramWorkspace data={data} showForm={showProgramForm} setShowForm={setShowProgramForm} createMutation={createProgram} updateMutation={updateProgram} updateEnrollment={updateEnrollment} />}
           {tab === "pipeline" && <PipelineWorkspace mutation={updateMatching} />}
           {tab === "revenue" && <RevenueWorkspace items={data.transactions} canManage={data.permissions.canManageTransactions} mutation={updateTransaction} resolveMutation={resolveReconciliation} />}
@@ -201,6 +211,270 @@ function FunnelWorkspace() {
 
 function SectionHeader({ eyebrow, title, copy, action }: { eyebrow: string; title: string; copy: string; action?: ReactNode }) {
   return <div className="flex flex-col justify-between gap-4 border-b border-border pb-5 sm:flex-row sm:items-end"><div><p className="eyebrow text-accent">{eyebrow}</p><h2 className="mt-2 text-xl font-bold">{title}</h2><p className="mt-1 text-sm text-muted-foreground">{copy}</p></div>{action}</div>;
+}
+
+function PilotWorkspace() {
+  const optionsQuery = useGetAdminPilotEvaluationOptions();
+  
+  const [programId, setProgramId] = useState<string>("");
+  const [requirementId, setRequirementId] = useState<string>("");
+
+  useEffect(() => {
+    if (optionsQuery.data) {
+      if (!programId && optionsQuery.data.programs.length > 0) {
+        setProgramId(optionsQuery.data.programs[0].id);
+      }
+      if (!requirementId && optionsQuery.data.requirements.length > 0) {
+        setRequirementId(optionsQuery.data.requirements[0].id);
+      }
+    }
+  }, [optionsQuery.data, programId, requirementId]);
+
+  const enabled = Boolean(programId && requirementId);
+  const evalQuery = useGetAdminPilotEvaluation(
+    { programId, requirementId }, 
+    { query: { enabled, queryKey: getGetAdminPilotEvaluationQueryKey({programId, requirementId}) } }
+  );
+  const feedbackQuery = useListAdminPilotFeedback(
+    { programId, requirementId }, 
+    { query: { enabled, queryKey: getListAdminPilotFeedbackQueryKey({programId, requirementId}) } }
+  );
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-sidebar p-5 sm:p-7 shadow-lg">
+      <div className="flex flex-col justify-between gap-4 border-b border-primary/20 pb-5 sm:flex-row sm:items-end">
+         <div>
+           <p className="eyebrow text-primary">Pilot Evaluation</p>
+           <h2 className="mt-2 text-xl font-bold text-sidebar-foreground">Evaluasi Program Pilot</h2>
+           <p className="mt-1 text-sm text-sidebar-foreground/70">Ukur hasil pilot 20 peserta dengan partner perusahaan.</p>
+         </div>
+         <div className="flex items-center gap-3">
+           <button 
+              onClick={() => { evalQuery.refetch(); feedbackQuery.refetch(); }} 
+              disabled={!enabled || evalQuery.isFetching || feedbackQuery.isFetching} 
+              className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:border-primary disabled:opacity-50"
+              data-testid="button-refresh-pilot"
+           >
+               <RefreshCw size={14} className={evalQuery.isFetching || feedbackQuery.isFetching ? "animate-spin" : ""} />
+               {evalQuery.isFetching || feedbackQuery.isFetching ? "Memuat..." : "Refresh"}
+           </button>
+         </div>
+      </div>
+      
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+         <label>
+           <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-primary">Program Pelatihan</span>
+           <select 
+              value={programId} 
+              onChange={e => setProgramId(e.target.value)} 
+               disabled={optionsQuery.isLoading || optionsQuery.isError}
+              className="w-full rounded-lg border border-primary/30 bg-black/20 px-3 py-2.5 text-sm font-semibold text-sidebar-foreground outline-none focus:border-primary"
+               data-testid="select-pilot-program"
+           >
+              <option value="">Pilih program Bimtek</option>
+              {optionsQuery.data?.programs.map((p) => (
+               <option key={p.id} value={p.id}>{p.name} ({p.category})</option>
+             ))}
+           </select>
+         </label>
+         <label>
+           <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-primary">Kebutuhan Perusahaan</span>
+           <select 
+              value={requirementId} 
+              onChange={e => setRequirementId(e.target.value)} 
+               disabled={optionsQuery.isLoading || optionsQuery.isError}
+              className="w-full rounded-lg border border-primary/30 bg-black/20 px-3 py-2.5 text-sm font-semibold text-sidebar-foreground outline-none focus:border-primary"
+               data-testid="select-pilot-requirement"
+           >
+              <option value="">Pilih kebutuhan perusahaan</option>
+              {optionsQuery.data?.requirements.map((r) => (
+               <option key={r.id} value={r.id}>{r.title} — {r.companyName}</option>
+             ))}
+           </select>
+         </label>
+      </div>
+       {optionsQuery.isError && <p className="mt-3 text-xs font-semibold text-destructive">Opsi pilot belum dapat dimuat. Coba refresh halaman.</p>}
+       {!optionsQuery.isLoading && optionsQuery.data && (optionsQuery.data.programs.length === 0 || optionsQuery.data.requirements.length === 0) && <p className="mt-3 text-xs text-sidebar-foreground/70">Dashboard memerlukan setidaknya satu program kategori Bimtek berstatus terbit dan satu kebutuhan perusahaan berstatus terbuka.</p>}
+
+      <div className="mt-8">
+        <QueryState loading={evalQuery.isLoading} error={evalQuery.isError} retry={() => evalQuery.refetch()}>
+          {evalQuery.data && (
+            <div className="space-y-8">
+              
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
+                 <div className="flex items-center gap-4">
+                   <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-primary/20 text-primary">
+                     <UsersRound size={20} />
+                   </div>
+                   <div className="min-w-0 flex-1">
+                     <p className="text-base font-bold text-sidebar-foreground">{evalQuery.data.cohort.companyName} Pilot Cohort</p>
+                     <p className="mt-1 text-xs text-sidebar-foreground/70">{evalQuery.data.cohort.programName} ➔ {evalQuery.data.cohort.requirementTitle}</p>
+                   </div>
+                   <div className="shrink-0 text-right">
+                      <p className="font-mono text-3xl font-bold text-primary">{evalQuery.data.cohort.participantCount}<span className="text-sm text-sidebar-foreground/50">/{evalQuery.data.targetParticipants}</span></p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Peserta</p>
+                   </div>
+                 </div>
+              </div>
+
+              <div>
+                <h3 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-primary">Pipeline Konversi</h3>
+                <div className="grid gap-3 sm:grid-cols-4">
+                   {evalQuery.data.funnel.map((f) => (
+                     <div key={f.key} className="group relative overflow-hidden rounded-xl border border-primary/20 bg-black/10 p-4 transition-colors hover:border-primary/40">
+                        <div className="absolute inset-0 translate-y-[100%] bg-primary/5 transition-transform group-hover:translate-y-0" />
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{f.label}</p>
+                        <div className="mt-2 flex items-baseline gap-2">
+                          <strong className="font-mono text-3xl font-bold text-sidebar-foreground">{f.count}</strong>
+                          <span className="text-sm font-semibold text-primary">{f.percentage}%</span>
+                        </div>
+                        <p className="mt-2 text-[10px] leading-relaxed text-sidebar-foreground/50">{f.definition}</p>
+                     </div>
+                   ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-primary">Indikator Kinerja (KPI)</h3>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                   {evalQuery.data.metrics.map((m) => (
+                     <div key={m.key} className="flex flex-col rounded-xl border border-primary/20 bg-black/10 p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{m.label}</p>
+                        <div className="mt-2 flex items-baseline gap-1">
+                          <strong className="font-mono text-2xl font-bold text-sidebar-foreground">{m.value ?? "N/A"}</strong>
+                          {m.value !== null && m.denominator !== null && m.denominator > 0 && <span className="text-xs font-bold text-sidebar-foreground/50">/{m.denominator}</span>}
+                          {m.unit === 'percentage' && <span className="text-sm font-semibold text-primary">%</span>}
+                          {m.unit === 'hours' && <span className="ml-1 text-xs font-semibold text-primary">jam</span>}
+                        </div>
+                        <p className="mt-auto pt-3 text-[10px] leading-relaxed text-sidebar-foreground/50">{m.definition}</p>
+                     </div>
+                   ))}
+                </div>
+              </div>
+
+              <PilotFeedback 
+                 programId={programId} 
+                 requirementId={requirementId} 
+                 feedbackQuery={feedbackQuery} 
+              />
+              
+            </div>
+          )}
+        </QueryState>
+      </div>
+    </div>
+  );
+}
+
+function PilotFeedback({
+  programId,
+  requirementId,
+  feedbackQuery,
+}: {
+  programId: string;
+  requirementId: string;
+  feedbackQuery: UseQueryResult<AdminPilotFeedback[], unknown>;
+}) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const invalidatePilot = () => {
+    queryClient.invalidateQueries({ queryKey: getListAdminPilotFeedbackQueryKey({ programId, requirementId }) });
+    queryClient.invalidateQueries({ queryKey: getGetAdminPilotEvaluationQueryKey({ programId, requirementId }) });
+  };
+  
+  const createMutation = useCreateAdminPilotFeedback({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Catatan ditambahkan" });
+        setNewNote("");
+        invalidatePilot();
+      },
+      onError: () => toast({ variant: "destructive", title: "Catatan belum tersimpan", description: "Periksa isian dan coba lagi." }),
+    }
+  });
+
+  const resolveMutation = useResolveAdminPilotFeedback({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Catatan diselesaikan" });
+        invalidatePilot();
+      },
+      onError: () => toast({ variant: "destructive", title: "Catatan belum diselesaikan", description: "Coba lagi setelah memuat ulang data." }),
+    }
+  });
+
+  const [newNote, setNewNote] = useState("");
+
+  const items = feedbackQuery.data ?? [];
+
+  return (
+    <div className="mt-8">
+       <h3 className="mb-4 text-[10px] font-bold uppercase tracking-widest text-primary">Catatan Operasional & Kendala · {items.filter((item) => item.status === "open").length} terbuka</h3>
+       
+       <QueryState loading={feedbackQuery.isLoading} error={feedbackQuery.isError} retry={() => feedbackQuery.refetch()}>
+       <div className="space-y-3">
+         {items.length === 0 ? (
+           <div className="rounded-xl border border-dashed border-primary/20 p-6 text-center text-sm text-primary/50">
+             Belum ada catatan operasional.
+           </div>
+         ) : (
+           items.map((item) => (
+             <div key={item.id} className={`flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-start ${item.status === 'open' ? 'border-primary/40 bg-primary/10' : 'border-primary/20 bg-black/10 opacity-75'}`} data-testid={`pilot-feedback-${item.id}`}>
+                <div className="min-w-0 flex-1">
+                   <div className="mb-1.5 flex items-center gap-2">
+                     <span className={`inline-flex rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${item.status === 'open' ? 'bg-primary/20 text-primary' : 'bg-accent/20 text-accent'}`}>
+                       {item.status === 'open' ? 'Terbuka' : 'Selesai'}
+                     </span>
+                     <span className="text-[10px] text-sidebar-foreground/50">{formatDate(item.createdAt)}</span>
+                   </div>
+                   <p className="text-sm leading-relaxed text-sidebar-foreground">{item.note}</p>
+                </div>
+                {item.status === 'open' && (
+                  <button 
+                    disabled={resolveMutation.isPending}
+                    onClick={() => resolveMutation.mutate({ id: item.id, data: { status: 'resolved' } })}
+                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-black/20 px-3 py-2 text-[11px] font-bold text-primary hover:bg-primary/20 hover:text-primary disabled:opacity-50"
+                    data-testid={`button-resolve-pilot-feedback-${item.id}`}
+                  >
+                    <Check size={12} /> Selesaikan
+                  </button>
+                )}
+             </div>
+           ))
+         )}
+       </div>
+       </QueryState>
+
+       <form 
+         onSubmit={e => {
+           e.preventDefault();
+           if (newNote.trim().length < 3) return;
+           createMutation.mutate({ data: { programId, requirementId, note: newNote.trim() } });
+         }} 
+         className="mt-4 flex flex-col gap-3 sm:flex-row"
+       >
+         <input 
+           type="text" 
+           value={newNote}
+           onChange={e => setNewNote(e.target.value)}
+           minLength={3}
+           maxLength={500}
+           placeholder="Ringkasan non-sensitif; jangan tulis nama atau kontak peserta..." 
+           className="flex-1 rounded-lg border border-primary/30 bg-black/20 px-4 py-2.5 text-sm text-sidebar-foreground outline-none placeholder:text-sidebar-foreground/30 focus:border-primary"
+           aria-label="Ringkasan feedback pilot"
+           data-testid="input-pilot-feedback"
+         />
+         <button 
+           type="submit" 
+           disabled={newNote.trim().length < 3 || createMutation.isPending}
+           className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+           data-testid="button-create-pilot-feedback"
+         >
+           {createMutation.isPending ? "Menyimpan..." : "Kirim"}
+         </button>
+       </form>
+    </div>
+  );
 }
 
 function VerificationQueue({ items, mutation }: { items: Verification[]; mutation: ReturnType<typeof useDecideVerification> }) {

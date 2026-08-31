@@ -40,18 +40,38 @@ Remove local rows for the fictional interactive users first. The command accepts
 pnpm --filter @workspace/scripts pilot:cleanup-user -- --target development --user-id <member-clerk-user-id> --user-id <company-clerk-user-id> --user-id <admin-clerk-user-id> --allow-pilot-data --confirm-pilot --confirm-delete-test-user
 ```
 
-## Exactly 10 no-code pilot scenarios
+## Pilot cohort and evaluation dashboard
 
-1. **Public visitor** opens the landing page and program catalog, checks Indonesian copy, and confirms no credential, mockup, or internal identifier is visible.
-2. **Member** signs in with the fictional Clerk Development user, completes Member onboarding, signs out/in, and confirms the Member dashboard remains available.
-3. **Member** submits a readiness diagnostic and fictional evidence, reloads the page, and confirms the score, answers, and evidence persist.
-4. **Member** creates a professional passport, toggles the public link, and confirms private fields remain hidden from the public view.
-5. **Company** signs in with the fictional Clerk Development user, completes Company onboarding, creates one open requirement, and confirms only that company can edit it.
-6. **Member** grants time-bounded Talent Pool access to the fictional Company; **Company** confirms the candidate appears without contact or internal IDs.
-7. **Company** reviews the match explanation and adds the candidate to shortlist; **Member** revokes consent; **Company** refreshes and confirms the candidate and shortlist access disappear.
-8. **Admin** reviews the clearly labeled seeded program, enrollment/progress, pending verification, and paid sandbox/manual-settlement record without treating it as real payment.
-9. **Admin** opens the Funnel view, confirms all eight definitions and Refresh behavior, then verifies privileged audit/transaction controls remain limited to Super Admin.
-10. **Operator** records findings, runs the scoped interactive-user cleanup command, deletes the fictional Clerk Development accounts, runs the exact seed reset command, and confirms no test-user or run-prefixed rows remain.
+Use one published program whose category is exactly `Bimtek`, one open requirement, and the company that owns that requirement. In **Admin → Pusat operasi → Evaluasi pilot**, select those two anchors. The cohort is the set of unique members whose enrollment belongs to the selected program and is not cancelled. The dashboard target is 20 participants; it does not create, invite, or automatically cap accounts.
+
+The report is aggregate-only. It does not return participant names, contact details, Clerk IDs, member/company IDs, consent versions, or candidate IDs. Anchor IDs are used only by the protected selector request. Interpret metrics as follows:
+
+- **Registrasi cohort:** unique, non-cancelled enrollment members for the selected program.
+- **Diagnostik selesai:** cohort members with a saved readiness diagnostic.
+- **Peserta berbayar:** unique cohort members whose selected-program enrollment has a `program` transaction in `paid` status. For the pilot, `paid` must come only from sandbox/manual simulation.
+- **Completion rate:** selected-program enrollments in `completed` status divided by cohort registrations. A zero-member cohort reports 0%, not an invented conversion.
+- **Consent aktif:** cohort members with `dataConsent` enabled and an active, unexpired company-pair Talent Pool consent for the selected requirement's company.
+- **Talenta terverifikasi:** cohort members with a Professional Passport and at least one evidence item in `verified` status.
+- **Matched:** cohort members with a non-declined matching record for the selected requirement.
+- **Shortlist / pipeline:** cohort members in `shortlisted`, `interview`, or `placed`.
+- **Placement simulation:** cohort members in `placed`; this remains a simulation and does not trigger employment, settlement, or messaging.
+- **Keluhan / feedback:** non-sensitive operational feedback recorded for the selected anchors. Never put participant names, contacts, credentials, health information, government IDs, or payment details in the note.
+- **Waktu respons Admin:** average elapsed hours from feedback creation to resolution, using only resolved feedback. The dashboard displays `N/A` until at least one item is resolved.
+
+Refresh the dashboard after changing enrollment, diagnostic, transaction, consent, verification, matching, or feedback state. Record the selected program, requirement, company, session time, target 20, actual cohort count, and all displayed metrics in the approved pilot session record.
+
+## Exactly 10 pilot operating scenarios
+
+1. **Prepare the anchors:** in Development only, confirm exactly one intended published `Bimtek` program, one partner company, and one open workforce requirement are ready; record their display names and obtain approval before the session.
+2. **Prepare the cohort:** invite no more than 20 fictional/consented pilot members, complete onboarding through the product UI, and confirm the selected program shows the intended non-cancelled enrollment count.
+3. **Measure diagnostic conversion:** have pilot members complete readiness diagnostics, refresh Evaluasi pilot, and reconcile **Diagnostik selesai** against the session attendance record.
+4. **Simulate program payment:** create only sandbox/manual `paid` program transactions linked to selected-program enrollments; confirm **Peserta berbayar** counts unique members rather than transactions.
+5. **Measure completion:** update only genuinely completed pilot enrollments to `completed`; refresh and verify **Completion rate** uses all non-cancelled cohort members as its denominator.
+6. **Validate passport, verification, and consent:** use fictional evidence, complete verification, grant time-bounded consent to the selected partner, and compare **Talenta terverifikasi** and **Consent aktif** without exposing participant details in the report.
+7. **Validate matching and shortlist:** generate/review matches for only the selected requirement, move approved candidates through shortlist/interview, and verify the report counts unique cohort members without changing matching weights.
+8. **Simulate placement:** mark only the approved pilot record `placed`, confirm **Placement simulation**, and verify this creates no real employment action, message, or settlement.
+9. **Record and resolve feedback:** add one non-sensitive operational note in Evaluasi pilot, confirm it appears as open, resolve it, refresh, and verify **Keluhan / feedback** plus **Waktu respons Admin** update.
+10. **Close and clean up:** capture the aggregate report, verify privileged controls remain role-protected, run `pilot:cleanup-user`, delete fictional Clerk Development accounts, run the exact `pilot:reset` command, and confirm the selected cohort, feedback audit entries, and run-prefixed rows are gone.
 
 ## Known limitations and ownership
 

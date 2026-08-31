@@ -1430,6 +1430,145 @@ export const GetAdminFunnelResponse = zod.object({
 
 
 /**
+ * Lists published Bimtek programs and open company requirements that an Admin may select as the pilot anchors. These option identifiers are only for making the protected selection request; the evaluation report itself is aggregate-only.
+ * @summary List safe anchors for the pilot evaluation
+ */
+export const GetAdminPilotEvaluationOptionsResponse = zod.object({
+  "programs": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "category": zod.string()
+})),
+  "requirements": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "companyName": zod.string()
+}))
+}).describe('Opsi anchor untuk memilih satu program dan satu kebutuhan perusahaan pada UI Admin.')
+
+
+/**
+ * The cohort is the non-cancelled enrollment set for one selected program. The report contains no participant-level data, Clerk identifiers, company or member internal identifiers, or consent detail.
+ * @summary Get aggregate metrics for one pilot cohort
+ */
+
+
+
+
+export const GetAdminPilotEvaluationQueryParams = zod.object({
+  "programId": zod.coerce.string().min(1),
+  "requirementId": zod.coerce.string().min(1)
+})
+
+
+export const getAdminPilotEvaluationResponseCohortParticipantCountMin = 0;
+
+export const getAdminPilotEvaluationResponseMetricsItemValueMin = 0;
+
+export const getAdminPilotEvaluationResponseMetricsItemDenominatorMin = 0;
+
+export const getAdminPilotEvaluationResponseFunnelItemCountMin = 0;
+
+export const getAdminPilotEvaluationResponseFunnelItemPercentageMin = 0;
+export const getAdminPilotEvaluationResponseFunnelItemPercentageMax = 100;
+
+
+
+export const GetAdminPilotEvaluationResponse = zod.object({
+  "targetParticipants": zod.int().min(1),
+  "cohort": zod.object({
+  "programName": zod.string(),
+  "requirementTitle": zod.string(),
+  "companyName": zod.string(),
+  "participantCount": zod.int().min(getAdminPilotEvaluationResponseCohortParticipantCountMin)
+}).describe('Konteks aman cohort tanpa identifier internal.'),
+  "metrics": zod.array(zod.object({
+  "key": zod.enum(['registrations', 'completedDiagnostics', 'paidParticipants', 'completionRate', 'activeConsent', 'verifiedTalent', 'matchedCandidates', 'shortlistPipeline', 'placementSimulation', 'complaints', 'adminResponseTimeHours']),
+  "label": zod.string(),
+  "value": zod.number().min(getAdminPilotEvaluationResponseMetricsItemValueMin).nullable(),
+  "unit": zod.enum(['count', 'percentage', 'hours']),
+  "denominator": zod.int().min(getAdminPilotEvaluationResponseMetricsItemDenominatorMin).nullable(),
+  "definition": zod.string()
+}).describe('Satu metrik evaluasi pilot yang hanya berisi angka agregat.')),
+  "funnel": zod.array(zod.object({
+  "key": zod.enum(['registrations', 'completedDiagnostics', 'paidParticipants', 'completedProgram', 'activeConsent', 'matchedCandidates', 'shortlistPipeline', 'placementSimulation']),
+  "label": zod.string(),
+  "count": zod.int().min(getAdminPilotEvaluationResponseFunnelItemCountMin),
+  "percentage": zod.number().min(getAdminPilotEvaluationResponseFunnelItemPercentageMin).max(getAdminPilotEvaluationResponseFunnelItemPercentageMax),
+  "definition": zod.string()
+}).describe('Satu tahap funnel cohort dengan jumlah dan persentase terhadap cohort.'))
+}).describe('Laporan aggregate-only untuk evaluasi pilot terbatas.')
+
+
+/**
+ * @summary List feedback items for one pilot anchor
+ */
+
+
+
+
+export const ListAdminPilotFeedbackQueryParams = zod.object({
+  "programId": zod.coerce.string().min(1),
+  "requirementId": zod.coerce.string().min(1)
+})
+
+export const ListAdminPilotFeedbackResponseItem = zod.object({
+  "id": zod.string(),
+  "status": zod.enum(['open', 'resolved']),
+  "note": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullable()
+}).describe('Feedback operasional non-sensitif; endpoint ini terpisah dari laporan aggregate-only.')
+export const ListAdminPilotFeedbackResponse = zod.array(ListAdminPilotFeedbackResponseItem)
+
+
+/**
+ * @summary Record non-sensitive pilot feedback
+ */
+
+
+export const createAdminPilotFeedbackBodyNoteMin = 3;
+export const createAdminPilotFeedbackBodyNoteMax = 500;
+
+
+
+export const CreateAdminPilotFeedbackBody = zod.object({
+  "programId": zod.string().min(1),
+  "requirementId": zod.string().min(1),
+  "note": zod.string().min(createAdminPilotFeedbackBodyNoteMin).max(createAdminPilotFeedbackBodyNoteMax)
+})
+
+export const CreateAdminPilotFeedbackResponse = zod.object({
+  "status": zod.enum(['recorded', 'resolved'])
+})
+
+
+/**
+ * @summary Resolve one pilot feedback item
+ */
+
+
+
+export const ResolveAdminPilotFeedbackParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const resolveAdminPilotFeedbackBodyNoteMin = 3;
+export const resolveAdminPilotFeedbackBodyNoteMax = 500;
+
+
+
+export const ResolveAdminPilotFeedbackBody = zod.object({
+  "status": zod.enum(['resolved']),
+  "note": zod.string().min(resolveAdminPilotFeedbackBodyNoteMin).max(resolveAdminPilotFeedbackBodyNoteMax).optional()
+})
+
+export const ResolveAdminPilotFeedbackResponse = zod.object({
+  "status": zod.enum(['recorded', 'resolved'])
+})
+
+
+/**
  * @summary List admin audit logs
  */
 export const ListAdminAuditLogsResponseItem = zod.object({
@@ -1500,6 +1639,8 @@ export const IngestAdminTransactionSettlementResponse = zod.object({
   "occurredAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
+
+
 /**
  * @summary Approve, request changes, or reject a verification
  */

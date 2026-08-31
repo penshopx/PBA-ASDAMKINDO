@@ -16,6 +16,7 @@ const testFiles = requestedTests.length
   : [
       "member-journey.integration",
       "company-security.integration",
+      "pilot-evaluation.integration",
       "settlement-reconciliation.integration",
       "verification-sla-reminder.integration",
     ];

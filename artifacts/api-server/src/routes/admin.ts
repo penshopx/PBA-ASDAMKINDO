@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, count, countDistinct, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateAdminProgramBody,
@@ -8,12 +8,22 @@ import {
   DecideVerificationParams,
   DecideVerificationResponse,
   GetAdminFunnelResponse,
+  GetAdminPilotEvaluationOptionsResponse,
+  GetAdminPilotEvaluationQueryParams,
+  GetAdminPilotEvaluationResponse,
   GetAdminOperationsResponse,
   IngestAdminTransactionSettlementBody,
   IngestAdminTransactionSettlementResponse,
   ListAdminMatchingsQueryParams,
   ListAdminMatchingsResponse,
   ListAdminAuditLogsResponse,
+  ListAdminPilotFeedbackQueryParams,
+  ListAdminPilotFeedbackResponse,
+  CreateAdminPilotFeedbackBody,
+  CreateAdminPilotFeedbackResponse,
+  ResolveAdminPilotFeedbackBody,
+  ResolveAdminPilotFeedbackParams,
+  ResolveAdminPilotFeedbackResponse,
   ResolveAdminTransactionReconciliationBody,
   ResolveAdminTransactionReconciliationParams,
   ResolveAdminTransactionReconciliationResponse,
@@ -34,6 +44,7 @@ import {
   auditLogsTable,
   companyTalentConsentsTable,
   companyRequirementsTable,
+  companyProfilesTable,
   db,
   enrollmentsTable,
   matchingsTable,
@@ -188,13 +199,20 @@ async function recordAudit(
     fromStatus?: string | null;
     toStatus?: string | null;
     note?: string | null;
+    metadata?: Record<string, unknown>;
   },
 ) {
   await executor.insert(auditLogsTable).values({
     id: randomUUID(),
     actorUserId: actor.id,
     actorRole: actor.role,
-    ...values,
+    action: values.action,
+    entityType: values.entityType,
+    entityId: values.entityId,
+    fromStatus: values.fromStatus,
+    toStatus: values.toStatus,
+    note: values.note,
+    ...(values.metadata ? { metadata: values.metadata } : {}),
   });
 }
 
@@ -211,6 +229,116 @@ async function getAuditLogs(includeLogs: boolean) {
     actorName: actorName ?? "Admin PBA",
     createdAt: log.createdAt,
   }));
+}
+
+const PILOT_TARGET_PARTICIPANTS = 20;
+const PILOT_FEEDBACK_ENTITY = "pilot_feedback";
+const PILOT_FEEDBACK_RECORDED = "pilot.feedback.recorded";
+const PILOT_FEEDBACK_RESOLVED = "pilot.feedback.resolved";
+const PILOT_SENSITIVE_FEEDBACK =
+  /(?:\b(?:nama peserta|email|e-mail|telepon|nomor hp|whatsapp|alamat|nik|ktp|paspor|password|kata sandi|token|api key|rekening|kartu kredit|diagnosis|penyakit)\b|@|https?:\/\/|(?:\+62|08)\d{7,}|\b\d{12,19}\b)/i;
+
+function percentage(value: number, denominator: number): number {
+  if (denominator === 0) return 0;
+  return Number(((value / denominator) * 100).toFixed(1));
+}
+
+function isSafePilotFeedback(note: string): boolean {
+  return note.length >= 3 && note.length <= 500 && !PILOT_SENSITIVE_FEEDBACK.test(note);
+}
+
+async function getPilotAnchors(programId: string, requirementId: string) {
+  const [programRows, requirementRows] = await Promise.all([
+    db
+      .select({ id: programsTable.id, name: programsTable.name })
+      .from(programsTable)
+      .where(
+        and(
+          eq(programsTable.id, programId),
+          eq(programsTable.status, "published"),
+          eq(programsTable.category, "Bimtek"),
+        ),
+      )
+      .limit(1),
+    db
+      .select({
+        id: companyRequirementsTable.id,
+        title: companyRequirementsTable.title,
+        companyUserId: companyRequirementsTable.companyUserId,
+        companyName: sql<string>`coalesce(${companyProfilesTable.companyName}, ${usersTable.organization}, ${usersTable.name})`,
+      })
+      .from(companyRequirementsTable)
+      .innerJoin(usersTable, eq(usersTable.id, companyRequirementsTable.companyUserId))
+      .leftJoin(companyProfilesTable, eq(companyProfilesTable.userId, companyRequirementsTable.companyUserId))
+      .where(
+        and(
+          eq(companyRequirementsTable.id, requirementId),
+          eq(companyRequirementsTable.status, "open"),
+        ),
+      )
+      .limit(1),
+  ]);
+  const program = programRows[0];
+  const requirement = requirementRows[0];
+  return program && requirement ? { program, requirement } : null;
+}
+
+async function getPilotFeedbackEvents(programId: string, requirementId: string) {
+  return db
+    .select({
+      id: auditLogsTable.id,
+      action: auditLogsTable.action,
+      entityId: auditLogsTable.entityId,
+      note: auditLogsTable.note,
+      createdAt: auditLogsTable.createdAt,
+      metadata: auditLogsTable.metadata,
+    })
+    .from(auditLogsTable)
+    .where(
+      and(
+        eq(auditLogsTable.entityType, PILOT_FEEDBACK_ENTITY),
+        inArray(auditLogsTable.action, [PILOT_FEEDBACK_RECORDED, PILOT_FEEDBACK_RESOLVED]),
+        sql`${auditLogsTable.metadata}->>'programId' = ${programId}`,
+        sql`${auditLogsTable.metadata}->>'requirementId' = ${requirementId}`,
+      ),
+    )
+    .orderBy(desc(auditLogsTable.createdAt));
+}
+
+function buildPilotFeedbackRecords(
+  events: Awaited<ReturnType<typeof getPilotFeedbackEvents>>,
+) {
+  const grouped = new Map<
+    string,
+    {
+      id: string;
+      note: string;
+      createdAt: Date;
+      resolvedAt: Date | null;
+    }
+  >();
+  for (const event of events) {
+    if (event.action !== PILOT_FEEDBACK_RECORDED) continue;
+    grouped.set(event.entityId, {
+      id: event.entityId,
+      note: event.note ?? "Feedback pilot tanpa ringkasan.",
+      createdAt: event.createdAt,
+      resolvedAt: null,
+    });
+  }
+  for (const event of events) {
+    if (event.action !== PILOT_FEEDBACK_RESOLVED) continue;
+    const feedback = grouped.get(event.entityId);
+    if (feedback && (!feedback.resolvedAt || event.createdAt < feedback.resolvedAt)) {
+      feedback.resolvedAt = event.createdAt;
+    }
+  }
+  return [...grouped.values()]
+    .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+    .map((feedback) => ({
+      ...feedback,
+      status: feedback.resolvedAt ? ("resolved" as const) : ("open" as const),
+    }));
 }
 
 router.get("/admin/matchings", requireUser, requireRole(...adminRoles), async (req, res): Promise<void> => {
@@ -292,6 +420,317 @@ router.get("/admin/funnel", requireUser, requireRole(...adminRoles), async (_req
     ],
   }));
 });
+
+router.get(
+  "/admin/pilot-evaluation/options",
+  requireUser,
+  requireRole(...adminRoles),
+  async (_req, res): Promise<void> => {
+    const [programs, requirements] = await Promise.all([
+      db
+        .select({
+          id: programsTable.id,
+          name: programsTable.name,
+          category: programsTable.category,
+        })
+        .from(programsTable)
+        .where(
+          and(
+            eq(programsTable.status, "published"),
+            eq(programsTable.category, "Bimtek"),
+          ),
+        )
+        .orderBy(programsTable.name),
+      db
+        .select({
+          id: companyRequirementsTable.id,
+          title: companyRequirementsTable.title,
+          companyName: sql<string>`coalesce(${companyProfilesTable.companyName}, ${usersTable.organization}, ${usersTable.name})`,
+        })
+        .from(companyRequirementsTable)
+        .innerJoin(usersTable, eq(usersTable.id, companyRequirementsTable.companyUserId))
+        .leftJoin(companyProfilesTable, eq(companyProfilesTable.userId, companyRequirementsTable.companyUserId))
+        .where(eq(companyRequirementsTable.status, "open"))
+        .orderBy(companyRequirementsTable.title),
+    ]);
+    res.json(GetAdminPilotEvaluationOptionsResponse.parse({ programs, requirements }));
+  },
+);
+
+router.get(
+  "/admin/pilot-evaluation",
+  requireUser,
+  requireRole(...adminRoles),
+  async (req, res): Promise<void> => {
+    const query = GetAdminPilotEvaluationQueryParams.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({ error: "Program dan kebutuhan perusahaan wajib dipilih." });
+      return;
+    }
+    const anchors = await getPilotAnchors(query.data.programId, query.data.requirementId);
+    if (!anchors) {
+      res.status(400).json({ error: "Program Bimtek terbit atau kebutuhan perusahaan terbuka tidak ditemukan." });
+      return;
+    }
+
+    const metricResult = await db.execute<{
+      registrations: number;
+      completedDiagnostics: number;
+      paidParticipants: number;
+      completedProgram: number;
+      activeConsent: number;
+      verifiedTalent: number;
+      matchedCandidates: number;
+      shortlistPipeline: number;
+      placementSimulation: number;
+      complaints: number;
+      adminResponseTimeHours: string | null;
+      resolvedFeedbackCount: number;
+    }>(sql`
+      with cohort as (
+        select distinct e.member_user_id
+        from enrollments e
+        where e.program_id = ${anchors.program.id}
+          and e.status <> 'cancelled'
+      ),
+      feedback_created as (
+        select a.entity_id, a.created_at
+        from audit_logs a
+        where a.entity_type = ${PILOT_FEEDBACK_ENTITY}
+          and a.action = ${PILOT_FEEDBACK_RECORDED}
+          and a.metadata->>'programId' = ${anchors.program.id}
+          and a.metadata->>'requirementId' = ${anchors.requirement.id}
+      ),
+      feedback_resolved as (
+        select a.entity_id, min(a.created_at) as resolved_at
+        from audit_logs a
+        where a.entity_type = ${PILOT_FEEDBACK_ENTITY}
+          and a.action = ${PILOT_FEEDBACK_RESOLVED}
+          and a.metadata->>'programId' = ${anchors.program.id}
+          and a.metadata->>'requirementId' = ${anchors.requirement.id}
+        group by a.entity_id
+      )
+      select
+        (select count(*)::int from cohort) as "registrations",
+        (select count(distinct c.member_user_id)::int from cohort c inner join readiness_diagnostics d on d.member_user_id = c.member_user_id) as "completedDiagnostics",
+        (select count(distinct c.member_user_id)::int from cohort c inner join enrollments e on e.member_user_id = c.member_user_id and e.program_id = ${anchors.program.id} and e.status <> 'cancelled' inner join transactions t on t.reference_id = e.id and t.kind = 'program' and t.status = 'paid') as "paidParticipants",
+        (select count(distinct c.member_user_id)::int from cohort c inner join enrollments e on e.member_user_id = c.member_user_id and e.program_id = ${anchors.program.id} and e.status = 'completed') as "completedProgram",
+        (select count(distinct c.member_user_id)::int from cohort c inner join member_profiles p on p.user_id = c.member_user_id and p.data_consent = true inner join company_talent_consents tc on tc.member_user_id = c.member_user_id and tc.company_user_id = ${anchors.requirement.companyUserId} and tc.status = 'active' and tc.expires_at > now()) as "activeConsent",
+        (select count(distinct c.member_user_id)::int from cohort c inner join professional_passports pp on pp.member_user_id = c.member_user_id inner join member_evidence me on me.member_user_id = c.member_user_id and me.status = 'verified') as "verifiedTalent",
+        (select count(distinct c.member_user_id)::int from cohort c inner join matchings m on m.candidate_user_id = c.member_user_id and m.requirement_id = ${anchors.requirement.id} and m.status in ('new', 'review', 'shortlisted', 'interview', 'placed')) as "matchedCandidates",
+        (select count(distinct c.member_user_id)::int from cohort c inner join matchings m on m.candidate_user_id = c.member_user_id and m.requirement_id = ${anchors.requirement.id} and m.status in ('shortlisted', 'interview', 'placed')) as "shortlistPipeline",
+        (select count(distinct c.member_user_id)::int from cohort c inner join matchings m on m.candidate_user_id = c.member_user_id and m.requirement_id = ${anchors.requirement.id} and m.status = 'placed') as "placementSimulation",
+        (select count(*)::int from feedback_created) as "complaints",
+        (select round(avg(extract(epoch from (r.resolved_at - c.created_at)) / 3600.0)::numeric, 1)::text from feedback_created c inner join feedback_resolved r on r.entity_id = c.entity_id where r.resolved_at >= c.created_at) as "adminResponseTimeHours",
+        (select count(*)::int from feedback_created c inner join feedback_resolved r on r.entity_id = c.entity_id where r.resolved_at >= c.created_at) as "resolvedFeedbackCount"
+    `);
+    const rawMetrics = metricResult.rows[0];
+    const registrations = Number(rawMetrics?.registrations ?? 0);
+    const completedDiagnostics = Number(rawMetrics?.completedDiagnostics ?? 0);
+    const paidParticipants = Number(rawMetrics?.paidParticipants ?? 0);
+    const completedProgram = Number(rawMetrics?.completedProgram ?? 0);
+    const activeConsent = Number(rawMetrics?.activeConsent ?? 0);
+    const verifiedTalent = Number(rawMetrics?.verifiedTalent ?? 0);
+    const matchedCandidates = Number(rawMetrics?.matchedCandidates ?? 0);
+    const shortlistPipeline = Number(rawMetrics?.shortlistPipeline ?? 0);
+    const placementSimulation = Number(rawMetrics?.placementSimulation ?? 0);
+    const complaints = Number(rawMetrics?.complaints ?? 0);
+    const resolvedFeedbackCount = Number(rawMetrics?.resolvedFeedbackCount ?? 0);
+    const adminResponseTimeHours =
+      rawMetrics?.adminResponseTimeHours === null || rawMetrics?.adminResponseTimeHours === undefined
+        ? null
+        : Number(rawMetrics.adminResponseTimeHours);
+    const completionRate = percentage(completedProgram, registrations);
+    const funnelCounts = {
+      registrations,
+      completedDiagnostics,
+      paidParticipants,
+      completedProgram,
+      activeConsent,
+      matchedCandidates,
+      shortlistPipeline,
+      placementSimulation,
+    };
+    const funnelDefinitions = {
+      registrations: "Anggota unik dengan enrollment program terpilih yang tidak berstatus dibatalkan.",
+      completedDiagnostics: "Anggota cohort yang sudah memiliki readiness diagnostic.",
+      paidParticipants: "Anggota cohort unik dengan transaksi program sandbox/manual berstatus paid.",
+      completedProgram: "Anggota cohort dengan enrollment berstatus selesai.",
+      activeConsent: "Anggota cohort dengan dataConsent aktif dan consent aktif yang belum kedaluwarsa untuk perusahaan mitra.",
+      matchedCandidates: "Anggota cohort yang memiliki record matching aktif untuk kebutuhan terpilih; declined tidak dihitung.",
+      shortlistPipeline: "Anggota cohort pada status shortlisted, interview, atau placed untuk kebutuhan terpilih.",
+      placementSimulation: "Anggota cohort pada status placed; dalam pilot ini hanya simulasi placement.",
+    } as const;
+    const funnelLabels = {
+      registrations: "Registrasi cohort",
+      completedDiagnostics: "Diagnostik selesai",
+      paidParticipants: "Pembayaran sandbox",
+      completedProgram: "Program selesai",
+      activeConsent: "Consent aktif",
+      matchedCandidates: "Matched",
+      shortlistPipeline: "Shortlist / pipeline",
+      placementSimulation: "Placement simulation",
+    } as const;
+    const funnel = (
+      Object.keys(funnelCounts) as Array<keyof typeof funnelCounts>
+    ).map((key) => ({
+      key,
+      label: funnelLabels[key],
+      count: funnelCounts[key],
+      percentage: percentage(funnelCounts[key], registrations),
+      definition: funnelDefinitions[key],
+    }));
+
+    res.json(
+      GetAdminPilotEvaluationResponse.parse({
+        targetParticipants: PILOT_TARGET_PARTICIPANTS,
+        cohort: {
+          programName: anchors.program.name,
+          requirementTitle: anchors.requirement.title,
+          companyName: anchors.requirement.companyName,
+          participantCount: registrations,
+        },
+        metrics: [
+          { key: "registrations", label: "Registrasi cohort", value: registrations, unit: "count", denominator: PILOT_TARGET_PARTICIPANTS, definition: funnelDefinitions.registrations },
+          { key: "completedDiagnostics", label: "Diagnostik selesai", value: completedDiagnostics, unit: "count", denominator: registrations, definition: funnelDefinitions.completedDiagnostics },
+          { key: "paidParticipants", label: "Peserta berbayar", value: paidParticipants, unit: "count", denominator: registrations, definition: funnelDefinitions.paidParticipants },
+          { key: "completionRate", label: "Completion rate", value: completionRate, unit: "percentage", denominator: registrations, definition: "Persentase anggota cohort dengan enrollment selesai terhadap seluruh anggota cohort." },
+          { key: "activeConsent", label: "Consent aktif", value: activeConsent, unit: "count", denominator: registrations, definition: funnelDefinitions.activeConsent },
+          { key: "verifiedTalent", label: "Talenta terverifikasi", value: verifiedTalent, unit: "count", denominator: registrations, definition: "Anggota cohort yang memiliki Professional Passport dan setidaknya satu evidence berstatus verified." },
+          { key: "matchedCandidates", label: "Kandidat matched", value: matchedCandidates, unit: "count", denominator: registrations, definition: funnelDefinitions.matchedCandidates },
+          { key: "shortlistPipeline", label: "Shortlist / pipeline", value: shortlistPipeline, unit: "count", denominator: matchedCandidates, definition: funnelDefinitions.shortlistPipeline },
+          { key: "placementSimulation", label: "Placement simulation", value: placementSimulation, unit: "count", denominator: shortlistPipeline, definition: funnelDefinitions.placementSimulation },
+          { key: "complaints", label: "Keluhan / feedback", value: complaints, unit: "count", denominator: registrations, definition: "Jumlah feedback non-sensitif yang dicatat Admin untuk anchor pilot ini, termasuk yang telah diselesaikan." },
+          { key: "adminResponseTimeHours", label: "Waktu respons Admin", value: adminResponseTimeHours, unit: "hours", denominator: resolvedFeedbackCount, definition: "Rata-rata jam dari feedback dicatat sampai ditandai selesai. Nilai N/A jika belum ada feedback yang selesai." },
+        ],
+        funnel,
+      }),
+    );
+  },
+);
+
+router.get(
+  "/admin/pilot-feedback",
+  requireUser,
+  requireRole(...adminRoles),
+  async (req, res): Promise<void> => {
+    const query = ListAdminPilotFeedbackQueryParams.safeParse(req.query);
+    if (!query.success) {
+      res.status(400).json({ error: "Program dan kebutuhan perusahaan wajib dipilih." });
+      return;
+    }
+    const anchors = await getPilotAnchors(query.data.programId, query.data.requirementId);
+    if (!anchors) {
+      res.status(400).json({ error: "Anchor pilot tidak tersedia." });
+      return;
+    }
+    const records = buildPilotFeedbackRecords(
+      await getPilotFeedbackEvents(query.data.programId, query.data.requirementId),
+    );
+    res.json(ListAdminPilotFeedbackResponse.parse(records));
+  },
+);
+
+router.post(
+  "/admin/pilot-feedback",
+  requireUser,
+  requireRole(...adminRoles),
+  async (req, res): Promise<void> => {
+    const body = CreateAdminPilotFeedbackBody.safeParse(req.body);
+    const note = body.success ? body.data.note.trim() : "";
+    if (!body.success || !isSafePilotFeedback(note)) {
+      res.status(400).json({ error: "Gunakan ringkasan operasional 3–500 karakter tanpa data pribadi, kontak, kredensial, kesehatan, identitas, atau pembayaran." });
+      return;
+    }
+    const anchors = await getPilotAnchors(body.data.programId, body.data.requirementId);
+    if (!anchors) {
+      res.status(400).json({ error: "Anchor pilot tidak tersedia." });
+      return;
+    }
+    const actor = getAuthenticatedUser(req);
+    await recordAudit(db, actor, {
+      action: PILOT_FEEDBACK_RECORDED,
+      entityType: PILOT_FEEDBACK_ENTITY,
+      entityId: randomUUID(),
+      toStatus: "open",
+      note,
+      metadata: {
+        programId: anchors.program.id,
+        requirementId: anchors.requirement.id,
+      },
+    });
+    res.status(201).json(CreateAdminPilotFeedbackResponse.parse({ status: "recorded" }));
+  },
+);
+
+router.patch(
+  "/admin/pilot-feedback/:id",
+  requireUser,
+  requireRole(...adminRoles),
+  async (req, res): Promise<void> => {
+    const params = ResolveAdminPilotFeedbackParams.safeParse(req.params);
+    const body = ResolveAdminPilotFeedbackBody.safeParse(req.body);
+    const resolutionNote = body.success ? body.data.note?.trim() : undefined;
+    if (!params.success || !body.success || (resolutionNote !== undefined && !isSafePilotFeedback(resolutionNote))) {
+      res.status(400).json({ error: "Penyelesaian feedback tidak valid atau memuat data sensitif." });
+      return;
+    }
+    const actor = getAuthenticatedUser(req);
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${params.data.id}))`);
+      const [recorded] = await tx
+        .select({
+          entityId: auditLogsTable.entityId,
+          metadata: auditLogsTable.metadata,
+        })
+        .from(auditLogsTable)
+        .where(
+          and(
+            eq(auditLogsTable.entityType, PILOT_FEEDBACK_ENTITY),
+            eq(auditLogsTable.action, PILOT_FEEDBACK_RECORDED),
+            eq(auditLogsTable.entityId, params.data.id),
+          ),
+        )
+        .limit(1);
+      if (!recorded) return "not_found" as const;
+      const [resolved] = await tx
+        .select({ id: auditLogsTable.id })
+        .from(auditLogsTable)
+        .where(
+          and(
+            eq(auditLogsTable.entityType, PILOT_FEEDBACK_ENTITY),
+            eq(auditLogsTable.action, PILOT_FEEDBACK_RESOLVED),
+            eq(auditLogsTable.entityId, params.data.id),
+          ),
+        )
+        .limit(1);
+      if (resolved) return "resolved" as const;
+      const metadata =
+        typeof recorded.metadata === "object" && recorded.metadata !== null
+          ? (recorded.metadata as Record<string, unknown>)
+          : {};
+      await recordAudit(tx, actor, {
+        action: PILOT_FEEDBACK_RESOLVED,
+        entityType: PILOT_FEEDBACK_ENTITY,
+        entityId: recorded.entityId,
+        fromStatus: "open",
+        toStatus: "resolved",
+        note: resolutionNote || "Feedback ditandai selesai oleh Admin PBA.",
+        metadata,
+      });
+      return "ok" as const;
+    });
+    if (result === "not_found") {
+      res.status(404).json({ error: "Feedback pilot tidak ditemukan." });
+      return;
+    }
+    if (result === "resolved") {
+      res.status(400).json({ error: "Feedback pilot ini sudah diselesaikan." });
+      return;
+    }
+    res.json(ResolveAdminPilotFeedbackResponse.parse({ status: "resolved" }));
+  },
+);
 
 router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (req, res): Promise<void> => {
   const user = getAuthenticatedUser(req);
@@ -433,7 +872,7 @@ router.post(
       return;
     }
 
-    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
+    const body = IngestAdminTransactionSettlementBody.safeParse(req.body);
     if (!body.success) {
       res.status(400).json({
         error: "Settlement wajib memiliki referenceId atau invoiceNumber, nominal, dan waktu settlement yang valid.",
@@ -509,7 +948,7 @@ router.post(
           reconciliationResolvedByUserId: null,
           updatedAt: now,
         })
-        .where(eq(transactionsTable.id, existing.id))
+        .where(eq(programsTable.id, existing.id))
         .returning();
       const next = transactionResponse(transaction, now);
 
@@ -655,90 +1094,80 @@ router.patch(
   requireUser,
   requireRole(...adminRoles),
   async (req, res): Promise<void> => {
-    const params = ResolveAdminTransactionReconciliationParams.safeParse(req.params);
-    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
-    if (!params.success || !body.success) {
-      res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
+    const params = UpdateAdminProgramParams.safeParse(req.params);
+    const body = UpdateAdminProgramBody.safeParse(req.body);
+    if (!params.success || !body.success || Object.keys(body.data).length === 0) {
+      res.status(400).json({ error: "Perubahan program tidak valid." });
       return;
     }
     const actor = getAuthenticatedUser(req);
-    const [existing] = await db
-      .select()
-      .from(transactionsTable)
-      .where(eq(transactionsTable.id, params.data.id))
-      .limit(1);
+    const [existing] = await db.select().from(programsTable).where(eq(programsTable.id, params.data.id)).limit(1);
     if (!existing) {
-      res.status(404).json({ error: "Transaksi tidak ditemukan." });
+      res.status(404).json({ error: "Program tidak ditemukan." });
       return;
     }
     const [updated] = await db.transaction(async (tx) => {
-      const [transaction] = await tx
-        .update(transactionsTable)
+      const [program] = await tx
+        .update(programsTable)
         .set({
-          reconciliationStatus: "resolved",
-          reconciliationResolvedAt: now,
-          reconciliationResolvedByUserId: actor.id,
-          updatedAt: now,
-        })
-        .where(eq(transactionsTable.id, existing.id))
+          ...body.data,
+          ...(body.data.price === undefined ? {} : { price: String(body.data.price) }),
+          updatedAt: new Date(),
+        } as any)
+        .where(eq(programsTable.id, existing.id))
         .returning();
       await recordAudit(tx, actor, {
-        action: "transaction.reconciliation_resolved",
-        entityType: "transaction_reconciliation",
+        action: "program.updated",
+        entityType: "program",
         entityId: existing.id,
-        fromStatus: current.reconciliationStatus,
-        toStatus: "resolved",
-        note: body.data.note,
+        fromStatus: existing.status,
+        toStatus: program.status,
+        note: "Detail program atau publikasi diperbarui.",
       });
-      return [transaction];
+      return [program];
     });
-    res.json(
-      UpdateAdminTransactionResponse.parse(transactionResponse(updated)),
-    );
+    res.json(UpdateAdminProgramResponse.parse(programResponse(updated)));
   },
 );
 
 router.patch(
-  "/admin/transactions/:id/reconciliation",
-  ...superAdminOnly,
+  "/admin/enrollments/:id",
+  requireUser,
+  requireRole(...adminRoles),
   async (req, res): Promise<void> => {
-    const params = ResolveAdminTransactionReconciliationParams.safeParse(req.params);
-    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
+    const params = UpdateAdminEnrollmentParams.safeParse(req.params);
+    const body = UpdateAdminEnrollmentBody.safeParse(req.body);
     if (!params.success || !body.success) {
-      res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
+      res.status(400).json({ error: "Status enrollment tidak valid." });
       return;
     }
     const actor = getAuthenticatedUser(req);
-    const [existing] = await db
-      .select()
-      .from(transactionsTable)
-      .where(eq(transactionsTable.id, params.data.id))
-      .limit(1);
+    const [existing] = await db.select().from(enrollmentsTable).where(eq(enrollmentsTable.id, params.data.id)).limit(1);
     if (!existing) {
       res.status(404).json({ error: "Enrollment tidak ditemukan." });
       return;
     }
     const now = new Date();
     const [updated] = await db.transaction(async (tx) => {
-      const [transaction] = await tx
-        .update(transactionsTable)
+      const [enrollment] = await tx
+        .update(enrollmentsTable)
         .set({
-          reconciliationStatus: "resolved",
-          reconciliationResolvedAt: now,
-          reconciliationResolvedByUserId: actor.id,
+          status: body.data.status,
+          enrolledAt: body.data.status === "enrolled" ? existing.enrolledAt ?? now : existing.enrolledAt,
+          completedAt: body.data.status === "completed" ? now : null,
           updatedAt: now,
         })
-        .where(eq(transactionsTable.id, existing.id))
+        .where(eq(enrollmentsTable.id, existing.id))
         .returning();
       await recordAudit(tx, actor, {
-        action: "transaction.reconciliation_resolved",
-        entityType: "transaction_reconciliation",
+        action: "enrollment.status_changed",
+        entityType: "enrollment",
         entityId: existing.id,
-        fromStatus: current.reconciliationStatus,
-        toStatus: "resolved",
+        fromStatus: existing.status,
+        toStatus: body.data.status,
         note: body.data.note,
       });
-      return [transaction];
+      return [enrollment];
     });
     const [program] = await db.select().from(programsTable).where(eq(programsTable.id, updated.programId)).limit(1);
     res.json(
@@ -758,10 +1187,10 @@ router.patch(
   requireUser,
   requireRole(...adminRoles),
   async (req, res): Promise<void> => {
-    const params = ResolveAdminTransactionReconciliationParams.safeParse(req.params);
-    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
+    const params = UpdateAdminMatchingParams.safeParse(req.params);
+    const body = UpdateAdminMatchingBody.safeParse(req.body);
     if (!params.success || !body.success) {
-      res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
+      res.status(400).json({ error: "Status matching tidak valid." });
       return;
     }
     const actor = getAuthenticatedUser(req);
@@ -793,48 +1222,37 @@ router.patch(
       return;
     }
     const [updated] = await db.transaction(async (tx) => {
-      const [transaction] = await tx
-        .update(transactionsTable)
-        .set({
-          reconciliationStatus: "resolved",
-          reconciliationResolvedAt: now,
-          reconciliationResolvedByUserId: actor.id,
-          updatedAt: now,
-        })
-        .where(eq(transactionsTable.id, existing.id))
+      const [matching] = await tx
+        .update(matchingsTable)
+        .set({ status: body.data.status, updatedAt: new Date() })
+        .where(eq(matchingsTable.id, existing.id))
         .returning();
       await recordAudit(tx, actor, {
-        action: "transaction.reconciliation_resolved",
-        entityType: "transaction_reconciliation",
+        action: "matching.pipeline_changed",
+        entityType: "matching",
         entityId: existing.id,
-        fromStatus: current.reconciliationStatus,
-        toStatus: "resolved",
+        fromStatus: existing.status,
+        toStatus: body.data.status,
         note: body.data.note,
       });
-      return [transaction];
+      return [matching];
     });
-    res.json(
-      UpdateAdminTransactionResponse.parse(transactionResponse(updated)),
-    );
+    res.json(UpdateAdminMatchingResponse.parse(updated));
   },
 );
 
 router.patch(
-  "/admin/transactions/:id/reconciliation",
+  "/admin/transactions/:id",
   ...superAdminOnly,
   async (req, res): Promise<void> => {
-    const params = ResolveAdminTransactionReconciliationParams.safeParse(req.params);
-    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
+    const params = UpdateAdminTransactionParams.safeParse(req.params);
+    const body = UpdateAdminTransactionBody.safeParse(req.body);
     if (!params.success || !body.success) {
-      res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
+      res.status(400).json({ error: "Status transaksi dan catatan wajib diisi." });
       return;
     }
     const actor = getAuthenticatedUser(req);
-    const [existing] = await db
-      .select()
-      .from(transactionsTable)
-      .where(eq(transactionsTable.id, params.data.id))
-      .limit(1);
+    const [existing] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, params.data.id)).limit(1);
     if (!existing) {
       res.status(404).json({ error: "Transaksi tidak ditemukan." });
       return;
@@ -842,20 +1260,15 @@ router.patch(
     const [updated] = await db.transaction(async (tx) => {
       const [transaction] = await tx
         .update(transactionsTable)
-        .set({
-          reconciliationStatus: "resolved",
-          reconciliationResolvedAt: now,
-          reconciliationResolvedByUserId: actor.id,
-          updatedAt: now,
-        })
+        .set({ status: body.data.status, updatedAt: new Date() })
         .where(eq(transactionsTable.id, existing.id))
         .returning();
       await recordAudit(tx, actor, {
-        action: "transaction.reconciliation_resolved",
-        entityType: "transaction_reconciliation",
+        action: "transaction.status_changed",
+        entityType: "transaction",
         entityId: existing.id,
-        fromStatus: current.reconciliationStatus,
-        toStatus: "resolved",
+        fromStatus: existing.status,
+        toStatus: body.data.status,
         note: body.data.note,
       });
       return [transaction];

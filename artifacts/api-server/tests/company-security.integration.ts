@@ -66,7 +66,13 @@ async function request(path: string, init?: RequestInit) {
     ...init,
     headers: { "content-type": "application/json", ...init?.headers },
   });
-  const body = await response.json();
+  const responseText = await response.text();
+  let body: any;
+  try {
+    body = JSON.parse(responseText);
+  } catch {
+    throw new Error(`${init?.method ?? "GET"} ${path} returned ${response.status} with a non-JSON response: ${responseText.slice(0, 2000)}`);
+  }
   return { response, body };
 }
 async function requestAs(userId: string, path: string, init?: RequestInit) {
