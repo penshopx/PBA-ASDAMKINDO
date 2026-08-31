@@ -68,6 +68,7 @@ export const companyTalentConsentsTable = pgTable(
 export const talentConsentSettingsTable = pgTable("talent_consent_settings", {
   id: text("id").primaryKey(),
   defaultDurationDays: integer("default_duration_days").notNull().default(90),
+  reminderDaysBeforeExpiry: integer("reminder_days_before_expiry").notNull().default(7),
   updatedBy: text("updated_by").references(() => usersTable.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

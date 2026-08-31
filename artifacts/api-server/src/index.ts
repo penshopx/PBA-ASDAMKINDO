@@ -1,6 +1,9 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { expireCompanyTalentConsents } from "./lib/talent-consent";
+import {
+  expireCompanyTalentConsents,
+  remindCompanyTalentConsentExpiries,
+} from "./lib/talent-consent";
 import { startVerificationSlaReminderWorker } from "./lib/verification-sla";
 
 const rawPort = process.env["PORT"];
@@ -27,9 +30,14 @@ app.listen(port, (err) => {
 });
 
 const expiryTimer = setInterval(() => {
-  void expireCompanyTalentConsents().catch((err) =>
-    logger.error({ err }, "Failed to expire company talent consents"),
-  );
+  void Promise.all([
+    expireCompanyTalentConsents().catch((err) => {
+      logger.error({ err }, "Failed to expire company talent consents");
+    }),
+    remindCompanyTalentConsentExpiries().catch((err) => {
+      logger.error({ err }, "Failed to create company talent consent reminders");
+    }),
+  ]);
 }, 60_000);
 expiryTimer.unref();
 

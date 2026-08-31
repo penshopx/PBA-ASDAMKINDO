@@ -1394,7 +1394,7 @@ export const getGetAdminTalentConsentSettingsUrl = () => {
 }
 
 /**
- * @summary Get default Talent Pool consent duration
+ * @summary Get Talent Pool consent duration and expiry reminder settings
  */
 export const getAdminTalentConsentSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<TalentConsentSettings> => {
 
@@ -1441,7 +1441,7 @@ export type GetAdminTalentConsentSettingsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get default Talent Pool consent duration
+ * @summary Get Talent Pool consent duration and expiry reminder settings
  */
 
 export function useGetAdminTalentConsentSettings<TData = Awaited<ReturnType<typeof getAdminTalentConsentSettings>>, TError = ErrorType<unknown>>(
@@ -1471,7 +1471,7 @@ export const getUpdateAdminTalentConsentSettingsUrl = () => {
 }
 
 /**
- * @summary Update default Talent Pool consent duration
+ * @summary Update Talent Pool consent duration and expiry reminder settings
  */
 export const updateAdminTalentConsentSettings = async (talentConsentSettingsUpdate: TalentConsentSettingsUpdate, options?: Parameters<typeof customFetch>[1]): Promise<TalentConsentSettings> => {
 
@@ -1520,7 +1520,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateAdminTalentConsentSettingsMutationError = ErrorType<unknown>
 
     /**
- * @summary Update default Talent Pool consent duration
+ * @summary Update Talent Pool consent duration and expiry reminder settings
  */
 export const useUpdateAdminTalentConsentSettings = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminTalentConsentSettings>>, TError,{data: BodyType<TalentConsentSettingsUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}

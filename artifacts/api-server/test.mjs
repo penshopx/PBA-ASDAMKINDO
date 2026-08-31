@@ -19,6 +19,7 @@ const testFiles = requestedTests.length
       "pilot-evaluation.integration",
       "settlement-reconciliation.integration",
       "verification-sla-reminder.integration",
+      "consent-expiry-reminder.integration",
     ];
 
 try {

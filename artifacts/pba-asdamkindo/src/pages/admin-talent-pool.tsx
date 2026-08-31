@@ -278,23 +278,26 @@ function SettingsCard() {
   const updateSettings = useUpdateAdminTalentConsentSettings();
 
   const [duration, setDuration] = useState('');
+  const [reminderDays, setReminderDays] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (settings && !isEditing) {
       setDuration(settings.defaultDurationDays.toString());
+      setReminderDays(settings.reminderDaysBeforeExpiry.toString());
     }
   }, [settings, isEditing]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const days = parseInt(duration, 10);
-    if (isNaN(days) || days < 1 || days > 365) {
+    const reminder = parseInt(reminderDays, 10);
+    if (isNaN(days) || days < 1 || days > 365 || isNaN(reminder) || reminder < 1 || reminder > 365) {
       alert('Durasi harus antara 1 dan 365 hari.');
       return;
     }
 
-    updateSettings.mutate({ data: { defaultDurationDays: days, note: 'Updated via Admin Portal' } }, {
+    updateSettings.mutate({ data: { defaultDurationDays: days, reminderDaysBeforeExpiry: reminder, note: 'Updated via Admin Portal' } }, {
       onSuccess: () => {
         setIsEditing(false);
         queryClient.invalidateQueries({ queryKey: ['admin-consent-settings'] });
@@ -307,23 +310,39 @@ function SettingsCard() {
     <div className="rounded-xl border border-border bg-card p-5 lg:min-w-[300px] flex items-center justify-between lg:flex-col lg:items-start lg:justify-start gap-4">
       <div>
         <h2 className="text-sm font-bold flex items-center gap-2 mb-1">
-          <Settings size={16} /> Pengaturan Durasi Izin
+          <Settings size={16} /> Pengaturan Akses Talent Pool
         </h2>
-        <p className="text-xs text-muted-foreground">Durasi default akses Talent Pool per perusahaan.</p>
+        <p className="text-xs text-muted-foreground">Atur durasi akses dan waktu pengingat sebelum kedaluwarsa.</p>
       </div>
 
       {isEditing ? (
-        <form onSubmit={handleSave} className="flex items-center gap-2">
-          <input
-            type="number"
-            min="1"
-            max="365"
-            required
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            className="w-20 rounded-md border border-border bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <span className="text-xs font-bold mr-1">hari</span>
+        <form onSubmit={handleSave} className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-xs font-bold">
+            <span>Durasi</span>
+            <input
+              type="number"
+              min="1"
+              max="365"
+              required
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              className="w-20 rounded-md border border-border bg-background px-2 py-1 text-sm font-normal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <span>hari</span>
+          </label>
+          <label className="flex items-center gap-2 text-xs font-bold">
+            <span>Pengingat</span>
+            <input
+              type="number"
+              min="1"
+              max="365"
+              required
+              value={reminderDays}
+              onChange={(e) => setReminderDays(e.target.value)}
+              className="w-20 rounded-md border border-border bg-background px-2 py-1 text-sm font-normal focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <span>hari sebelum</span>
+          </label>
           <button
             type="submit"
             disabled={updateSettings.isPending}
@@ -343,7 +362,9 @@ function SettingsCard() {
         </form>
       ) : (
         <div className="flex items-center gap-3">
-          <span className="text-lg font-bold text-primary">{settings?.defaultDurationDays || '--'} hari</span>
+          <span className="text-sm font-bold text-primary">
+            {settings ? `${settings.defaultDurationDays} hari akses · ${settings.reminderDaysBeforeExpiry} hari sebelum diingatkan` : '--'}
+          </span>
           <button
             onClick={() => setIsEditing(true)}
             className="text-[11px] font-bold underline text-muted-foreground hover:text-foreground"

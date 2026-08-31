@@ -35,7 +35,11 @@ async function ensureMemberPassport(user: ReturnType<typeof getAuthenticatedUser
   if (!created) throw new Error("Professional Passport gagal dibuat.");
   return created;
 }
-const settingsResponse = (s: Awaited<ReturnType<typeof getTalentConsentSettings>>) => ({ defaultDurationDays: s.defaultDurationDays, updatedAt: s.updatedAt });
+const settingsResponse = (s: Awaited<ReturnType<typeof getTalentConsentSettings>>) => ({
+  defaultDurationDays: s.defaultDurationDays,
+  reminderDaysBeforeExpiry: s.reminderDaysBeforeExpiry,
+  updatedAt: s.updatedAt,
+});
 type ConsentHistoryEntry = {
   consentVersion: number;
   action: string;
@@ -204,7 +208,7 @@ router.get("/admin/talent-pool/settings", ...adminOnly, async (_req, res) => res
 router.patch("/admin/talent-pool/settings", ...adminOnly, async (req, res): Promise<void> => {
   const body = UpdateAdminTalentConsentSettingsBody.safeParse(req.body); if (!body.success) { res.status(400).json({ error: "Pengaturan consent tidak valid." }); return; }
   const actor = getAuthenticatedUser(req), old = await getTalentConsentSettings(); const updated = await db.transaction(async tx => {
-    const [changed] = await tx.update(talentConsentSettingsTable).set({ defaultDurationDays: body.data.defaultDurationDays, updatedBy: actor.id, updatedAt: new Date() }).where(eq(talentConsentSettingsTable.id, old.id)).returning();
+    const [changed] = await tx.update(talentConsentSettingsTable).set({ defaultDurationDays: body.data.defaultDurationDays, reminderDaysBeforeExpiry: body.data.reminderDaysBeforeExpiry ?? old.reminderDaysBeforeExpiry, updatedBy: actor.id, updatedAt: new Date() }).where(eq(talentConsentSettingsTable.id, old.id)).returning();
     await recordConsentAudit(tx, actor, { action: "talent_consent.settings_updated", entityId: changed.id, note: body.data.note }); return changed;
   }); res.json(UpdateAdminTalentConsentSettingsResponse.parse(settingsResponse(updated)));
 });

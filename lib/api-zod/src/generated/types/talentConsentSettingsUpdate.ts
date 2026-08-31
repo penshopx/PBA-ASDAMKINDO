@@ -13,6 +13,11 @@ export interface TalentConsentSettingsUpdate {
      */
   defaultDurationDays: number;
   /**
+     * @minimum 1
+     * @maximum 365
+     */
+  reminderDaysBeforeExpiry?: number;
+  /**
      * @minLength 3
      * @maxLength 300
      */

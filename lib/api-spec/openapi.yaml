@@ -499,7 +499,7 @@ paths:
     get:
       operationId: getAdminTalentConsentSettings
       tags: [talent-pool, admin]
-      summary: Get default Talent Pool consent duration
+      summary: Get Talent Pool consent duration and expiry reminder settings
       responses:
         "200":
           description: Consent settings
@@ -510,7 +510,7 @@ paths:
     patch:
       operationId: updateAdminTalentConsentSettings
       tags: [talent-pool, admin]
-      summary: Update default Talent Pool consent duration
+      summary: Update Talent Pool consent duration and expiry reminder settings
       requestBody:
         required: true
         content:
@@ -1821,14 +1821,22 @@ components:
           type: integer
           minimum: 1
           maximum: 365
+        reminderDaysBeforeExpiry:
+          type: integer
+          minimum: 1
+          maximum: 365
         updatedAt:
           type: string
           format: date-time
-      required: [defaultDurationDays, updatedAt]
+      required: [defaultDurationDays, reminderDaysBeforeExpiry, updatedAt]
     TalentConsentSettingsUpdate:
       type: object
       properties:
         defaultDurationDays:
+          type: integer
+          minimum: 1
+          maximum: 365
+        reminderDaysBeforeExpiry:
           type: integer
           minimum: 1
           maximum: 365

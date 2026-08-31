@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, lte, sql } from "drizzle-orm";
+import { and, eq, gt, lte, sql } from "drizzle-orm";
 import {
   auditLogsTable,
   companyTalentConsentsTable,
@@ -13,7 +13,7 @@ export const DEFAULT_CONSENT_SETTING_ID = "talent-pool-default";
 export async function getTalentConsentSettings() {
   await db
     .insert(talentConsentSettingsTable)
-    .values({ id: DEFAULT_CONSENT_SETTING_ID, defaultDurationDays: 90 })
+    .values({ id: DEFAULT_CONSENT_SETTING_ID, defaultDurationDays: 90, reminderDaysBeforeExpiry: 7 })
     .onConflictDoNothing({ target: talentConsentSettingsTable.id });
   const [settings] = await db
     .select()
@@ -26,6 +26,15 @@ export async function getTalentConsentSettings() {
 
 export function consentExpiry(defaultDurationDays: number, now = new Date()) {
   return new Date(now.getTime() + defaultDurationDays * 24 * 60 * 60 * 1000);
+}
+
+export function consentReminderDue(
+  expiresAt: Date,
+  reminderDaysBeforeExpiry: number,
+  now = new Date(),
+) {
+  const reminderWindowEnd = consentExpiry(reminderDaysBeforeExpiry, now);
+  return expiresAt > now && expiresAt <= reminderWindowEnd;
 }
 
 export async function recordConsentAudit(
@@ -86,6 +95,73 @@ async function recordExpirySideEffects(executor: any, consent: typeof companyTal
       dedupeKey: `consent-expired:${consent.id}:v${consent.consentVersion}:company`,
     },
   ]);
+}
+
+export interface ConsentExpiryReminderSyncResult {
+  evaluatedAt: string;
+  eligibleConsents: number;
+  remindersCreated: number;
+}
+
+export async function remindCompanyTalentConsentExpiries(
+  now = new Date(),
+): Promise<ConsentExpiryReminderSyncResult> {
+  const settings = await getTalentConsentSettings();
+
+  return db.transaction(async (tx) => {
+    const threshold = consentExpiry(settings.reminderDaysBeforeExpiry, now);
+    const consents = await tx
+      .select()
+      .from(companyTalentConsentsTable)
+      .where(
+        and(
+          eq(companyTalentConsentsTable.status, "active"),
+          gt(companyTalentConsentsTable.expiresAt, now),
+          lte(companyTalentConsentsTable.expiresAt, threshold),
+        ),
+      )
+      .orderBy(companyTalentConsentsTable.id)
+      .for("update");
+
+    const candidates = consents.flatMap((consent) => [
+      {
+        id: `notification-${randomUUID()}`,
+        userId: consent.memberUserId,
+        title: "Akses perusahaan segera kedaluwarsa",
+        description: `Akses Talent Pool Anda akan berakhir pada ${consent.expiresAt!.toLocaleDateString("id-ID")}. Periksa kembali kebutuhan akses sebelum masa berlaku berakhir.`,
+        type: "consent",
+        dedupeKey: `consent-expiry-reminder:${consent.id}:v${consent.consentVersion}:member`,
+      },
+      {
+        id: `notification-${randomUUID()}`,
+        userId: consent.companyUserId,
+        title: "Akses Talent Pool segera kedaluwarsa",
+        description: `Akses Talent Pool untuk salah satu kandidat akan berakhir pada ${consent.expiresAt!.toLocaleDateString("id-ID")}. Hubungi anggota bila akses masih diperlukan.`,
+        type: "consent",
+        dedupeKey: `consent-expiry-reminder:${consent.id}:v${consent.consentVersion}:company`,
+      },
+    ]);
+
+    if (candidates.length === 0) {
+      return {
+        evaluatedAt: now.toISOString(),
+        eligibleConsents: 0,
+        remindersCreated: 0,
+      };
+    }
+
+    const inserted = await tx
+      .insert(notificationsTable)
+      .values(candidates)
+      .onConflictDoNothing()
+      .returning({ id: notificationsTable.id });
+
+    return {
+      evaluatedAt: now.toISOString(),
+      eligibleConsents: consents.length,
+      remindersCreated: inserted.length,
+    };
+  });
 }
 
 export async function expireCompanyTalentConsent(executor: any, consent: typeof companyTalentConsentsTable.$inferSelect, now = new Date()) {

@@ -292,6 +292,8 @@ export const UpdateMemberEvidenceResponse = zod.object({
 
 export const getMemberPassportResponseConsentSettingsDefaultDurationDaysMax = 365;
 
+export const getMemberPassportResponseConsentSettingsReminderDaysBeforeExpiryMax = 365;
+
 
 
 export const GetMemberPassportResponse = zod.object({
@@ -334,6 +336,7 @@ export const GetMemberPassportResponse = zod.object({
 })),
   "consentSettings": zod.object({
   "defaultDurationDays": zod.int().min(1).max(getMemberPassportResponseConsentSettingsDefaultDurationDaysMax),
+  "reminderDaysBeforeExpiry": zod.int().min(1).max(getMemberPassportResponseConsentSettingsReminderDaysBeforeExpiryMax),
   "updatedAt": zod.coerce.date()
 }),
   "createdAt": zod.coerce.date(),
@@ -379,6 +382,8 @@ export const UpdateMemberPassportBody = zod.object({
 
 export const updateMemberPassportResponseConsentSettingsDefaultDurationDaysMax = 365;
 
+export const updateMemberPassportResponseConsentSettingsReminderDaysBeforeExpiryMax = 365;
+
 
 
 export const UpdateMemberPassportResponse = zod.object({
@@ -421,6 +426,7 @@ export const UpdateMemberPassportResponse = zod.object({
 })),
   "consentSettings": zod.object({
   "defaultDurationDays": zod.int().min(1).max(updateMemberPassportResponseConsentSettingsDefaultDurationDaysMax),
+  "reminderDaysBeforeExpiry": zod.int().min(1).max(updateMemberPassportResponseConsentSettingsReminderDaysBeforeExpiryMax),
   "updatedAt": zod.coerce.date()
 }),
   "createdAt": zod.coerce.date(),
@@ -644,22 +650,27 @@ export const OverrideAdminTalentConsentResponse = zod.object({
 
 
 /**
- * @summary Get default Talent Pool consent duration
+ * @summary Get Talent Pool consent duration and expiry reminder settings
  */
 export const getAdminTalentConsentSettingsResponseDefaultDurationDaysMax = 365;
+
+export const getAdminTalentConsentSettingsResponseReminderDaysBeforeExpiryMax = 365;
 
 
 
 export const GetAdminTalentConsentSettingsResponse = zod.object({
   "defaultDurationDays": zod.int().min(1).max(getAdminTalentConsentSettingsResponseDefaultDurationDaysMax),
+  "reminderDaysBeforeExpiry": zod.int().min(1).max(getAdminTalentConsentSettingsResponseReminderDaysBeforeExpiryMax),
   "updatedAt": zod.coerce.date()
 })
 
 
 /**
- * @summary Update default Talent Pool consent duration
+ * @summary Update Talent Pool consent duration and expiry reminder settings
  */
 export const updateAdminTalentConsentSettingsBodyDefaultDurationDaysMax = 365;
+
+export const updateAdminTalentConsentSettingsBodyReminderDaysBeforeExpiryMax = 365;
 
 export const updateAdminTalentConsentSettingsBodyNoteMin = 3;
 export const updateAdminTalentConsentSettingsBodyNoteMax = 300;
@@ -668,15 +679,19 @@ export const updateAdminTalentConsentSettingsBodyNoteMax = 300;
 
 export const UpdateAdminTalentConsentSettingsBody = zod.object({
   "defaultDurationDays": zod.int().min(1).max(updateAdminTalentConsentSettingsBodyDefaultDurationDaysMax),
+  "reminderDaysBeforeExpiry": zod.int().min(1).max(updateAdminTalentConsentSettingsBodyReminderDaysBeforeExpiryMax).optional(),
   "note": zod.string().min(updateAdminTalentConsentSettingsBodyNoteMin).max(updateAdminTalentConsentSettingsBodyNoteMax)
 })
 
 export const updateAdminTalentConsentSettingsResponseDefaultDurationDaysMax = 365;
 
+export const updateAdminTalentConsentSettingsResponseReminderDaysBeforeExpiryMax = 365;
+
 
 
 export const UpdateAdminTalentConsentSettingsResponse = zod.object({
   "defaultDurationDays": zod.int().min(1).max(updateAdminTalentConsentSettingsResponseDefaultDurationDaysMax),
+  "reminderDaysBeforeExpiry": zod.int().min(1).max(updateAdminTalentConsentSettingsResponseReminderDaysBeforeExpiryMax),
   "updatedAt": zod.coerce.date()
 })
 
