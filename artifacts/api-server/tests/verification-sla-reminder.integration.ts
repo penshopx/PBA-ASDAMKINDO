@@ -1,18 +1,26 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import type { AddressInfo } from "node:net";
+import express, { type NextFunction, type Request, type Response } from "express";
 import { and, eq, inArray, like, or } from "drizzle-orm";
 import {
+  auditLogsTable,
   db,
   notificationsTable,
   usersTable,
   verificationsTable,
+  type User,
 } from "@workspace/db";
+import type { AuthenticatedRequest } from "../src/lib/auth";
 import {
+  getVerificationSla,
   getVerificationSlaReminderWorkerStatus,
+  orderVerificationSlaItems,
   runVerificationSlaReminderWorker,
   stopVerificationSlaReminderWorker,
   syncVerificationSlaReminders,
 } from "../src/lib/verification-sla";
+import notificationsRouter from "../src/routes/notifications";
 
 const suffix = randomUUID();
 const adminId = `sla-worker-admin-${suffix}`;
@@ -31,6 +39,47 @@ const verificationIds = [
 ];
 const now = new Date("2026-08-31T08:00:00.000Z");
 const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 60 * 60 * 1000);
+const secondsAgo = (seconds: number) => new Date(now.getTime() - seconds * 1000);
+let actor: User;
+
+const app = express();
+app.use(express.json());
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  const authenticated = req as AuthenticatedRequest;
+  authenticated.userId = actor.id;
+  authenticated.currentUser = actor;
+  next();
+});
+app.use("/api", notificationsRouter);
+
+const server = app.listen(0);
+await new Promise<void>((resolve) => server.once("listening", resolve));
+const port = (server.address() as AddressInfo).port;
+
+async function request(path: string, init?: RequestInit) {
+  const response = await fetch(`http://127.0.0.1:${port}/api${path}`, {
+    ...init,
+    headers: { "content-type": "application/json", ...init?.headers },
+  });
+  const body = await response.json();
+  return { response, body };
+}
+
+function verificationAtAge(ageSeconds: number): typeof verificationsTable.$inferSelect {
+  return {
+    id: `boundary-${ageSeconds}`,
+    subjectType: "document",
+    subjectId: `boundary-${ageSeconds}`,
+    subjectName: "Dokumen batas SLA",
+    evidenceType: "Dokumen",
+    status: "pending",
+    submittedByUserId: memberId,
+    submittedAt: secondsAgo(ageSeconds),
+    reviewedByUserId: null,
+    reviewedAt: null,
+    reviewNote: null,
+  };
+}
 
 try {
   await db.transaction(async (tx) => {
@@ -82,6 +131,35 @@ try {
       },
     ]);
   });
+  const second = 1;
+  const warningSeconds = 54 * 60 * 60;
+  const slaSeconds = 72 * 60 * 60;
+  const beforeWarning = getVerificationSla(verificationAtAge(warningSeconds - second), now);
+  const atWarning = getVerificationSla(verificationAtAge(warningSeconds), now);
+  const afterWarning = getVerificationSla(verificationAtAge(warningSeconds + second), now);
+  const beforeSla = getVerificationSla(verificationAtAge(slaSeconds - second), now);
+  const atSla = getVerificationSla(verificationAtAge(slaSeconds), now);
+  const afterSlaBoundary = getVerificationSla(verificationAtAge(slaSeconds + second), now);
+
+  assert.deepEqual(
+    [
+      beforeWarning.slaStatus,
+      atWarning.slaStatus,
+      afterWarning.slaStatus,
+      beforeSla.slaStatus,
+      atSla.slaStatus,
+      afterSlaBoundary.slaStatus,
+    ],
+    ["on_track", "approaching", "approaching", "approaching", "overdue", "overdue"],
+  );
+  assert.deepEqual(
+    orderVerificationSlaItems([beforeWarning, atWarning, atSla]).map((item) => item.slaPriority),
+    ["urgent", "high", "normal"],
+  );
+
+  actor = (
+    await db.select().from(usersTable).where(eq(usersTable.id, adminId)).limit(1)
+  )[0]!;
 
   let result = await runVerificationSlaReminderWorker(now);
   assert.ok(result);
@@ -101,6 +179,30 @@ try {
       ]),
     ));
   assert.equal(reminders.length, 2);
+
+  const reminderToComplete = reminders.find(
+    (reminder) => reminder.dedupeKey === `verification-sla:${overdueId}:overdue:${adminId}`,
+  );
+  assert.ok(reminderToComplete);
+  let completed = await request(`/notifications/${reminderToComplete.id}/read`, {
+    method: "PATCH",
+  });
+  assert.equal(completed.response.status, 200);
+  assert.equal(completed.body.read, true);
+  completed = await request(`/notifications/${reminderToComplete.id}/read`, {
+    method: "PATCH",
+  });
+  assert.equal(completed.response.status, 200);
+  const completionAudits = await db
+    .select()
+    .from(auditLogsTable)
+    .where(and(
+      eq(auditLogsTable.action, "notification.read"),
+      eq(auditLogsTable.entityId, reminderToComplete.id),
+    ));
+  assert.equal(completionAudits.length, 1);
+  assert.equal(completionAudits[0]?.fromStatus, "unread");
+  assert.equal(completionAudits[0]?.toStatus, "read");
 
   result = await runVerificationSlaReminderWorker(now);
   assert.ok(result);
@@ -221,7 +323,9 @@ try {
   console.log("verification SLA reminder worker integration tests passed");
 } finally {
   stopVerificationSlaReminderWorker();
+  server.close();
   await db.transaction(async (tx) => {
+    await tx.delete(auditLogsTable).where(eq(auditLogsTable.actorUserId, adminId));
     await tx
       .delete(notificationsTable)
       .where(or(

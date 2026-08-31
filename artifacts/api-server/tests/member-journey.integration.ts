@@ -244,6 +244,19 @@ try {
     body: JSON.stringify({ status: "approved", note: "Bukti memenuhi syarat" }),
   });
   assert.equal(result.response.status, 200);
+  assert.equal(result.body.status, "approved");
+  assert.equal(result.body.slaStatus, "resolved");
+  const approvalAudits = await db
+    .select()
+    .from(auditLogsTable)
+    .where(and(
+      eq(auditLogsTable.action, "verification.decision"),
+      eq(auditLogsTable.entityId, evidenceId),
+      eq(auditLogsTable.toStatus, "approved"),
+    ));
+  assert.equal(approvalAudits.length, 1);
+  assert.equal(approvalAudits[0]?.fromStatus, "pending");
+  assert.equal(approvalAudits[0]?.note, "Bukti memenuhi syarat");
 
   actor = await loadUser(memberId);
   result = await request(`/member/evidence/${evidenceId}`, {

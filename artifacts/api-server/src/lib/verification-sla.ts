@@ -9,8 +9,8 @@ import {
 import { logger } from "./logger";
 
 export const VERIFICATION_SLA_HOURS = 72;
+export const VERIFICATION_SLA_WARNING_HOURS = VERIFICATION_SLA_HOURS * 0.75;
 export const VERIFICATION_SLA_REMINDER_INTERVAL_MS = 15 * 60 * 1000;
-const WARNING_THRESHOLD = 0.75;
 
 export type VerificationSlaStatus = "on_track" | "approaching" | "overdue" | "resolved";
 export type VerificationSlaPriority = "normal" | "high" | "urgent";
@@ -37,12 +37,29 @@ export interface VerificationSlaReminderWorkerStatus {
   lastRun: VerificationSlaReminderSyncResult | null;
 }
 
+export function orderVerificationSlaItems<
+  T extends Pick<ReturnType<typeof getVerificationSla>, "pendingAgeHours" | "slaPriority">,
+>(items: T[]): T[] {
+  const priorityRank: Record<VerificationSlaPriority, number> = {
+    urgent: 0,
+    high: 1,
+    normal: 2,
+  };
+  return [...items].sort((a, b) => {
+    const priorityDifference = priorityRank[a.slaPriority] - priorityRank[b.slaPriority];
+    return priorityDifference || b.pendingAgeHours - a.pendingAgeHours;
+  });
+}
+
 export function getVerificationSla(
   verification: typeof verificationsTable.$inferSelect,
   now = new Date(),
 ) {
   const isPending = verification.status === "pending";
   const slaDueAt = new Date(verification.submittedAt.getTime() + VERIFICATION_SLA_HOURS * 60 * 60 * 1000);
+  const warningAt = new Date(
+    verification.submittedAt.getTime() + VERIFICATION_SLA_WARNING_HOURS * 60 * 60 * 1000,
+  );
   const pendingAgeHours = Math.max(
     0,
     Math.round(((now.getTime() - verification.submittedAt.getTime()) / (60 * 60 * 1000)) * 10) / 10,
@@ -51,7 +68,7 @@ export function getVerificationSla(
     ? "resolved"
     : now.getTime() >= slaDueAt.getTime()
       ? "overdue"
-      : pendingAgeHours >= VERIFICATION_SLA_HOURS * WARNING_THRESHOLD
+      : now.getTime() >= warningAt.getTime()
         ? "approaching"
         : "on_track";
   const slaPriority: VerificationSlaPriority =

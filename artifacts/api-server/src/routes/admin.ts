@@ -53,6 +53,7 @@ import { listTalentMatches } from "../lib/talent-matching";
 import {
   getVerificationSla,
   getVerificationSlaReminderWorkerStatus,
+  orderVerificationSlaItems,
   syncVerificationSlaReminders,
 } from "../lib/verification-sla";
 
@@ -346,7 +347,9 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
   }
 
     const now = new Date();
-  const verificationResponses = verifications.map((verification) => verificationResponse(verification, now));
+  const verificationResponses = orderVerificationSlaItems(
+    verifications.map((verification) => verificationResponse(verification, now)),
+  );
   const pendingVerificationRows = verificationResponses.filter(
     (verification) => verification.slaStatus !== "resolved",
   );
@@ -542,8 +545,8 @@ router.post(
   requireUser,
   requireRole(...adminRoles),
   async (req, res): Promise<void> => {
-    const params = ResolveAdminTransactionReconciliationParams.safeParse(req.params);
-    const body = ResolveAdminTransactionReconciliationBody.safeParse(req.body);
+    const params = DecideVerificationParams.safeParse(req.params);
+    const body = DecideVerificationBody.safeParse(req.body);
     if (!params.success || !body.success) {
       res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
       return;
@@ -551,8 +554,8 @@ router.post(
     const actor = getAuthenticatedUser(req);
     const [existing] = await db
       .select()
-      .from(transactionsTable)
-      .where(eq(transactionsTable.id, params.data.id))
+      .from(verificationsTable)
+      .where(eq(verificationsTable.id, params.data.id))
       .limit(1);
     if (!existing) {
       res.status(404).json({ error: "Item verifikasi tidak ditemukan." });
