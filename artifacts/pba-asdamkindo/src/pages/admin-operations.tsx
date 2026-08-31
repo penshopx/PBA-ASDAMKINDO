@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  AlertTriangle,
   BookOpen,
   CheckCircle2,
   ChevronDown,
@@ -10,6 +11,7 @@ import {
   ReceiptText,
   ShieldCheck,
   Sparkles,
+  Timer,
   UsersRound,
   X,
 } from "lucide-react";
@@ -63,9 +65,9 @@ function formatDate(value: string | null) {
 
 function StatusBadge({ status }: { status: string }) {
   const tone =
-    status === "approved" || status === "paid" || status === "completed" || status === "placed" || status === "published" || status === "matched" || status === "resolved"
+    status === "approved" || status === "paid" || status === "completed" || status === "placed" || status === "published" || status === "matched" || status === "resolved" || status === "on_track"
       ? "bg-accent/12 text-accent"
-      : status === "rejected" || status === "cancelled" || status === "declined" || status === "refunded" || status === "mismatch"
+      : status === "rejected" || status === "cancelled" || status === "declined" || status === "refunded" || status === "mismatch" || status === "overdue" || status === "urgent"
         ? "bg-destructive/10 text-destructive"
         : "bg-primary/12 text-primary";
   const labels: Record<string, string> = {
@@ -88,6 +90,11 @@ function StatusBadge({ status }: { status: string }) {
     matched: "Cocok",
     mismatch: "Tidak cocok",
     overdue: "Lewat SLA",
+    approaching: "Mendekati SLA",
+    on_track: "Sesuai SLA",
+    urgent: "Prioritas segera",
+    high: "Prioritas tinggi",
+    normal: "Prioritas normal",
     resolved: "Diselesaikan",
   };
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${tone}`}>{labels[status] ?? status}</span>;
@@ -96,6 +103,8 @@ function StatusBadge({ status }: { status: string }) {
 function SummaryStrip({ summary }: { summary: AdminOperations["summary"] }) {
   const items = [
     ["Verifikasi tertunda", summary.pendingVerifications, "prioritas"],
+    ["Mendekati SLA", summary.approachingVerifications, "≥ 54 jam"],
+    ["Lewat SLA", summary.overdueVerifications, "perlu eskalasi"],
     ["Program aktif", summary.activePrograms, "terbit"],
     ["Enrollment aktif", summary.activeEnrollments, "berjalan"],
     ["Placement", summary.placements, "berhasil"],
@@ -105,7 +114,7 @@ function SummaryStrip({ summary }: { summary: AdminOperations["summary"] }) {
     ["Perlu rekonsiliasi", summary.reconciliationIssues, "mismatch / lewat SLA"],
     ["Lewat SLA settlement", summary.overdueSettlements, "perlu ditindaklanjuti"],
   );
-  return <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 xl:grid-cols-7">{items.map(([label, value, note], index) => <div className="bg-card p-5" key={label} data-testid={`admin-summary-${index}`}><p className="text-xs font-semibold uppercase tracking-[.1em] text-muted-foreground">{label}</p><strong className="display-font mt-3 block text-2xl font-semibold">{value}</strong><p className="mt-1 text-xs text-muted-foreground">{note}</p></div>)}</div>;
+  return <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 xl:grid-cols-9">{items.map(([label, value, note], index) => <div className="bg-card p-5" key={label} data-testid={`admin-summary-${index}`}><p className="text-xs font-semibold uppercase tracking-[.1em] text-muted-foreground">{label}</p><strong className="display-font mt-3 block text-2xl font-semibold">{value}</strong><p className="mt-1 text-xs text-muted-foreground">{note}</p></div>)}</div>;
 }
 
 export function AdminOperations() {
@@ -148,14 +157,22 @@ function SectionHeader({ eyebrow, title, copy, action }: { eyebrow: string; titl
 function VerificationQueue({ items, mutation }: { items: Verification[]; mutation: ReturnType<typeof useDecideVerification> }) {
   const [selected, setSelected] = useState<Verification | null>(null);
   const [note, setNote] = useState("");
-  const pending = items.filter((item) => item.status === "pending" || item.status === "changes_requested");
+  const pending = items.filter((item) => item.slaStatus !== "resolved");
+  const orderedItems = useMemo(() => {
+    const priorityRank = { urgent: 0, high: 1, normal: 2 };
+    return [...items].sort((a, b) => {
+      const priorityDifference = priorityRank[a.slaPriority] - priorityRank[b.slaPriority];
+      return priorityDifference || b.pendingAgeHours - a.pendingAgeHours;
+    });
+  }, [items]);
+  const formatAge = (hours: number) => hours < 24 ? `${hours} jam` : `${Math.floor(hours / 24)} hari ${Math.round(hours % 24)} jam`;
   const decide = (status: "approved" | "changes_requested" | "rejected") => {
     if (!selected || note.trim().length < 3) return;
     mutation.mutate({ id: selected.id, data: { status, note: note.trim() } }, { onSuccess: () => { setSelected(null); setNote(""); } });
   };
   return <div className="rounded-2xl border border-border bg-card p-5 sm:p-7">
     <SectionHeader eyebrow="Verification queue" title="Profil, dokumen, dan bukti kompetensi" copy={`${pending.length} item membutuhkan keputusan Admin PBA.`} />
-    {items.length === 0 ? <Empty label="Belum ada item verifikasi" /> : <div className="mt-5 space-y-3">{items.map((item) => <div key={item.id} className="flex flex-col gap-4 rounded-xl border border-border p-4 sm:flex-row sm:items-center"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-muted text-accent"><FileCheck2 size={19} /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="text-sm">{item.subjectName}</strong><StatusBadge status={item.status} /></div><p className="mt-1 text-xs text-muted-foreground">{item.evidenceType} · {item.subjectType} · diajukan {formatDate(item.submittedAt)}</p>{item.reviewNote && <p className="mt-2 text-xs text-muted-foreground">Catatan: {item.reviewNote}</p>}</div>{item.status === "pending" || item.status === "changes_requested" ? <button onClick={() => { setSelected(item); setNote(""); }} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground" data-testid={`button-review-${item.id}`}>Tinjau <ArrowRight size={14} /></button> : <span className="text-xs font-semibold text-muted-foreground">{formatDate(item.reviewedAt)}</span>}</div>)}</div>}
+    {items.length === 0 ? <Empty label="Belum ada item verifikasi" /> : <div className="mt-5 space-y-3">{orderedItems.map((item) => <div key={item.id} className={`flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center ${item.slaStatus === "overdue" ? "border-destructive/35 bg-destructive/[.03]" : item.slaStatus === "approaching" ? "border-primary/35 bg-primary/[.03]" : "border-border"}`} data-testid={`verification-${item.id}`}><div className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${item.slaPriority === "urgent" ? "bg-destructive/10 text-destructive" : item.slaPriority === "high" ? "bg-primary/10 text-primary" : "bg-muted text-accent"}`}>{item.slaStatus === "overdue" ? <AlertTriangle size={19} /> : <FileCheck2 size={19} />}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong className="text-sm">{item.subjectName}</strong><StatusBadge status={item.status} />{item.slaStatus !== "resolved" && <StatusBadge status={item.slaStatus} />}</div><p className="mt-1 text-xs text-muted-foreground">{item.evidenceType} · {item.subjectType} · diajukan {formatDate(item.submittedAt)}</p>{item.slaStatus !== "resolved" ? <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold"><span className={`inline-flex items-center gap-1.5 ${item.slaPriority === "urgent" ? "text-destructive" : item.slaPriority === "high" ? "text-primary" : "text-muted-foreground"}`}><Timer size={14} /> {formatAge(item.pendingAgeHours)} tertunda</span><span className="text-muted-foreground">Batas SLA {formatDate(item.slaDueAt)}</span><StatusBadge status={item.slaPriority} /></div> : <p className="mt-2 text-xs text-muted-foreground">Diputuskan {formatDate(item.reviewedAt)}</p>}{item.reviewNote && <p className="mt-2 text-xs text-muted-foreground">Catatan: {item.reviewNote}</p>}</div>{item.slaStatus !== "resolved" ? <button onClick={() => { setSelected(item); setNote(""); }} className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground" data-testid={`button-review-${item.id}`}>Tinjau <ArrowRight size={14} /></button> : null}</div>)}</div>}
     {selected && <div className="mt-5 rounded-xl border border-primary/40 bg-primary/5 p-5" data-testid="verification-review-panel"><div className="flex items-start justify-between gap-4"><div><p className="eyebrow text-primary">Keputusan audit</p><h3 className="mt-2 font-bold">{selected.subjectName}</h3><p className="mt-1 text-xs text-muted-foreground">Catatan wajib diisi untuk menjaga konteks keputusan.</p></div><button onClick={() => setSelected(null)} aria-label="Tutup review"><X size={18} /></button></div><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Contoh: Dokumen sesuai dengan data profil..." className="mt-4 min-h-24 w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus:border-primary" data-testid="input-review-note" /><div className="mt-3 flex flex-wrap justify-end gap-2"><button disabled={mutation.isPending || note.trim().length < 3} onClick={() => decide("changes_requested")} className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-bold disabled:opacity-50">Minta revisi</button><button disabled={mutation.isPending || note.trim().length < 3} onClick={() => decide("rejected")} className="rounded-lg border border-destructive/30 px-3 py-2 text-xs font-bold text-destructive disabled:opacity-50">Tolak</button><button disabled={mutation.isPending || note.trim().length < 3} onClick={() => decide("approved")} className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-accent-foreground disabled:opacity-50">Setujui</button></div></div>}
   </div>;
 }

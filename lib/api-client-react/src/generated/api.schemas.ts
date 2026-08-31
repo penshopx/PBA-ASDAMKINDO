@@ -770,6 +770,25 @@ export const VerificationStatus = {
   rejected: 'rejected',
 } as const;
 
+export type VerificationSlaStatus = typeof VerificationSlaStatus[keyof typeof VerificationSlaStatus];
+
+
+export const VerificationSlaStatus = {
+  on_track: 'on_track',
+  approaching: 'approaching',
+  overdue: 'overdue',
+  resolved: 'resolved',
+} as const;
+
+export type VerificationSlaPriority = typeof VerificationSlaPriority[keyof typeof VerificationSlaPriority];
+
+
+export const VerificationSlaPriority = {
+  normal: 'normal',
+  high: 'high',
+  urgent: 'urgent',
+} as const;
+
 export interface Verification {
   id: string;
   subjectType: VerificationSubjectType;
@@ -785,6 +804,11 @@ export interface Verification {
   reviewedAt: string | null;
   /** @nullable */
   reviewNote: string | null;
+  /** @minimum 0 */
+  pendingAgeHours: number;
+  slaDueAt: string;
+  slaStatus: VerificationSlaStatus;
+  slaPriority: VerificationSlaPriority;
 }
 
 export type VerificationDecisionInputStatus = typeof VerificationDecisionInputStatus[keyof typeof VerificationDecisionInputStatus];
@@ -980,6 +1004,8 @@ export interface AdminPermissions {
 
 export interface AdminSummary {
   pendingVerifications: number;
+  approachingVerifications: number;
+  overdueVerifications: number;
   activePrograms: number;
   activeEnrollments: number;
   completions: number;

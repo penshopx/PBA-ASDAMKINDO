@@ -107,5 +107,7 @@ export * from './transactionUpdateStatus';
 export * from './verification';
 export * from './verificationDecisionInput';
 export * from './verificationDecisionInputStatus';
+export * from './verificationSlaPriority';
+export * from './verificationSlaStatus';
 export * from './verificationStatus';
 export * from './verificationSubjectType';

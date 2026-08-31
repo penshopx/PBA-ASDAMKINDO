@@ -8,6 +8,8 @@
 
 export interface AdminSummary {
   pendingVerifications: number;
+  approachingVerifications: number;
+  overdueVerifications: number;
   activePrograms: number;
   activeEnrollments: number;
   completions: number;

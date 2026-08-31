@@ -649,6 +649,30 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Notification"
+  /notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a notification as completed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "404":
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/operations:
     get:
       operationId: getAdminOperations
@@ -1706,7 +1730,19 @@ components:
           type: ["string", "null"]
         reviewNote:
           type: ["string", "null"]
-      required: [id, subjectType, subjectId, subjectName, evidenceType, status, submittedByUserId, submittedAt, reviewedByUserId, reviewedAt, reviewNote]
+        pendingAgeHours:
+          type: number
+          minimum: 0
+        slaDueAt:
+          type: string
+          format: date-time
+        slaStatus:
+          type: string
+          enum: [on_track, approaching, overdue, resolved]
+        slaPriority:
+          type: string
+          enum: [normal, high, urgent]
+      required: [id, subjectType, subjectId, subjectName, evidenceType, status, submittedByUserId, submittedAt, reviewedByUserId, reviewedAt, reviewNote, pendingAgeHours, slaDueAt, slaStatus, slaPriority]
     VerificationDecisionInput:
       type: object
       properties:
@@ -1919,6 +1955,10 @@ components:
       properties:
         pendingVerifications:
           type: number
+        approachingVerifications:
+          type: number
+        overdueVerifications:
+          type: number
         activePrograms:
           type: number
         activeEnrollments:
@@ -1935,7 +1975,7 @@ components:
           type: number
         overdueSettlements:
           type: number
-      required: [pendingVerifications, activePrograms, activeEnrollments, completions, placements, revenue, pendingRevenue, reconciliationIssues, overdueSettlements]
+      required: [pendingVerifications, approachingVerifications, overdueVerifications, activePrograms, activeEnrollments, completions, placements, revenue, pendingRevenue, reconciliationIssues, overdueSettlements]
     AdminOperations:
       type: object
       properties:

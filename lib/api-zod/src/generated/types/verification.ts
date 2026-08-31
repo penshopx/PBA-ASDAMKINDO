@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { VerificationSlaPriority } from './verificationSlaPriority';
+import type { VerificationSlaStatus } from './verificationSlaStatus';
 import type { VerificationStatus } from './verificationStatus';
 import type { VerificationSubjectType } from './verificationSubjectType';
 
@@ -23,4 +25,9 @@ export interface Verification {
   reviewedAt: string | null;
   /** @nullable */
   reviewNote: string | null;
+  /** @minimum 0 */
+  pendingAgeHours: number;
+  slaDueAt: Date;
+  slaStatus: VerificationSlaStatus;
+  slaPriority: VerificationSlaPriority;
 }

@@ -742,8 +742,29 @@ export const ListNotificationsResponse = zod.array(ListNotificationsResponseItem
 
 
 /**
+ * @summary Mark a notification as completed
+ */
+export const MarkNotificationReadParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const MarkNotificationReadResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "read": zod.boolean(),
+  "type": zod.enum(['profile', 'document', 'program', 'learning', 'recruitment', 'system'])
+})
+
+
+/**
  * @summary Get the Admin PBA operations workspace
  */
+export const getAdminOperationsResponseVerificationsItemPendingAgeHoursMin = 0;
+
+
+
 export const GetAdminOperationsResponse = zod.object({
   "permissions": zod.object({
   "canReviewVerifications": zod.boolean(),
@@ -755,6 +776,8 @@ export const GetAdminOperationsResponse = zod.object({
 }),
   "summary": zod.object({
   "pendingVerifications": zod.number(),
+  "approachingVerifications": zod.number(),
+  "overdueVerifications": zod.number(),
   "activePrograms": zod.number(),
   "activeEnrollments": zod.number(),
   "completions": zod.number(),
@@ -775,7 +798,11 @@ export const GetAdminOperationsResponse = zod.object({
   "submittedAt": zod.coerce.date(),
   "reviewedByUserId": zod.string().nullable(),
   "reviewedAt": zod.string().nullable(),
-  "reviewNote": zod.string().nullable()
+  "reviewNote": zod.string().nullable(),
+  "pendingAgeHours": zod.number().min(getAdminOperationsResponseVerificationsItemPendingAgeHoursMin),
+  "slaDueAt": zod.coerce.date(),
+  "slaStatus": zod.enum(['on_track', 'approaching', 'overdue', 'resolved']),
+  "slaPriority": zod.enum(['normal', 'high', 'urgent'])
 })),
   "programs": zod.array(zod.object({
   "id": zod.string(),
@@ -891,6 +918,10 @@ export const DecideVerificationBody = zod.object({
   "note": zod.string().min(decideVerificationBodyNoteMin)
 })
 
+export const decideVerificationResponsePendingAgeHoursMin = 0;
+
+
+
 export const DecideVerificationResponse = zod.object({
   "id": zod.string(),
   "subjectType": zod.enum(['profile', 'document', 'competency']),
@@ -902,7 +933,11 @@ export const DecideVerificationResponse = zod.object({
   "submittedAt": zod.coerce.date(),
   "reviewedByUserId": zod.string().nullable(),
   "reviewedAt": zod.string().nullable(),
-  "reviewNote": zod.string().nullable()
+  "reviewNote": zod.string().nullable(),
+  "pendingAgeHours": zod.number().min(decideVerificationResponsePendingAgeHoursMin),
+  "slaDueAt": zod.coerce.date(),
+  "slaStatus": zod.enum(['on_track', 'approaching', 'overdue', 'resolved']),
+  "slaPriority": zod.enum(['normal', 'high', 'urgent'])
 })
 
 

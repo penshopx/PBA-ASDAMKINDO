@@ -36,6 +36,7 @@ import {
   verificationsTable,
 } from "@workspace/db";
 import { getAuthenticatedUser, requireRole, requireUser } from "../lib/auth";
+import { getVerificationSla, syncVerificationSlaReminders } from "../lib/verification-sla";
 
 const router: IRouter = Router();
 const adminRoles = ["admin", "super_admin"] as const;
@@ -55,11 +56,12 @@ function programResponse(program: typeof programsTable.$inferSelect, enrollmentC
   };
 }
 
-function verificationResponse(verification: typeof verificationsTable.$inferSelect) {
+function verificationResponse(verification: typeof verificationsTable.$inferSelect, now = new Date()) {
   return {
     ...verification,
     submittedAt: verification.submittedAt,
     reviewedAt: iso(verification.reviewedAt),
+    ...getVerificationSla(verification, now),
   };
 }
 
@@ -156,6 +158,7 @@ async function getAuditLogs(includeLogs: boolean) {
 
 router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (req, res): Promise<void> => {
   const user = getAuthenticatedUser(req);
+  await syncVerificationSlaReminders();
   const [verifications, programs, enrollments, matchings, transactions, auditLogs] = await Promise.all([
     db.select().from(verificationsTable).orderBy(desc(verificationsTable.submittedAt)).limit(100),
     db.select().from(programsTable).orderBy(desc(programsTable.updatedAt)).limit(100),
@@ -177,9 +180,14 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
     }
   }
 
-  const pendingVerifications = verifications.filter(
-    (verification) => verification.status === "pending" || verification.status === "changes_requested",
-  ).length;
+  const now = new Date();
+  const verificationResponses = verifications.map((verification) => verificationResponse(verification, now));
+  const pendingVerificationRows = verificationResponses.filter(
+    (verification) => verification.slaStatus !== "resolved",
+  );
+  const pendingVerifications = pendingVerificationRows.length;
+  const approachingVerifications = pendingVerificationRows.filter((verification) => verification.slaStatus === "approaching").length;
+  const overdueVerifications = pendingVerificationRows.filter((verification) => verification.slaStatus === "overdue").length;
   const activeEnrollments = enrollments.filter(
     (enrollment) => enrollment.status === "pending" || enrollment.status === "enrolled",
   ).length;
@@ -209,6 +217,8 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
       },
       summary: {
         pendingVerifications,
+        approachingVerifications,
+        overdueVerifications,
         activePrograms: programs.filter((program) => program.status === "published").length,
         activeEnrollments,
         completions: enrollments.filter((enrollment) => enrollment.status === "completed").length,
@@ -218,7 +228,7 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
         reconciliationIssues,
         overdueSettlements,
       },
-      verifications: verifications.map(verificationResponse),
+      verifications: verificationResponses,
       programs: programs.map((program) =>
         programResponse(program, enrollmentCounts.get(program.id) ?? 0, completionCounts.get(program.id) ?? 0),
       ),
