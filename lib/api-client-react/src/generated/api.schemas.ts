@@ -256,6 +256,198 @@ export interface MemberJourney {
   recommendedPrograms: Program[];
 }
 
+export type PassportConsentScope = typeof PassportConsentScope[keyof typeof PassportConsentScope];
+
+
+export const PassportConsentScope = {
+  talent_pool: 'talent_pool',
+} as const;
+
+export type PassportConsentStatus = typeof PassportConsentStatus[keyof typeof PassportConsentStatus];
+
+
+export const PassportConsentStatus = {
+  active: 'active',
+  revoked: 'revoked',
+} as const;
+
+export interface PassportConsent {
+  id: string;
+  scope: PassportConsentScope;
+  status: PassportConsentStatus;
+  /** @nullable */
+  grantedAt: string | null;
+  /** @nullable */
+  revokedAt: string | null;
+  updatedAt: string;
+}
+
+export type MemberPassportAvailabilityStatus = typeof MemberPassportAvailabilityStatus[keyof typeof MemberPassportAvailabilityStatus];
+
+
+export const MemberPassportAvailabilityStatus = {
+  available: 'available',
+  open_to_offer: 'open_to_offer',
+  unavailable: 'unavailable',
+} as const;
+
+export interface MemberPassport {
+  id: string;
+  memberUserId: string;
+  slug: string;
+  isPublic: boolean;
+  headline: string;
+  bio: string;
+  preferredRoles: string[];
+  preferredLocations: string[];
+  preferredWorkModes: string[];
+  availabilityStatus: MemberPassportAvailabilityStatus;
+  publicUrl: string;
+  consent: PassportConsent;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProfessionalPassportUpdatePreferredWorkModesItem = typeof ProfessionalPassportUpdatePreferredWorkModesItem[keyof typeof ProfessionalPassportUpdatePreferredWorkModesItem];
+
+
+export const ProfessionalPassportUpdatePreferredWorkModesItem = {
+  onsite: 'onsite',
+  hybrid: 'hybrid',
+  remote: 'remote',
+} as const;
+
+export type ProfessionalPassportUpdateAvailabilityStatus = typeof ProfessionalPassportUpdateAvailabilityStatus[keyof typeof ProfessionalPassportUpdateAvailabilityStatus];
+
+
+export const ProfessionalPassportUpdateAvailabilityStatus = {
+  available: 'available',
+  open_to_offer: 'open_to_offer',
+  unavailable: 'unavailable',
+} as const;
+
+export interface ProfessionalPassportUpdate {
+  /**
+     * @minLength 3
+     * @maxLength 60
+     * @pattern ^[a-z0-9]+(?:-[a-z0-9]+)*$
+     */
+  slug?: string;
+  isPublic?: boolean;
+  /** @maxLength 120 */
+  headline?: string;
+  /** @maxLength 800 */
+  bio?: string;
+  /**
+     * @maxItems 10
+     * @items.minLength 1
+     * @items.maxLength 80
+     */
+  preferredRoles?: string[];
+  /**
+     * @maxItems 10
+     * @items.minLength 1
+     * @items.maxLength 80
+     */
+  preferredLocations?: string[];
+  /** @maxItems 5 */
+  preferredWorkModes?: ProfessionalPassportUpdatePreferredWorkModesItem[];
+  availabilityStatus?: ProfessionalPassportUpdateAvailabilityStatus;
+}
+
+export interface PassportConsentUpdate {
+  active: boolean;
+}
+
+export type PublicPassportAvailabilityStatus = typeof PublicPassportAvailabilityStatus[keyof typeof PublicPassportAvailabilityStatus];
+
+
+export const PublicPassportAvailabilityStatus = {
+  available: 'available',
+  open_to_offer: 'open_to_offer',
+  unavailable: 'unavailable',
+} as const;
+
+export interface PublicPassport {
+  slug: string;
+  name: string;
+  headline: string;
+  bio: string;
+  expertise: string;
+  domicile: string;
+  experienceYears: number;
+  preferredRoles: string[];
+  preferredLocations: string[];
+  preferredWorkModes: string[];
+  availabilityStatus: PublicPassportAvailabilityStatus;
+  verifiedEvidenceCount: number;
+  publicUrl: string;
+  updatedAt: string;
+}
+
+export type AdminTalentCandidateAvailabilityStatus = typeof AdminTalentCandidateAvailabilityStatus[keyof typeof AdminTalentCandidateAvailabilityStatus];
+
+
+export const AdminTalentCandidateAvailabilityStatus = {
+  available: 'available',
+  open_to_offer: 'open_to_offer',
+  unavailable: 'unavailable',
+} as const;
+
+export type AdminTalentCandidateConsentStatus = typeof AdminTalentCandidateConsentStatus[keyof typeof AdminTalentCandidateConsentStatus];
+
+
+export const AdminTalentCandidateConsentStatus = {
+  active: 'active',
+  revoked: 'revoked',
+} as const;
+
+export interface AdminTalentCandidate {
+  id: string;
+  memberUserId: string;
+  name: string;
+  headline: string;
+  expertise: string;
+  domicile: string;
+  experienceYears: number;
+  preferredRoles: string[];
+  preferredLocations: string[];
+  preferredWorkModes: string[];
+  availabilityStatus: AdminTalentCandidateAvailabilityStatus;
+  isPublic: boolean;
+  consentStatus: AdminTalentCandidateConsentStatus;
+  /** @nullable */
+  consentGrantedAt: string | null;
+  /** @nullable */
+  publicUrl: string | null;
+  updatedAt: string;
+}
+
+export type CompanyTalentCandidateAvailabilityStatus = typeof CompanyTalentCandidateAvailabilityStatus[keyof typeof CompanyTalentCandidateAvailabilityStatus];
+
+
+export const CompanyTalentCandidateAvailabilityStatus = {
+  available: 'available',
+  open_to_offer: 'open_to_offer',
+  unavailable: 'unavailable',
+} as const;
+
+export interface CompanyTalentCandidate {
+  id: string;
+  name: string;
+  headline: string;
+  expertise: string;
+  domicile: string;
+  experienceYears: number;
+  preferredRoles: string[];
+  preferredLocations: string[];
+  preferredWorkModes: string[];
+  availabilityStatus: CompanyTalentCandidateAvailabilityStatus;
+  /** @nullable */
+  publicUrl: string | null;
+  updatedAt: string;
+}
+
 export type MemberDiagnosticInputAnswers = {[key: string]: number};
 
 export type MemberDiagnosticInputAreaLabels = {[key: string]: string};
@@ -613,6 +805,46 @@ export interface Notification {
   read: boolean;
   type: NotificationType;
 }
+
+export type GetAdminTalentPoolParams = {
+search?: string;
+availability?: GetAdminTalentPoolAvailability;
+consent?: GetAdminTalentPoolConsent;
+location?: string;
+};
+
+export type GetAdminTalentPoolAvailability = typeof GetAdminTalentPoolAvailability[keyof typeof GetAdminTalentPoolAvailability];
+
+
+export const GetAdminTalentPoolAvailability = {
+  available: 'available',
+  open_to_offer: 'open_to_offer',
+  unavailable: 'unavailable',
+} as const;
+
+export type GetAdminTalentPoolConsent = typeof GetAdminTalentPoolConsent[keyof typeof GetAdminTalentPoolConsent];
+
+
+export const GetAdminTalentPoolConsent = {
+  all: 'all',
+  active: 'active',
+  revoked: 'revoked',
+} as const;
+
+export type GetCompanyTalentPoolParams = {
+search?: string;
+availability?: GetCompanyTalentPoolAvailability;
+location?: string;
+};
+
+export type GetCompanyTalentPoolAvailability = typeof GetCompanyTalentPoolAvailability[keyof typeof GetCompanyTalentPoolAvailability];
+
+
+export const GetCompanyTalentPoolAvailability = {
+  available: 'available',
+  open_to_offer: 'open_to_offer',
+  unavailable: 'unavailable',
+} as const;
 
 export type ListProgramsParams = {
 category?: string;

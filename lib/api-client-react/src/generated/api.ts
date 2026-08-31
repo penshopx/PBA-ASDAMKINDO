@@ -22,13 +22,17 @@ import type {
 import type {
   AdminDashboard,
   AdminOperations,
+  AdminTalentCandidate,
   AuditLog,
   CompanyDashboard,
   CompanyOnboardingInput,
+  CompanyTalentCandidate,
   CurrentUser,
   Enrollment,
   EnrollmentUpdate,
   ErrorResponse,
+  GetAdminTalentPoolParams,
+  GetCompanyTalentPoolParams,
   HealthStatus,
   ListProgramsParams,
   Matching,
@@ -40,10 +44,15 @@ import type {
   MemberEvidenceUpdate,
   MemberJourney,
   MemberOnboardingInput,
+  MemberPassport,
   Notification,
+  PassportConsent,
+  PassportConsentUpdate,
+  ProfessionalPassportUpdate,
   Program,
   ProgramInput,
   ProgramUpdate,
+  PublicPassport,
   ReadinessDiagnostic,
   Transaction,
   TransactionUpdate,
@@ -743,6 +752,470 @@ export const useUpdateMemberEvidence = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getUpdateMemberEvidenceMutationOptions(options));
     }
+
+export const getGetMemberPassportUrl = () => {
+
+
+
+
+  return `/api/member/passport`
+}
+
+/**
+ * @summary Get the signed-in member Professional Passport
+ */
+export const getMemberPassport = async ( options?: Parameters<typeof customFetch>[1]): Promise<MemberPassport> => {
+
+  return customFetch<MemberPassport>(getGetMemberPassportUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMemberPassportQueryKey = () => {
+    return [
+    `/api/member/passport`
+    ] as const;
+    }
+
+
+export const getGetMemberPassportQueryOptions = <TData = Awaited<ReturnType<typeof getMemberPassport>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMemberPassport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMemberPassportQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMemberPassport>>> = ({ signal }) => getMemberPassport({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMemberPassport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMemberPassportQueryResult = NonNullable<Awaited<ReturnType<typeof getMemberPassport>>>
+export type GetMemberPassportQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the signed-in member Professional Passport
+ */
+
+export function useGetMemberPassport<TData = Awaited<ReturnType<typeof getMemberPassport>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMemberPassport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMemberPassportQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateMemberPassportUrl = () => {
+
+
+
+
+  return `/api/member/passport`
+}
+
+/**
+ * @summary Update public passport data, work preferences, and availability
+ */
+export const updateMemberPassport = async (professionalPassportUpdate: ProfessionalPassportUpdate, options?: Parameters<typeof customFetch>[1]): Promise<MemberPassport> => {
+
+  return customFetch<MemberPassport>(getUpdateMemberPassportUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(professionalPassportUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateMemberPassportMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberPassport>>, TError,{data: BodyType<ProfessionalPassportUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMemberPassport>>, TError,{data: BodyType<ProfessionalPassportUpdate>}, TContext> => {
+
+const mutationKey = ['updateMemberPassport'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMemberPassport>>, {data: BodyType<ProfessionalPassportUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateMemberPassport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMemberPassportMutationResult = NonNullable<Awaited<ReturnType<typeof updateMemberPassport>>>
+    export type UpdateMemberPassportMutationBody = BodyType<ProfessionalPassportUpdate>
+    export type UpdateMemberPassportMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update public passport data, work preferences, and availability
+ */
+export const useUpdateMemberPassport = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberPassport>>, TError,{data: BodyType<ProfessionalPassportUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMemberPassport>>,
+        TError,
+        {data: BodyType<ProfessionalPassportUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateMemberPassportMutationOptions(options));
+    }
+
+export const getUpdateMemberPassportConsentUrl = () => {
+
+
+
+
+  return `/api/member/passport/consent`
+}
+
+/**
+ * @summary Grant or revoke Talent Pool consent
+ */
+export const updateMemberPassportConsent = async (passportConsentUpdate: PassportConsentUpdate, options?: Parameters<typeof customFetch>[1]): Promise<PassportConsent> => {
+
+  return customFetch<PassportConsent>(getUpdateMemberPassportConsentUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(passportConsentUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateMemberPassportConsentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberPassportConsent>>, TError,{data: BodyType<PassportConsentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMemberPassportConsent>>, TError,{data: BodyType<PassportConsentUpdate>}, TContext> => {
+
+const mutationKey = ['updateMemberPassportConsent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMemberPassportConsent>>, {data: BodyType<PassportConsentUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateMemberPassportConsent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMemberPassportConsentMutationResult = NonNullable<Awaited<ReturnType<typeof updateMemberPassportConsent>>>
+    export type UpdateMemberPassportConsentMutationBody = BodyType<PassportConsentUpdate>
+    export type UpdateMemberPassportConsentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Grant or revoke Talent Pool consent
+ */
+export const useUpdateMemberPassportConsent = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberPassportConsent>>, TError,{data: BodyType<PassportConsentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMemberPassportConsent>>,
+        TError,
+        {data: BodyType<PassportConsentUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateMemberPassportConsentMutationOptions(options));
+    }
+
+export const getGetPublicPassportUrl = (slug: string,) => {
+
+
+
+
+  return `/api/passport/${slug}`
+}
+
+/**
+ * @summary Get a public Professional Passport by unique slug
+ */
+export const getPublicPassport = async (slug: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicPassport> => {
+
+  return customFetch<PublicPassport>(getGetPublicPassportUrl(slug),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicPassportQueryKey = (slug: string,) => {
+    return [
+    `/api/passport/${slug}`
+    ] as const;
+    }
+
+
+export const getGetPublicPassportQueryOptions = <TData = Awaited<ReturnType<typeof getPublicPassport>>, TError = ErrorType<ErrorResponse>>(slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicPassport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicPassportQueryKey(slug);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicPassport>>> = ({ signal }) => getPublicPassport(slug, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: slug !== null && slug !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicPassport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicPassportQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicPassport>>>
+export type GetPublicPassportQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a public Professional Passport by unique slug
+ */
+
+export function useGetPublicPassport<TData = Awaited<ReturnType<typeof getPublicPassport>>, TError = ErrorType<ErrorResponse>>(
+ slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicPassport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicPassportQueryOptions(slug,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminTalentPoolUrl = (params?: GetAdminTalentPoolParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/talent-pool?${stringifiedParams}` : `/api/admin/talent-pool`
+}
+
+/**
+ * @summary Filter member passports for Admin PBA
+ */
+export const getAdminTalentPool = async (params?: GetAdminTalentPoolParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminTalentCandidate[]> => {
+
+  return customFetch<AdminTalentCandidate[]>(getGetAdminTalentPoolUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminTalentPoolQueryKey = (params?: GetAdminTalentPoolParams,) => {
+    return [
+    `/api/admin/talent-pool`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminTalentPoolQueryOptions = <TData = Awaited<ReturnType<typeof getAdminTalentPool>>, TError = ErrorType<ErrorResponse>>(params?: GetAdminTalentPoolParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminTalentPool>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminTalentPoolQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminTalentPool>>> = ({ signal }) => getAdminTalentPool(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminTalentPool>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminTalentPoolQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminTalentPool>>>
+export type GetAdminTalentPoolQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Filter member passports for Admin PBA
+ */
+
+export function useGetAdminTalentPool<TData = Awaited<ReturnType<typeof getAdminTalentPool>>, TError = ErrorType<ErrorResponse>>(
+ params?: GetAdminTalentPoolParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminTalentPool>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminTalentPoolQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCompanyTalentPoolUrl = (params?: GetCompanyTalentPoolParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/company/talent-pool?${stringifiedParams}` : `/api/company/talent-pool`
+}
+
+/**
+ * @summary List only candidates with active Talent Pool consent
+ */
+export const getCompanyTalentPool = async (params?: GetCompanyTalentPoolParams, options?: Parameters<typeof customFetch>[1]): Promise<CompanyTalentCandidate[]> => {
+
+  return customFetch<CompanyTalentCandidate[]>(getGetCompanyTalentPoolUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCompanyTalentPoolQueryKey = (params?: GetCompanyTalentPoolParams,) => {
+    return [
+    `/api/company/talent-pool`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCompanyTalentPoolQueryOptions = <TData = Awaited<ReturnType<typeof getCompanyTalentPool>>, TError = ErrorType<ErrorResponse>>(params?: GetCompanyTalentPoolParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyTalentPool>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCompanyTalentPoolQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCompanyTalentPool>>> = ({ signal }) => getCompanyTalentPool(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCompanyTalentPool>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCompanyTalentPoolQueryResult = NonNullable<Awaited<ReturnType<typeof getCompanyTalentPool>>>
+export type GetCompanyTalentPoolQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List only candidates with active Talent Pool consent
+ */
+
+export function useGetCompanyTalentPool<TData = Awaited<ReturnType<typeof getCompanyTalentPool>>, TError = ErrorType<ErrorResponse>>(
+ params?: GetCompanyTalentPoolParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyTalentPool>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCompanyTalentPoolQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetCompanyDashboardUrl = () => {
 

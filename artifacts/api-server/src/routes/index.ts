@@ -6,6 +6,7 @@ import notificationsRouter from "./notifications";
 import dashboardsRouter from "./dashboards";
 import adminRouter from "./admin";
 import memberJourneyRouter from "./member-journey";
+import passportRouter from "./passport";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(notificationsRouter);
 router.use(dashboardsRouter);
 router.use(adminRouter);
 router.use(memberJourneyRouter);
+router.use(passportRouter);
 
 export default router;

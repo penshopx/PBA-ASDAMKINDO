@@ -1,7 +1,7 @@
-import { Bell, BookOpen, ChevronDown, ClipboardCheck, Compass, House, LogOut, Menu, Search, Sparkles, X } from 'lucide-react';
+import { Bell, BookOpen, ChevronDown, ClipboardCheck, Compass, House, LogOut, Menu, Search, Sparkles, X, UserCircle, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
-import { useClerk } from '@clerk/react';
+import { useAuth, useClerk } from '@clerk/react';
 import { useGetCurrentUser } from '@workspace/api-client-react';
 import { Brand } from '@/components/brand';
 import { Skeleton } from '@/components/ui-kit';
@@ -10,29 +10,42 @@ const memberNav = [
   { href: '/member/dashboard', label: 'Ringkasan', icon: House },
   { href: '/programs', label: 'Program belajar', icon: BookOpen },
   { href: '/member/journey', label: 'Perjalanan kompetensi', icon: Sparkles },
+  { href: '/member/passport', label: 'Paspor Profesional', icon: UserCircle },
   { href: '/notifications', label: 'Notifikasi', icon: Bell },
 ];
 const companyNav = [
   { href: '/company/dashboard', label: 'Ringkasan', icon: House },
+  { href: '/company/talent-pool', label: 'Talent Pool', icon: Users },
   { href: '/programs', label: 'Program belajar', icon: BookOpen },
   { href: '/notifications', label: 'Notifikasi', icon: Bell },
 ];
 const adminNav = [
   { href: '/admin/dashboard', label: 'Ringkasan operasi', icon: House },
   { href: '/admin/operations', label: 'Pusat operasi', icon: ClipboardCheck },
+  { href: '/admin/talent-pool', label: 'Talent Pool', icon: Users },
   { href: '/programs', label: 'Program belajar', icon: BookOpen },
   { href: '/notifications', label: 'Notifikasi', icon: Bell },
 ];
 
 export function Protected({ children }: { children: ReactNode }) {
-  const { data: user, isLoading } = useGetCurrentUser({ query: { queryKey: ['/api/me'] } });
+  const { isLoaded, isSignedIn } = useAuth();
+  const { data: user, isLoading } = useGetCurrentUser({
+    query: { queryKey: ['/api/me'], enabled: isLoaded && Boolean(isSignedIn) },
+  });
   const [location, setLocation] = useLocation();
-  if (isLoading) return <div className="grid min-h-[100dvh] place-items-center bg-background p-6"><div className="w-full max-w-sm space-y-3"><Skeleton className="mx-auto h-10 w-10 rounded-xl" /><Skeleton className="h-5 w-2/3 mx-auto" /><Skeleton className="h-3 w-1/2 mx-auto" /></div></div>;
-  if (!user) { setLocation('/sign-in'); return null; }
-  if (!user.onboardingComplete && !location.startsWith('/onboarding/')) {
-    setLocation(user.role === 'company' ? '/onboarding/company' : '/onboarding/member');
-    return null;
-  }
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setLocation('/sign-in');
+      return;
+    }
+    if (!isLoading && user && !user.onboardingComplete && !location.startsWith('/onboarding/')) {
+      setLocation(user.role === 'company' ? '/onboarding/company' : '/onboarding/member');
+    }
+  }, [isLoaded, isLoading, isSignedIn, location, setLocation, user]);
+  if (!isLoaded || (isSignedIn && isLoading)) return <div className="grid min-h-[100dvh] place-items-center bg-background p-6"><div className="w-full max-w-sm space-y-3"><Skeleton className="mx-auto h-10 w-10 rounded-xl" /><Skeleton className="h-5 w-2/3 mx-auto" /><Skeleton className="h-3 w-1/2 mx-auto" /></div></div>;
+  if (!isSignedIn || !user) return null;
+  if (!user.onboardingComplete && !location.startsWith('/onboarding/')) return null;
   return <>{children}</>;
 }
 
@@ -44,6 +57,28 @@ export function AdminOnly({ children }: { children: ReactNode }) {
   }, [isLoading, user, setLocation]);
   if (isLoading) return <div className="grid min-h-[100dvh] place-items-center bg-background p-6"><Skeleton className="h-16 w-16 rounded-2xl" /></div>;
   if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) return null;
+  return <>{children}</>;
+}
+
+export function MemberOnly({ children }: { children: ReactNode }) {
+  const { data: user, isLoading } = useGetCurrentUser({ query: { queryKey: ['/api/me'] } });
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (!isLoading && user && user.role !== 'member') setLocation('/403');
+  }, [isLoading, user, setLocation]);
+  if (isLoading) return <div className="grid min-h-[100dvh] place-items-center bg-background p-6"><Skeleton className="h-16 w-16 rounded-2xl" /></div>;
+  if (!user || user.role !== 'member') return null;
+  return <>{children}</>;
+}
+
+export function CompanyOnly({ children }: { children: ReactNode }) {
+  const { data: user, isLoading } = useGetCurrentUser({ query: { queryKey: ['/api/me'] } });
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (!isLoading && user && user.role !== 'company') setLocation('/403');
+  }, [isLoading, user, setLocation]);
+  if (isLoading) return <div className="grid min-h-[100dvh] place-items-center bg-background p-6"><Skeleton className="h-16 w-16 rounded-2xl" /></div>;
+  if (!user || user.role !== 'company') return null;
   return <>{children}</>;
 }
 

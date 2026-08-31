@@ -20,6 +20,10 @@ tags:
     description: In-app notifications
   - name: admin
     description: Admin PBA operations and governance
+  - name: passport
+    description: Professional Passport settings and public profile
+  - name: talent-pool
+    description: Consent-aware Talent Pool discovery
 paths:
   /healthz:
     get:
@@ -217,6 +221,182 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Evidence not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /member/passport:
+    get:
+      operationId: getMemberPassport
+      tags: [passport]
+      summary: Get the signed-in member Professional Passport
+      responses:
+        "200":
+          description: Member passport and consent state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberPassport"
+        "403":
+          description: Member role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateMemberPassport
+      tags: [passport]
+      summary: Update public passport data, work preferences, and availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfessionalPassportUpdate"
+      responses:
+        "200":
+          description: Updated member passport
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberPassport"
+        "400":
+          description: Invalid or duplicate passport data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Member role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /member/passport/consent:
+    patch:
+      operationId: updateMemberPassportConsent
+      tags: [passport]
+      summary: Grant or revoke Talent Pool consent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PassportConsentUpdate"
+      responses:
+        "200":
+          description: Updated consent state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PassportConsent"
+        "403":
+          description: Member role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /passport/{slug}:
+    get:
+      operationId: getPublicPassport
+      tags: [passport]
+      summary: Get a public Professional Passport by unique slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public Professional Passport
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicPassport"
+        "404":
+          description: Passport is missing or private
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /admin/talent-pool:
+    get:
+      operationId: getAdminTalentPool
+      tags: [talent-pool, admin]
+      summary: Filter member passports for Admin PBA
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: availability
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [available, open_to_offer, unavailable]
+        - name: consent
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, active, revoked]
+            default: all
+        - name: location
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Admin Talent Pool results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminTalentCandidate"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /company/talent-pool:
+    get:
+      operationId: getCompanyTalentPool
+      tags: [talent-pool]
+      summary: List only candidates with active Talent Pool consent
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: availability
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [available, open_to_offer, unavailable]
+        - name: location
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Consent-approved candidates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanyTalentCandidate"
+        "403":
+          description: Company role required
           content:
             application/json:
               schema:
@@ -643,6 +823,236 @@ components:
           items:
             $ref: "#/components/schemas/Program"
       required: [diagnostic, evidences, learningProgress, opportunities, recommendedPrograms]
+    PassportConsent:
+      type: object
+      properties:
+        id:
+          type: string
+        scope:
+          type: string
+          enum: [talent_pool]
+        status:
+          type: string
+          enum: [active, revoked]
+        grantedAt:
+          type: ["string", "null"]
+          format: date-time
+        revokedAt:
+          type: ["string", "null"]
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, scope, status, grantedAt, revokedAt, updatedAt]
+    MemberPassport:
+      type: object
+      properties:
+        id:
+          type: string
+        memberUserId:
+          type: string
+        slug:
+          type: string
+        isPublic:
+          type: boolean
+        headline:
+          type: string
+        bio:
+          type: string
+        preferredRoles:
+          type: array
+          items:
+            type: string
+        preferredLocations:
+          type: array
+          items:
+            type: string
+        preferredWorkModes:
+          type: array
+          items:
+            type: string
+        availabilityStatus:
+          type: string
+          enum: [available, open_to_offer, unavailable]
+        publicUrl:
+          type: string
+        consent:
+          $ref: "#/components/schemas/PassportConsent"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, memberUserId, slug, isPublic, headline, bio, preferredRoles, preferredLocations, preferredWorkModes, availabilityStatus, publicUrl, consent, createdAt, updatedAt]
+    ProfessionalPassportUpdate:
+      type: object
+      properties:
+        slug:
+          type: string
+          pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          minLength: 3
+          maxLength: 60
+        isPublic:
+          type: boolean
+        headline:
+          type: string
+          maxLength: 120
+        bio:
+          type: string
+          maxLength: 800
+        preferredRoles:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            minLength: 1
+            maxLength: 80
+        preferredLocations:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            minLength: 1
+            maxLength: 80
+        preferredWorkModes:
+          type: array
+          maxItems: 5
+          items:
+            type: string
+            enum: [onsite, hybrid, remote]
+        availabilityStatus:
+          type: string
+          enum: [available, open_to_offer, unavailable]
+      minProperties: 1
+    PassportConsentUpdate:
+      type: object
+      properties:
+        active:
+          type: boolean
+      required: [active]
+    PublicPassport:
+      type: object
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        headline:
+          type: string
+        bio:
+          type: string
+        expertise:
+          type: string
+        domicile:
+          type: string
+        experienceYears:
+          type: number
+        preferredRoles:
+          type: array
+          items:
+            type: string
+        preferredLocations:
+          type: array
+          items:
+            type: string
+        preferredWorkModes:
+          type: array
+          items:
+            type: string
+        availabilityStatus:
+          type: string
+          enum: [available, open_to_offer, unavailable]
+        verifiedEvidenceCount:
+          type: number
+        publicUrl:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+      required: [slug, name, headline, bio, expertise, domicile, experienceYears, preferredRoles, preferredLocations, preferredWorkModes, availabilityStatus, verifiedEvidenceCount, publicUrl, updatedAt]
+    AdminTalentCandidate:
+      type: object
+      properties:
+        id:
+          type: string
+        memberUserId:
+          type: string
+        name:
+          type: string
+        headline:
+          type: string
+        expertise:
+          type: string
+        domicile:
+          type: string
+        experienceYears:
+          type: number
+        preferredRoles:
+          type: array
+          items:
+            type: string
+        preferredLocations:
+          type: array
+          items:
+            type: string
+        preferredWorkModes:
+          type: array
+          items:
+            type: string
+        availabilityStatus:
+          type: string
+          enum: [available, open_to_offer, unavailable]
+        isPublic:
+          type: boolean
+        consentStatus:
+          type: string
+          enum: [active, revoked]
+        consentGrantedAt:
+          type: ["string", "null"]
+          format: date-time
+        publicUrl:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, memberUserId, name, headline, expertise, domicile, experienceYears, preferredRoles, preferredLocations, preferredWorkModes, availabilityStatus, isPublic, consentStatus, consentGrantedAt, publicUrl, updatedAt]
+    CompanyTalentCandidate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        headline:
+          type: string
+        expertise:
+          type: string
+        domicile:
+          type: string
+        experienceYears:
+          type: number
+        preferredRoles:
+          type: array
+          items:
+            type: string
+        preferredLocations:
+          type: array
+          items:
+            type: string
+        preferredWorkModes:
+          type: array
+          items:
+            type: string
+        availabilityStatus:
+          type: string
+          enum: [available, open_to_offer, unavailable]
+        publicUrl:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, name, headline, expertise, domicile, experienceYears, preferredRoles, preferredLocations, preferredWorkModes, availabilityStatus, publicUrl, updatedAt]
     MemberDiagnosticInput:
       type: object
       properties:

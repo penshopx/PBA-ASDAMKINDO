@@ -277,6 +277,195 @@ export const UpdateMemberEvidenceResponse = zod.object({
 
 
 /**
+ * @summary Get the signed-in member Professional Passport
+ */
+export const GetMemberPassportResponse = zod.object({
+  "id": zod.string(),
+  "memberUserId": zod.string(),
+  "slug": zod.string(),
+  "isPublic": zod.boolean(),
+  "headline": zod.string(),
+  "bio": zod.string(),
+  "preferredRoles": zod.array(zod.string()),
+  "preferredLocations": zod.array(zod.string()),
+  "preferredWorkModes": zod.array(zod.string()),
+  "availabilityStatus": zod.enum(['available', 'open_to_offer', 'unavailable']),
+  "publicUrl": zod.string(),
+  "consent": zod.object({
+  "id": zod.string(),
+  "scope": zod.enum(['talent_pool']),
+  "status": zod.enum(['active', 'revoked']),
+  "grantedAt": zod.coerce.date().nullable(),
+  "revokedAt": zod.coerce.date().nullable(),
+  "updatedAt": zod.coerce.date()
+}),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update public passport data, work preferences, and availability
+ */
+export const updateMemberPassportBodySlugMin = 3;
+export const updateMemberPassportBodySlugMax = 60;
+
+
+export const updateMemberPassportBodySlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
+export const updateMemberPassportBodyHeadlineMax = 120;
+
+export const updateMemberPassportBodyBioMax = 800;
+
+export const updateMemberPassportBodyPreferredRolesItemMax = 80;
+
+export const updateMemberPassportBodyPreferredRolesMax = 10;
+
+export const updateMemberPassportBodyPreferredLocationsItemMax = 80;
+
+export const updateMemberPassportBodyPreferredLocationsMax = 10;
+
+export const updateMemberPassportBodyPreferredWorkModesMax = 5;
+
+
+
+export const UpdateMemberPassportBody = zod.object({
+  "slug": zod.string().min(updateMemberPassportBodySlugMin).max(updateMemberPassportBodySlugMax).regex(updateMemberPassportBodySlugRegExp).optional(),
+  "isPublic": zod.boolean().optional(),
+  "headline": zod.string().max(updateMemberPassportBodyHeadlineMax).optional(),
+  "bio": zod.string().max(updateMemberPassportBodyBioMax).optional(),
+  "preferredRoles": zod.array(zod.string().min(1).max(updateMemberPassportBodyPreferredRolesItemMax)).max(updateMemberPassportBodyPreferredRolesMax).optional(),
+  "preferredLocations": zod.array(zod.string().min(1).max(updateMemberPassportBodyPreferredLocationsItemMax)).max(updateMemberPassportBodyPreferredLocationsMax).optional(),
+  "preferredWorkModes": zod.array(zod.enum(['onsite', 'hybrid', 'remote'])).max(updateMemberPassportBodyPreferredWorkModesMax).optional(),
+  "availabilityStatus": zod.enum(['available', 'open_to_offer', 'unavailable']).optional()
+})
+
+export const UpdateMemberPassportResponse = zod.object({
+  "id": zod.string(),
+  "memberUserId": zod.string(),
+  "slug": zod.string(),
+  "isPublic": zod.boolean(),
+  "headline": zod.string(),
+  "bio": zod.string(),
+  "preferredRoles": zod.array(zod.string()),
+  "preferredLocations": zod.array(zod.string()),
+  "preferredWorkModes": zod.array(zod.string()),
+  "availabilityStatus": zod.enum(['available', 'open_to_offer', 'unavailable']),
+  "publicUrl": zod.string(),
+  "consent": zod.object({
+  "id": zod.string(),
+  "scope": zod.enum(['talent_pool']),
+  "status": zod.enum(['active', 'revoked']),
+  "grantedAt": zod.coerce.date().nullable(),
+  "revokedAt": zod.coerce.date().nullable(),
+  "updatedAt": zod.coerce.date()
+}),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Grant or revoke Talent Pool consent
+ */
+export const UpdateMemberPassportConsentBody = zod.object({
+  "active": zod.boolean()
+})
+
+export const UpdateMemberPassportConsentResponse = zod.object({
+  "id": zod.string(),
+  "scope": zod.enum(['talent_pool']),
+  "status": zod.enum(['active', 'revoked']),
+  "grantedAt": zod.coerce.date().nullable(),
+  "revokedAt": zod.coerce.date().nullable(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a public Professional Passport by unique slug
+ */
+export const GetPublicPassportParams = zod.object({
+  "slug": zod.coerce.string()
+})
+
+export const GetPublicPassportResponse = zod.object({
+  "slug": zod.string(),
+  "name": zod.string(),
+  "headline": zod.string(),
+  "bio": zod.string(),
+  "expertise": zod.string(),
+  "domicile": zod.string(),
+  "experienceYears": zod.number(),
+  "preferredRoles": zod.array(zod.string()),
+  "preferredLocations": zod.array(zod.string()),
+  "preferredWorkModes": zod.array(zod.string()),
+  "availabilityStatus": zod.enum(['available', 'open_to_offer', 'unavailable']),
+  "verifiedEvidenceCount": zod.number(),
+  "publicUrl": zod.string(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Filter member passports for Admin PBA
+ */
+export const getAdminTalentPoolQueryConsentDefault = `all`;
+
+export const GetAdminTalentPoolQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "availability": zod.enum(['available', 'open_to_offer', 'unavailable']).optional(),
+  "consent": zod.enum(['all', 'active', 'revoked']).default(getAdminTalentPoolQueryConsentDefault),
+  "location": zod.coerce.string().optional()
+})
+
+export const GetAdminTalentPoolResponseItem = zod.object({
+  "id": zod.string(),
+  "memberUserId": zod.string(),
+  "name": zod.string(),
+  "headline": zod.string(),
+  "expertise": zod.string(),
+  "domicile": zod.string(),
+  "experienceYears": zod.number(),
+  "preferredRoles": zod.array(zod.string()),
+  "preferredLocations": zod.array(zod.string()),
+  "preferredWorkModes": zod.array(zod.string()),
+  "availabilityStatus": zod.enum(['available', 'open_to_offer', 'unavailable']),
+  "isPublic": zod.boolean(),
+  "consentStatus": zod.enum(['active', 'revoked']),
+  "consentGrantedAt": zod.coerce.date().nullable(),
+  "publicUrl": zod.string().nullable(),
+  "updatedAt": zod.coerce.date()
+})
+export const GetAdminTalentPoolResponse = zod.array(GetAdminTalentPoolResponseItem)
+
+
+/**
+ * @summary List only candidates with active Talent Pool consent
+ */
+export const GetCompanyTalentPoolQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "availability": zod.enum(['available', 'open_to_offer', 'unavailable']).optional(),
+  "location": zod.coerce.string().optional()
+})
+
+export const GetCompanyTalentPoolResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "headline": zod.string(),
+  "expertise": zod.string(),
+  "domicile": zod.string(),
+  "experienceYears": zod.number(),
+  "preferredRoles": zod.array(zod.string()),
+  "preferredLocations": zod.array(zod.string()),
+  "preferredWorkModes": zod.array(zod.string()),
+  "availabilityStatus": zod.enum(['available', 'open_to_offer', 'unavailable']),
+  "publicUrl": zod.string().nullable(),
+  "updatedAt": zod.coerce.date()
+})
+export const GetCompanyTalentPoolResponse = zod.array(GetCompanyTalentPoolResponseItem)
+
+
+/**
  * @summary Get company dashboard
  */
 export const GetCompanyDashboardResponse = zod.object({

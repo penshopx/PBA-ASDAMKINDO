@@ -7,7 +7,7 @@ import { Redirect, Route, Router as WouterRouter, Switch, useLocation } from 'wo
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { AdminOnly, AppShell, Protected } from '@/components/app-shell';
+import { AdminOnly, AppShell, CompanyOnly, MemberOnly, Protected } from '@/components/app-shell';
 import { AuthUnavailable, SignInPage, SignUpPage } from '@/pages/auth';
 import { AdminDashboard, CompanyDashboard, MemberDashboard } from '@/pages/portal';
 import { CompanyOnboarding, MemberOnboarding } from '@/pages/onboarding';
@@ -16,6 +16,10 @@ import { Notifications } from '@/pages/notifications';
 import { AdminOperations } from '@/pages/admin-operations';
 import { Legal } from '@/pages/legal';
 import { MemberJourney } from '@/pages/member-journey';
+import { MemberPassportPage } from '@/pages/member-passport';
+import { PublicPassportPage } from '@/pages/public-passport';
+import { AdminTalentPoolPage } from '@/pages/admin-talent-pool';
+import { CompanyTalentPoolPage } from '@/pages/company-talent-pool';
 import NotFound from '@/pages/not-found';
 import { useGetCurrentUser } from '@workspace/api-client-react';
 import VideoWithControls from '@/components/video/VideoWithControls';
@@ -65,9 +69,13 @@ function AppRoutes({ clerkReady }: { clerkReady: boolean }) {
     <Route path="/app">{() => clerkReady ? <EntryRoute /> : <Redirect to="/" />}</Route>
     <Route path="/member/dashboard">{() => <Protected><AppShell><MemberDashboard /></AppShell></Protected>}</Route>
     <Route path="/member/journey">{() => <Protected><AppShell><MemberJourney /></AppShell></Protected>}</Route>
+    <Route path="/member/passport">{() => <Protected><MemberOnly><AppShell><MemberPassportPage /></AppShell></MemberOnly></Protected>}</Route>
+    <Route path="/passport/:slug" component={PublicPassportPage} />
     <Route path="/company/dashboard">{() => <Protected><AppShell><CompanyDashboard /></AppShell></Protected>}</Route>
+    <Route path="/company/talent-pool">{() => <Protected><CompanyOnly><AppShell><CompanyTalentPoolPage /></AppShell></CompanyOnly></Protected>}</Route>
     <Route path="/admin/dashboard">{() => <Protected><AppShell><AdminDashboard /></AppShell></Protected>}</Route>
     <Route path="/admin/operations">{() => <Protected><AdminOnly><AppShell><AdminOperations /></AppShell></AdminOnly></Protected>}</Route>
+    <Route path="/admin/talent-pool">{() => <Protected><AdminOnly><AppShell><AdminTalentPoolPage /></AppShell></AdminOnly></Protected>}</Route>
     <Route path="/onboarding/member">{() => <Protected><MemberOnboarding /></Protected>}</Route>
     <Route path="/onboarding/company">{() => <Protected><CompanyOnboarding /></Protected>}</Route>
     <Route path="/notifications">{() => <Protected><AppShell><Notifications /></AppShell></Protected>}</Route>
