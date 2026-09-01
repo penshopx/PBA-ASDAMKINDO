@@ -51,10 +51,10 @@ Reminder SLA, reminder consent expiry, atomic notification pipeline, duplicate s
 ### M-02 — Rate limiting dan abuse controls belum eksplisit — fixed, pending publish
 
 - **Bukti awal:** Clerk melindungi identitas, tetapi request berulang ke API belum memiliki budget aplikasi.
-- **Perbaikan:** limiter ingress IP-only berjalan sebelum parser/Clerk, lalu limiter fixed-window membedakan health, public read, auth-sensitive read, dan write. Identitas Clerk dipakai bila tersedia; request anonim memakai alamat IP valid dari rantai proxy yang jumlah hop-nya dibatasi. Storage limiter memiliki batas bucket dan ukuran konstan per bucket.
+- **Perbaikan:** limiter ingress IP-only berjalan sebelum parser/Clerk, lalu limiter fixed-window membedakan health, public read, auth-sensitive read, dan write. Identitas Clerk dipakai bila tersedia; request anonim memakai alamat IP valid dari rantai proxy yang jumlah hop-nya dibatasi. Semua instance memakai atomic upsert pada shared PostgreSQL bucket dengan pembersihan expiry berkala.
 - **Respons aman:** penolakan memakai `429` JSON dengan kode stabil, waktu retry, serta header `RateLimit-*`/`Retry-After`; respons tidak memuat alamat client, user ID, token, atau detail request.
-- **Validasi:** integration test membuktikan traffic normal tetap lolos, burst auth-sensitive/write ditolak, dan nilai `X-Forwarded-For` paling kiri tidak dapat membuat identitas limiter tak terbatas.
-- **Operasi:** threshold, monitoring, batas multi-instance, dan prosedur perubahan tercatat di runbook pilot.
+- **Validasi:** integration test membuktikan traffic normal tetap lolos, burst auth-sensitive/write ditolak, dua server tidak menggandakan budget public-read, dan nilai `X-Forwarded-For` paling kiri tidak dapat membuat identitas limiter tak terbatas.
+- **Operasi:** threshold, monitoring 429 global, serta prosedur fail-closed default dan fail-open darurat tercatat di runbook pilot.
 
 ### M-03 — Audit log hanya tampilan terbatas
 

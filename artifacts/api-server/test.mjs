@@ -15,6 +15,7 @@ const testFiles = requestedTests.length
   ? requestedTests
   : [
       "rate-limit.integration",
+      "rate-limit-multi-instance.integration",
       "member-journey.integration",
       "production-readiness.integration",
       "company-security.integration",

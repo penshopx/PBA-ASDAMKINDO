@@ -1,14 +1,23 @@
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import express from "express";
+import pinoHttp from "pino-http";
 import { eq, inArray } from "drizzle-orm";
 import { apiRateLimitBucketsTable, db } from "@workspace/db";
+import { logger } from "../src/lib/logger";
+import {
+  ingressRateLimitMiddleware,
+  rateLimitMiddleware,
+} from "../src/middlewares/rateLimit";
 import apiRouter from "../src/routes";
 
 function createTestApp() {
   const testApp = express();
   testApp.set("trust proxy", 1);
+  testApp.use(pinoHttp({ logger }));
+  testApp.use("/api", ingressRateLimitMiddleware);
   testApp.use(express.json());
+  testApp.use("/api", rateLimitMiddleware);
   testApp.use("/api", apiRouter);
   testApp.use((_req, res) => {
     res.status(404).json({ error: "Endpoint tidak ditemukan." });
@@ -26,9 +35,18 @@ const secondPort = (secondServer.address() as AddressInfo).port;
 const secondBaseUrl = `http://127.0.0.1:${secondPort}`;
 const publicIp = "198.51.100.40";
 const otherPublicIp = "198.51.100.41";
+const healthIp = "198.51.100.42";
+const missingIp = "198.51.100.43";
 const testBucketKeys = [
-  `public-programs:${publicIp}`,
-  `public-programs:${otherPublicIp}`,
+  `ingress:ip:${publicIp}`,
+  `public-read:ip:${publicIp}`,
+  `auth-sensitive:ip:${publicIp}`,
+  `ingress:ip:${otherPublicIp}`,
+  `public-read:ip:${otherPublicIp}`,
+  `ingress:ip:${healthIp}`,
+  `health:ip:${healthIp}`,
+  `ingress:ip:${missingIp}`,
+  `auth-sensitive:ip:${missingIp}`,
 ];
 
 try {
@@ -37,14 +55,19 @@ try {
     .where(inArray(apiRateLimitBucketsTable.key, testBucketKeys));
 
   const healthResponse = await fetch(`${baseUrl}/api/healthz`, {
-    headers: { origin: "https://untrusted.example" },
+    headers: {
+      origin: "https://untrusted.example",
+      "x-forwarded-for": healthIp,
+    },
   });
   assert.equal(healthResponse.status, 200);
   assert.deepEqual(await healthResponse.json(), { status: "ok" });
   assert.equal(healthResponse.headers.get("access-control-allow-origin"), null);
   assert.equal(healthResponse.headers.get("access-control-allow-credentials"), null);
 
-  const missingResponse = await fetch(`${baseUrl}/api/does-not-exist`);
+  const missingResponse = await fetch(`${baseUrl}/api/does-not-exist`, {
+    headers: { "x-forwarded-for": missingIp },
+  });
   assert.equal(missingResponse.status, 404);
   assert.deepEqual(await missingResponse.json(), {
     error: "Endpoint tidak ditemukan.",
@@ -63,18 +86,20 @@ try {
   assert.equal(rateLimited[0]!.headers.get("ratelimit-remaining"), "0");
   assert.ok(Number(rateLimited[0]!.headers.get("retry-after")) >= 1);
   assert.deepEqual(await rateLimited[0]!.json(), {
-    error: "Terlalu banyak permintaan. Coba lagi setelah beberapa saat.",
+    error: "Terlalu banyak permintaan. Coba lagi nanti.",
+    code: "RATE_LIMITED",
+    retryAfterSeconds: Number(rateLimited[0]!.headers.get("retry-after")),
   });
   const [sharedBucket] = await db
     .select({ count: apiRateLimitBucketsTable.count })
     .from(apiRateLimitBucketsTable)
-    .where(eq(apiRateLimitBucketsTable.key, `public-programs:${publicIp}`))
+    .where(eq(apiRateLimitBucketsTable.key, `public-read:ip:${publicIp}`))
     .limit(1);
   assert.equal(sharedBucket?.count, 61);
 
   const expiredAt = new Date(Date.now() - 2 * 60_000);
   await db.insert(apiRateLimitBucketsTable).values({
-    key: `public-programs:${otherPublicIp}`,
+    key: `public-read:ip:${otherPublicIp}`,
     windowStartedAt: expiredAt,
     count: 60,
     updatedAt: expiredAt,
@@ -90,7 +115,7 @@ try {
       windowStartedAt: apiRateLimitBucketsTable.windowStartedAt,
     })
     .from(apiRateLimitBucketsTable)
-    .where(eq(apiRateLimitBucketsTable.key, `public-programs:${otherPublicIp}`))
+    .where(eq(apiRateLimitBucketsTable.key, `public-read:ip:${otherPublicIp}`))
     .limit(1);
   assert.equal(resetBucket?.count, 1);
   assert.ok((resetBucket?.windowStartedAt.getTime() ?? 0) > expiredAt.getTime());

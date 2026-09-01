@@ -6,6 +6,10 @@ info:
   description: API specification
   x-rate-limit-policies:
     windowSeconds: 60
+    sharedStore: postgres
+    failureMode: closed
+    maxBuckets: 10000
+    trustedProxyHops: 1
     ingressPerClient: 300
     healthPerClient: 120
     publicReadPerClient: 60

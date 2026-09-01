@@ -1,11 +1,15 @@
 import { getAuth } from "@clerk/express";
+import { count, eq, lt, sql } from "drizzle-orm";
 import type { Request, RequestHandler, Response } from "express";
 import { isIP } from "node:net";
+import { apiRateLimitBucketsTable, db } from "@workspace/db";
 
 const DEFAULT_WINDOW_SECONDS = 60;
+const DEFAULT_MAX_BUCKETS = 10_000;
 const MAX_TRUSTED_PROXY_HOPS = 5;
 const MAX_FORWARDED_FOR_ENTRIES = 5;
-const MAX_BUCKETS = 10_000;
+const MAX_CONFIGURED_BUCKETS = 100_000;
+const CLEANUP_INTERVAL_MS = 10 * 60_000;
 
 export type RateLimitPolicyName =
   | "ingress"
@@ -28,17 +32,24 @@ export interface RateLimitPolicies {
   write: RateLimitPolicy;
 }
 
-interface Bucket {
-  count: number;
-  resetAt: number;
-}
-
-interface ClientIdentity {
+export interface ClientIdentity {
   key: string;
   kind: "user" | "ip";
 }
 
-const buckets = new Map<string, Bucket>();
+interface DistributedBucket {
+  count: number;
+  windowStartedAt: Date;
+}
+
+export type RateLimitStoreFailureMode = "open" | "closed";
+export type RateLimitStoreConsumer = (
+  key: string,
+  policy: RateLimitPolicy,
+  now: Date,
+) => Promise<DistributedBucket>;
+
+let lastCleanupAt = 0;
 
 function positiveIntegerFromEnv(
   name: string,
@@ -105,6 +116,18 @@ export function getRateLimitTrustedProxyHops(): number {
   );
 }
 
+export function getRateLimitStoreFailureMode(): RateLimitStoreFailureMode {
+  return process.env.RATE_LIMIT_FAILURE_MODE === "open" ? "open" : "closed";
+}
+
+export function getRateLimitMaxBuckets(): number {
+  return positiveIntegerFromEnv(
+    "RATE_LIMIT_MAX_BUCKETS",
+    DEFAULT_MAX_BUCKETS,
+    MAX_CONFIGURED_BUCKETS,
+  );
+}
+
 function forwardedAddresses(req: Request): string[] {
   const raw = req.headers["x-forwarded-for"];
   const value = Array.isArray(raw) ? raw.join(",") : raw;
@@ -136,7 +159,7 @@ export function getRateLimitClientAddress(req: Request): string {
   return candidate && isIP(candidate) ? candidate : remoteAddress;
 }
 
-function getClientIdentity(req: Request): ClientIdentity {
+export function getClientIdentity(req: Request): ClientIdentity {
   try {
     const userId = getAuth(req).userId;
     if (userId) return { key: `user:${userId.slice(0, 128)}`, kind: "user" };
@@ -169,22 +192,93 @@ export function getRateLimitPolicy(req: Request): RateLimitPolicy {
   return rateLimitPolicies.authSensitive;
 }
 
-function pruneExpiredBuckets(now: number): void {
-  for (const [key, bucket] of buckets) {
-    if (bucket.resetAt <= now) {
-      buckets.delete(key);
-    }
+async function cleanupExpiredBuckets(now: Date, windowMs: number): Promise<void> {
+  if (now.getTime() - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
+  lastCleanupAt = now.getTime();
+  try {
+    await db
+      .delete(apiRateLimitBucketsTable)
+      .where(
+        lt(
+          apiRateLimitBucketsTable.updatedAt,
+          new Date(now.getTime() - Math.max(windowMs, CLEANUP_INTERVAL_MS)),
+        ),
+      );
+  } catch (err) {
+    lastCleanupAt = 0;
+    throw err;
   }
 }
 
-function makeBucketCapacity(now: number, window: number): void {
-  if (buckets.size < MAX_BUCKETS) return;
-  pruneExpiredBuckets(now);
-  while (buckets.size >= MAX_BUCKETS) {
-    const oldestKey = buckets.keys().next().value as string | undefined;
-    if (!oldestKey) return;
-    buckets.delete(oldestKey);
-  }
+async function consumeDistributedBucket(
+  key: string,
+  policy: RateLimitPolicy,
+  now: Date,
+): Promise<DistributedBucket> {
+  const windowStartedBefore = new Date(now.getTime() - policy.windowMs);
+  const update = {
+    windowStartedAt: sql`CASE WHEN ${apiRateLimitBucketsTable.windowStartedAt} <= ${windowStartedBefore} THEN ${now} ELSE ${apiRateLimitBucketsTable.windowStartedAt} END`,
+    count: sql`CASE WHEN ${apiRateLimitBucketsTable.windowStartedAt} <= ${windowStartedBefore} THEN 1 ELSE ${apiRateLimitBucketsTable.count} + 1 END`,
+    updatedAt: now,
+  };
+
+  const [updated] = await db
+    .update(apiRateLimitBucketsTable)
+    .set(update)
+    .where(eq(apiRateLimitBucketsTable.key, key))
+    .returning({
+      count: apiRateLimitBucketsTable.count,
+      windowStartedAt: apiRateLimitBucketsTable.windowStartedAt,
+    });
+  if (updated) return updated;
+
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(1947166501)`);
+    await tx
+      .delete(apiRateLimitBucketsTable)
+      .where(
+        lt(
+          apiRateLimitBucketsTable.updatedAt,
+          new Date(
+            now.getTime() - Math.max(policy.windowMs, CLEANUP_INTERVAL_MS),
+          ),
+        ),
+      );
+
+    const [createdByAnotherInstance] = await tx
+      .update(apiRateLimitBucketsTable)
+      .set(update)
+      .where(eq(apiRateLimitBucketsTable.key, key))
+      .returning({
+        count: apiRateLimitBucketsTable.count,
+        windowStartedAt: apiRateLimitBucketsTable.windowStartedAt,
+      });
+    if (createdByAnotherInstance) return createdByAnotherInstance;
+
+    const [capacity] = await tx
+      .select({ value: count() })
+      .from(apiRateLimitBucketsTable);
+    if ((capacity?.value ?? 0) >= getRateLimitMaxBuckets()) {
+      throw new Error("Rate limit bucket capacity exhausted.");
+    }
+
+    const [created] = await tx
+      .insert(apiRateLimitBucketsTable)
+      .values({
+        key,
+        windowStartedAt: now,
+        count: 1,
+        updatedAt: now,
+      })
+      .returning({
+        count: apiRateLimitBucketsTable.count,
+        windowStartedAt: apiRateLimitBucketsTable.windowStartedAt,
+      });
+    if (!created) {
+      throw new Error("Rate limit bucket was not returned.");
+    }
+    return created;
+  });
 }
 
 function setRateLimitHeaders(
@@ -198,65 +292,108 @@ function setRateLimitHeaders(
   res.setHeader("RateLimit-Reset", String(Math.max(resetAfterSeconds, 0)));
 }
 
-export const rateLimitMiddleware: RequestHandler = (req, res, next) => {
-  const policy = getRateLimitPolicy(req);
-  enforceRateLimit(policy, getClientIdentity(req), req, res, next);
-};
+export function createRateLimitMiddleware(
+  policyForRequest: (req: Request) => RateLimitPolicy,
+  identityForRequest: (req: Request) => ClientIdentity,
+  consume: RateLimitStoreConsumer = consumeDistributedBucket,
+): RequestHandler {
+  return (req, res, next) => {
+    const policy = policyForRequest(req);
+    void enforceRateLimit(
+      policy,
+      identityForRequest(req),
+      req,
+      res,
+      next,
+      consume,
+    );
+  };
+}
 
-export const ingressRateLimitMiddleware: RequestHandler = (req, res, next) => {
-  enforceRateLimit(
-    rateLimitPolicies.ingress,
-    { key: `ip:${getRateLimitClientAddress(req)}`, kind: "ip" },
-    req,
-    res,
-    next,
-  );
-};
+export const rateLimitMiddleware = createRateLimitMiddleware(
+  getRateLimitPolicy,
+  getClientIdentity,
+);
 
-function enforceRateLimit(
+export const ingressRateLimitMiddleware = createRateLimitMiddleware(
+  () => rateLimitPolicies.ingress,
+  (req) => ({
+    key: `ip:${getRateLimitClientAddress(req)}`,
+    kind: "ip",
+  }),
+);
+
+async function enforceRateLimit(
   policy: RateLimitPolicy,
   identity: ClientIdentity,
   req: Request,
   res: Response,
   next: Parameters<RequestHandler>[2],
-): void {
-  const now = Date.now();
+  consume: RateLimitStoreConsumer,
+): Promise<void> {
+  const now = new Date();
   const key = `${policy.name}:${identity.key}`;
-  const existingBucket = buckets.get(key);
-  if (!existingBucket) makeBucketCapacity(now, policy.windowMs);
-  const bucket =
-    !existingBucket || existingBucket.resetAt <= now
-      ? { count: 0, resetAt: now + policy.windowMs }
-      : existingBucket;
 
-  const resetAfterSeconds =
-    Math.ceil((bucket.resetAt - now) / 1_000);
-  if (bucket.count >= policy.max) {
-    setRateLimitHeaders(res, policy, 0, resetAfterSeconds);
-    res.setHeader("Retry-After", String(Math.max(resetAfterSeconds, 1)));
-    req.log.warn(
-      { rateLimitPolicy: policy.name, rateLimitIdentity: identity.kind },
-      "Rate limit exceeded",
-    );
-    res.status(429).json({
-      error: "Terlalu banyak permintaan. Coba lagi nanti.",
-      code: "RATE_LIMITED",
-      retryAfterSeconds: Math.max(resetAfterSeconds, 1),
+  try {
+    const bucket = await consume(key, policy, now);
+
+    void cleanupExpiredBuckets(now, policy.windowMs).catch((err) => {
+      req.log.warn({ err }, "Failed to clean expired API rate limit buckets");
     });
-    return;
-  }
 
-  bucket.count += 1;
-  buckets.set(key, bucket);
-  setRateLimitHeaders(
-    res,
-    policy,
-    policy.max - bucket.count,
-    resetAfterSeconds,
-  );
-  next();
+    const resetAt = bucket.windowStartedAt.getTime() + policy.windowMs;
+    const resetAfterSeconds = Math.max(
+      1,
+      Math.ceil((resetAt - now.getTime()) / 1_000),
+    );
+    const remaining = Math.max(0, policy.max - bucket.count);
+    setRateLimitHeaders(res, policy, remaining, resetAfterSeconds);
+
+    if (bucket.count > policy.max) {
+      res.setHeader("Retry-After", String(resetAfterSeconds));
+      req.log.warn(
+        {
+          rateLimitPolicy: policy.name,
+          rateLimitIdentity: identity.kind,
+          rateLimitStore: "postgres",
+        },
+        "Rate limit exceeded",
+      );
+      res.status(429).json({
+        error: "Terlalu banyak permintaan. Coba lagi nanti.",
+        code: "RATE_LIMITED",
+        retryAfterSeconds: resetAfterSeconds,
+      });
+      return;
+    }
+
+    next();
+  } catch (err) {
+    const failureMode = getRateLimitStoreFailureMode();
+    req.log.error(
+      {
+        err,
+        rateLimitPolicy: policy.name,
+        rateLimitStore: "postgres",
+        rateLimitFailureMode: failureMode,
+      },
+      "Distributed API rate limiter failed",
+    );
+    if (failureMode === "open") {
+      req.log.warn(
+        { rateLimitPolicy: policy.name },
+        "Rate limiter fail-open allowed request",
+      );
+      next();
+      return;
+    }
+
+    res.status(503).json({
+      error: "Perlindungan traffic sedang tidak tersedia. Coba lagi sebentar.",
+    });
+  }
 }
 
 export function resetRateLimitStoreForTests(): void {
-  buckets.clear();
+  lastCleanupAt = 0;
 }
