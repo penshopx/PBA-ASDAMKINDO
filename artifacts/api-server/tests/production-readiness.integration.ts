@@ -21,6 +21,33 @@ try {
   assert.deepEqual(await missingResponse.json(), {
     error: "Endpoint tidak ditemukan.",
   });
+
+  const publicIp = "198.51.100.40";
+  const limitedResponses = await Promise.all(
+    Array.from({ length: 61 }, () =>
+      fetch(`${baseUrl}/api/programs`, {
+        headers: { "x-forwarded-for": publicIp },
+      }),
+    ),
+  );
+  const rateLimited = limitedResponses.filter((response) => response.status === 429);
+  assert.equal(rateLimited.length, 1);
+  assert.equal(rateLimited[0]!.headers.get("ratelimit-limit"), "60");
+  assert.equal(rateLimited[0]!.headers.get("ratelimit-remaining"), "0");
+  assert.ok(Number(rateLimited[0]!.headers.get("retry-after")) >= 1);
+  assert.deepEqual(await rateLimited[0]!.json(), {
+    error: "Terlalu banyak permintaan. Coba lagi setelah beberapa saat.",
+  });
+
+  const otherIpResponse = await fetch(`${baseUrl}/api/programs`, {
+    headers: { "x-forwarded-for": "198.51.100.41" },
+  });
+  assert.notEqual(otherIpResponse.status, 429);
+
+  const authenticatedRouteResponse = await fetch(`${baseUrl}/api/me`, {
+    headers: { "x-forwarded-for": publicIp },
+  });
+  assert.notEqual(authenticatedRouteResponse.status, 429);
 } finally {
   await new Promise<void>((resolve, reject) =>
     server.close((err) => (err ? reject(err) : resolve())),

@@ -18,6 +18,7 @@ import {
 } from "@workspace/db";
 import { getAuthenticatedUser, requireRole, requireUser } from "../lib/auth";
 import { consentExpiry, expireCompanyTalentConsent, expireCompanyTalentConsents, getTalentConsentSettings, lockCompanyTalentConsentPair, recordConsentAudit } from "../lib/talent-consent";
+import { publicPassportRateLimit } from "../middlewares/publicRateLimit";
 
 const router: IRouter = Router();
 const memberOnly = [requireUser, requireRole("member")];
@@ -140,7 +141,7 @@ router.patch("/member/passport/consents/:id", ...memberOnly, async (req, res): P
   res.json(UpdateMemberCompanyConsentResponse.parse(memberConsent(outcome.consent, company, await consentHistoryFor(outcome.consent.id))));
 });
 
-router.get("/passport/:slug", async (req, res): Promise<void> => {
+router.get("/passport/:slug", publicPassportRateLimit, async (req, res): Promise<void> => {
   const params = GetPublicPassportParams.safeParse(req.params); if (!params.success) { res.status(400).json({ error: "URL passport tidak valid." }); return; }
   const [row] = await db.select({ passport: professionalPassportsTable, user: usersTable, profile: memberProfilesTable }).from(professionalPassportsTable).innerJoin(usersTable, eq(professionalPassportsTable.memberUserId, usersTable.id)).leftJoin(memberProfilesTable, eq(memberProfilesTable.userId, usersTable.id)).where(and(eq(professionalPassportsTable.slug, params.data.slug), eq(professionalPassportsTable.isPublic, true), eq(usersTable.role, "member"))).limit(1);
   if (!row) { res.status(404).json({ error: "Professional Passport tidak ditemukan atau masih privat." }); return; }

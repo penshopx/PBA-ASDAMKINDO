@@ -2,10 +2,11 @@ import { and, desc, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { ListProgramsQueryParams, ListProgramsResponse } from "@workspace/api-zod";
 import { db, enrollmentsTable, programsTable } from "@workspace/db";
+import { publicProgramsRateLimit } from "../middlewares/publicRateLimit";
 
 const router: IRouter = Router();
 
-router.get("/programs", async (req, res): Promise<void> => {
+router.get("/programs", publicProgramsRateLimit, async (req, res): Promise<void> => {
   const parsed = ListProgramsQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: "Filter program tidak valid." });
