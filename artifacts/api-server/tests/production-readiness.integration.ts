@@ -1,14 +1,26 @@
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
+import express from "express";
 import { eq, inArray } from "drizzle-orm";
 import { apiRateLimitBucketsTable, db } from "@workspace/db";
-import app from "../src/app";
+import apiRouter from "../src/routes";
 
-const server = app.listen(0);
+function createTestApp() {
+  const testApp = express();
+  testApp.set("trust proxy", 1);
+  testApp.use(express.json());
+  testApp.use("/api", apiRouter);
+  testApp.use((_req, res) => {
+    res.status(404).json({ error: "Endpoint tidak ditemukan." });
+  });
+  return testApp;
+}
+
+const server = createTestApp().listen(0);
 await new Promise<void>((resolve) => server.once("listening", resolve));
 const port = (server.address() as AddressInfo).port;
 const baseUrl = `http://127.0.0.1:${port}`;
-const secondServer = app.listen(0);
+const secondServer = createTestApp().listen(0);
 await new Promise<void>((resolve) => secondServer.once("listening", resolve));
 const secondPort = (secondServer.address() as AddressInfo).port;
 const secondBaseUrl = `http://127.0.0.1:${secondPort}`;

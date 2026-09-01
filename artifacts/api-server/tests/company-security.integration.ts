@@ -22,9 +22,7 @@ import {
   type User,
 } from "@workspace/db";
 import type { AuthenticatedRequest } from "../src/lib/auth";
-import companyRouter from "../src/routes/company";
-import passportRouter from "../src/routes/passport";
-import adminRouter from "../src/routes/admin";
+import apiRouter from "../src/routes";
 
 const suffix = randomUUID();
 const adminId = `security-admin-${suffix}`;
@@ -54,7 +52,10 @@ app.use(async (req: Request, _res: Response, next: NextFunction) => {
   authenticated.currentUser = requestActor;
   next();
 });
-app.use("/api", passportRouter, companyRouter, adminRouter);
+app.use("/api", apiRouter);
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({ error: "Endpoint tidak ditemukan." });
+});
 app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
   if (req.header("x-test-fail-notification") !== "true") {
     console.error(`Unexpected ${req.method} ${req.path} failure`, error);
@@ -389,6 +390,9 @@ try {
   );
   result = await request("/admin/funnel");
   assert.equal(result.response.status, 403);
+  result = await request("/admin/route-does-not-exist");
+  assert.equal(result.response.status, 404);
+  assert.deepEqual(result.body, { error: "Endpoint tidak ditemukan." });
 
   result = await request(`/company/requirements/${requirementBId}`, {
     method: "PATCH",
