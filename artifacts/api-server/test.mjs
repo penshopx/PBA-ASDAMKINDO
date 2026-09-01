@@ -18,6 +18,7 @@ const testFiles = requestedTests.length
       "rate-limit-multi-instance.integration",
       "member-journey.integration",
       "production-readiness.integration",
+      "admin-contract.integration",
       "company-security.integration",
       "pilot-evaluation.integration",
       "settlement-reconciliation.integration",
