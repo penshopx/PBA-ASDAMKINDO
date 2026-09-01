@@ -13,6 +13,20 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type RateLimitErrorResponseCode = typeof RateLimitErrorResponseCode[keyof typeof RateLimitErrorResponseCode];
+
+
+export const RateLimitErrorResponseCode = {
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export interface RateLimitErrorResponse {
+  error: string;
+  code: RateLimitErrorResponseCode;
+  /** @minimum 1 */
+  retryAfterSeconds: number;
+}
+
 export type Role = typeof Role[keyof typeof Role];
 
 
@@ -1750,6 +1764,11 @@ export interface Notification {
   read: boolean;
   type: NotificationType;
 }
+
+/**
+ * Request budget exhausted for the applicable rate-limit policy.
+ */
+export type RateLimitedResponse = RateLimitErrorResponse;
 
 export type GetAdminTalentPoolParams = {
 search?: string;

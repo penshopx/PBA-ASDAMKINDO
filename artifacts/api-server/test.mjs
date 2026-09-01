@@ -14,6 +14,7 @@ const requestedTests = process.argv
 const testFiles = requestedTests.length
   ? requestedTests
   : [
+      "rate-limit.integration",
       "member-journey.integration",
       "production-readiness.integration",
       "company-security.integration",

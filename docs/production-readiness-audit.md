@@ -48,9 +48,13 @@ Tidak ada temuan Critical.
 
 Reminder SLA, reminder consent expiry, atomic notification pipeline, duplicate shortlist concurrency, reconciliation concurrency, dan failed settlement ingestion memiliki pekerjaan terpisah. Pilot harus mencatat status pekerjaan tersebut dan tidak menganggapnya selesai sebelum perubahan masing-masing merged dan dipublish.
 
-### M-02 — Rate limiting dan abuse controls belum eksplisit
+### M-02 — Rate limiting dan abuse controls belum eksplisit — fixed, pending publish
 
-Clerk melindungi auth, tetapi API belum memiliki rate limit aplikasi yang terdokumentasi. Batasi volume pilot, pantau logs, dan evaluasi rate limit sebelum traffic publik diperluas.
+- **Bukti awal:** Clerk melindungi identitas, tetapi request berulang ke API belum memiliki budget aplikasi.
+- **Perbaikan:** limiter ingress IP-only berjalan sebelum parser/Clerk, lalu limiter fixed-window membedakan health, public read, auth-sensitive read, dan write. Identitas Clerk dipakai bila tersedia; request anonim memakai alamat IP valid dari rantai proxy yang jumlah hop-nya dibatasi. Storage limiter memiliki batas bucket dan ukuran konstan per bucket.
+- **Respons aman:** penolakan memakai `429` JSON dengan kode stabil, waktu retry, serta header `RateLimit-*`/`Retry-After`; respons tidak memuat alamat client, user ID, token, atau detail request.
+- **Validasi:** integration test membuktikan traffic normal tetap lolos, burst auth-sensitive/write ditolak, dan nilai `X-Forwarded-For` paling kiri tidak dapat membuat identitas limiter tak terbatas.
+- **Operasi:** threshold, monitoring, batas multi-instance, dan prosedur perubahan tercatat di runbook pilot.
 
 ### M-03 — Audit log hanya tampilan terbatas
 
@@ -87,7 +91,7 @@ Route video publik adalah konten editorial produk, bukan endpoint development. P
 ## Release gate
 
 1. Publish remediation H-01 sampai H-03.
-2. Verifikasi `/api/healthz`, unauthenticated Admin response, JSON 404, dan CORS pada URL production.
+2. Verifikasi `/api/healthz`, unauthenticated Admin response, JSON 404, CORS, dan respons rate limit pada URL production.
 3. Konfirmasi backup harian/PITR aktif serta operator restore berwenang.
 4. Sahkan tiga program production dan tentukan operator Admin/Super Admin.
 5. Jalankan pilot dengan sandbox/manual settlement saja.

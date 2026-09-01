@@ -9,9 +9,14 @@ import {
   clerkProxyMiddleware,
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
+import {
+  getRateLimitTrustedProxyHops,
+  ingressRateLimitMiddleware,
+  rateLimitMiddleware,
+} from "./middlewares/rateLimit";
 
 const app: Express = express();
-app.set("trust proxy", 1);
+app.set("trust proxy", getRateLimitTrustedProxyHops());
 
 app.use(
   pinoHttp({
@@ -32,6 +37,7 @@ app.use(
     },
   }),
 );
+app.use("/api", ingressRateLimitMiddleware);
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -44,6 +50,7 @@ app.use(
   })),
 );
 
+app.use("/api", rateLimitMiddleware);
 app.use("/api", router);
 app.use((_req, res) => {
   res.status(404).json({ error: "Endpoint tidak ditemukan." });

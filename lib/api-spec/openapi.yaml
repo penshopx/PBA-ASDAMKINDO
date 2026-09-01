@@ -4,6 +4,13 @@ info:
   title: Api
   version: 0.1.0
   description: API specification
+  x-rate-limit-policies:
+    windowSeconds: 60
+    ingressPerClient: 300
+    healthPerClient: 120
+    publicReadPerClient: 60
+    authSensitivePerIdentity: 30
+    writePerIdentity: 20
 servers:
   - url: /api
     description: Base API path
@@ -46,6 +53,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /me:
     get:
       operationId: getCurrentUser
@@ -65,6 +74,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /onboarding/member:
     post:
       operationId: saveMemberOnboarding
@@ -95,6 +106,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /onboarding/company:
     post:
       operationId: saveCompanyOnboarding
@@ -119,6 +132,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "403":
           description: Onboarding role has already been finalized or is unavailable
           content:
@@ -143,6 +158,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /member/journey:
     get:
       operationId: getMemberJourney
@@ -161,6 +178,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /member/diagnostics:
     post:
       operationId: saveMemberDiagnostic
@@ -185,6 +204,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /member/evidence:
     post:
       operationId: saveMemberEvidence
@@ -209,6 +230,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "409":
           description: The idempotency key was already used for different evidence data
           content:
@@ -245,6 +268,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "404":
           description: Evidence not found
           content:
@@ -275,6 +300,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     patch:
       operationId: updateMemberPassport
       tags: [passport]
@@ -298,6 +325,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "403":
           description: Member role required
           content:
@@ -328,6 +357,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /member/passport/consents/{id}:
     patch:
       operationId: updateMemberCompanyConsent
@@ -358,6 +389,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /member/companies:
     get:
       operationId: listMemberCompanies
@@ -372,6 +405,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CompanyDirectoryEntry"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /passport/{slug}:
     get:
       operationId: getPublicPassport
@@ -396,6 +431,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/talent-pool:
     get:
       operationId: getAdminTalentPool
@@ -465,6 +502,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/talent-pool/consents/{id}:
     patch:
       operationId: overrideAdminTalentConsent
@@ -495,6 +534,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/talent-pool/settings:
     get:
       operationId: getAdminTalentConsentSettings
@@ -507,6 +548,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TalentConsentSettings"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     patch:
       operationId: updateAdminTalentConsentSettings
       tags: [talent-pool, admin]
@@ -524,6 +567,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TalentConsentSettings"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /company/talent-pool:
     get:
       operationId: getCompanyTalentPool
@@ -574,6 +619,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /company/talent-pool/consent-requests:
     get:
       operationId: listCompanyConsentRequests
@@ -609,6 +656,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CompanyConsentRequestPage"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     post:
       operationId: requestCompanyTalentConsent
       tags: [talent-pool]
@@ -632,6 +681,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /dashboard/company:
     get:
       operationId: getCompanyDashboard
@@ -650,6 +701,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /company/requirements:
     get:
       operationId: listCompanyRequirements
@@ -670,6 +723,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     post:
       operationId: createCompanyRequirement
       tags: [company]
@@ -693,6 +748,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /company/requirements/{id}:
     patch:
       operationId: updateCompanyRequirement
@@ -723,6 +780,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "404":
           description: Requirement not found
           content:
@@ -813,6 +872,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/matchings:
     get:
       operationId: listAdminMatchings
@@ -900,6 +961,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /company/shortlist:
     get:
       operationId: listCompanyShortlist
@@ -914,6 +977,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CompanyMatching"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     post:
       operationId: createCompanyShortlist
       tags: [company]
@@ -937,6 +1002,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "404":
           description: Requirement or candidate not found
           content:
@@ -973,6 +1040,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "404":
           description: Shortlist item not found
           content:
@@ -997,6 +1066,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /programs:
     get:
       operationId: listPrograms
@@ -1022,6 +1093,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Program"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /notifications:
     get:
       operationId: listNotifications
@@ -1036,6 +1109,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Notification"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /notifications/{id}/read:
     patch:
       operationId: markNotificationRead
@@ -1060,6 +1135,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/operations:
     get:
       operationId: getAdminOperations
@@ -1078,6 +1155,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/settlement-ingest-failures/{id}:
     patch:
       operationId: resolveAdminSettlementIngestFailure
@@ -1109,6 +1188,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "403":
           description: Super admin role required
           content:
@@ -1146,6 +1227,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "403":
           description: Admin role required
           content:
@@ -1171,6 +1254,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "403":
           description: Admin role required
           content:
@@ -1209,6 +1294,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "401":
           description: Authentication required
           content:
@@ -1254,6 +1341,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "401":
           description: Authentication required
           content:
@@ -1289,6 +1378,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "401":
           description: Authentication required
           content:
@@ -1332,6 +1423,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "401":
           description: Authentication required
           content:
@@ -1370,6 +1463,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/transactions/settlement:
     post:
       operationId: ingestAdminTransactionSettlement
@@ -1395,6 +1490,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "403":
           description: Admin role required
           content:
@@ -1443,6 +1540,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "404":
           description: Verification not found
           content:
@@ -1473,6 +1572,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Program"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/programs/{id}:
     patch:
       operationId: updateAdminProgram
@@ -1497,6 +1598,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Program"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/enrollments/{id}:
     patch:
       operationId: updateAdminEnrollment
@@ -1521,6 +1624,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Enrollment"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/matchings/{id}:
     patch:
       operationId: updateAdminMatching
@@ -1545,6 +1650,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Matching"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/transactions/{id}:
     patch:
       operationId: updateAdminTransaction
@@ -1569,6 +1676,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Transaction"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/transactions/{id}/reconciliation:
     patch:
       operationId: resolveAdminTransactionReconciliation
@@ -1599,6 +1708,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
         "403":
           description: Super admin role required
           content:
@@ -1612,6 +1723,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 components:
+  responses:
+    RateLimited:
+      description: Request budget exhausted for the applicable rate-limit policy.
+      headers:
+        RateLimit-Limit:
+          description: Maximum requests allowed in the current window.
+          schema:
+            type: integer
+        RateLimit-Remaining:
+          description: Requests remaining in the current window.
+          schema:
+            type: integer
+        RateLimit-Reset:
+          description: Seconds until the current request budget resets.
+          schema:
+            type: integer
+        Retry-After:
+          description: Seconds to wait before retrying a rejected request.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RateLimitErrorResponse"
   schemas:
     HealthStatus:
       type: object
@@ -1626,6 +1761,18 @@ components:
         error:
           type: string
       required: [error]
+    RateLimitErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum: [RATE_LIMITED]
+        retryAfterSeconds:
+          type: integer
+          minimum: 1
+      required: [error, code, retryAfterSeconds]
     Role:
       type: string
       enum: [member, company, admin, super_admin]

@@ -24,6 +24,26 @@ Code rollback is separate: use Replit Deployments to redeploy a known-good prior
 6. Confirm pilot data remains isolated; reset completed runs after approval.
 7. Log issues, owner, priority, and next review time; escalate suspected data exposure immediately.
 
+## API rate-limit operations
+
+Limiter memakai fixed window 60 detik dengan penyimpanan konstan per identitas dan budget awal berikut:
+
+| Policy | Endpoint | Identitas | Budget |
+| --- | --- | --- | ---: |
+| `ingress` | seluruh request `/api`, sebelum parsing body dan Clerk | client IP | 300/menit |
+| `health` | `GET /api/healthz` | client IP | 120/menit |
+| `public-read` | `GET /api/programs`, `GET /api/passport/{slug}` | client IP | 60/menit |
+| `auth-sensitive` | read lain, termasuk endpoint terautentikasi | Clerk user ID bila ada; selain itu client IP | 30/menit |
+| `write` | `POST`, `PUT`, `PATCH`, `DELETE` | Clerk user ID bila ada; selain itu client IP | 20/menit |
+
+Budget dapat diubah tanpa mengubah kode melalui `RATE_LIMIT_WINDOW_SECONDS`, `RATE_LIMIT_INGRESS_MAX`, `RATE_LIMIT_HEALTH_MAX`, `RATE_LIMIT_PUBLIC_READ_MAX`, `RATE_LIMIT_AUTH_MAX`, dan `RATE_LIMIT_WRITE_MAX`. Nilai default `RATE_LIMIT_TRUSTED_PROXY_HOPS=1` ditujukan untuk satu hop edge terkelola Replit; port origin artifact tidak diekspos langsung ke internet. Set `0` bila server benar-benar menerima koneksi client langsung; jangan memakai trust-all. Nilai di atas lima hop ditolak, hanya alamat IP valid yang diterima, dan storage dibatasi 10.000 bucket agar header publik tidak menjadi sumber identitas/memori tak terbatas.
+
+Respons yang ditolak adalah `429` JSON aman dengan `code=RATE_LIMITED`, `retryAfterSeconds`, `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`, dan `Retry-After`. Client harus menunggu `Retry-After`, tidak melakukan retry loop rapat.
+
+Pantau structured log dengan message `Rate limit exceeded`, dikelompokkan berdasarkan `rateLimitPolicy`. Log hanya menyimpan jenis identitas (`user` atau `ip`), bukan nilainya. Selama pilot, tinjau setiap hari dan buka insiden bila 429 melebihi 10 per menit selama 5 menit, lebih dari 5% request pada satu policy selama 15 menit, atau user normal berulang kali terblokir. Korelasikan dengan latency, error database, dan volume request sebelum menyimpulkan penyalahgunaan.
+
+Untuk penyesuaian, catat baseline dan alasan, ubah satu threshold maksimum 25% per langkah, publish/restart, lalu pantau sedikitnya 24 jam. Jangan menaikkan limit untuk menyamarkan query lambat atau serangan; perbaiki akar masalah atau blokir sumber di edge. Rollback ke nilai sebelumnya bila latency/error meningkat atau false positive tetap terjadi. Limiter ini menyimpan budget per instance; autoscaling dapat memberi budget efektif lebih besar, sehingga traffic di luar pilot memerlukan limiter terdistribusi/edge sebagai kontrol tambahan.
+
 ## Pilot data handling and reset
 
 Use only fictional names, `example.test` addresses, and non-sensitive example phone numbers. Do not paste production data, payment details, government IDs, files, or participant credentials into pilot fixtures. Keep each run ID with the session record. Reset at the end of an approved session:
