@@ -25,6 +25,7 @@ import adminRouter from "../src/routes/admin";
 const suffix = randomUUID();
 const adminId = `settlement-admin-${suffix}`;
 const superAdminId = `settlement-super-admin-${suffix}`;
+const secondSuperAdminId = `settlement-super-admin-2-${suffix}`;
 const memberId = `settlement-member-${suffix}`;
 const transactionIds = {
   matched: `settlement-matched-${suffix}`,
@@ -33,6 +34,7 @@ const transactionIds = {
   missing: `settlement-missing-${suffix}`,
   overdue: `settlement-overdue-${suffix}`,
   resolved: `settlement-resolved-${suffix}`,
+  concurrentResolved: `settlement-concurrent-resolved-${suffix}`,
 };
 
 let actor: User;
@@ -65,7 +67,15 @@ async function request(path: string, init?: RequestInit) {
     ...init,
     headers: { "content-type": "application/json", ...init?.headers },
   });
-  const body = await response.json();
+  const responseText = await response.text();
+  let body: any;
+  try {
+    body = JSON.parse(responseText);
+  } catch {
+    throw new Error(
+      `${init?.method ?? "GET"} ${path} returned ${response.status} with a non-JSON body: ${responseText}`,
+    );
+  }
   return { response, body };
 }
 
@@ -144,6 +154,14 @@ try {
       onboardingComplete: true,
     },
     {
+      id: secondSuperAdminId,
+      clerkUserId: secondSuperAdminId,
+      name: "Super Admin Settlement 2",
+      email: `${secondSuperAdminId}@example.test`,
+      role: "super_admin",
+      onboardingComplete: true,
+    },
+    {
       id: memberId,
       clerkUserId: memberId,
       name: "Member Settlement",
@@ -180,6 +198,9 @@ try {
       reconciliationStatus: "resolved",
       reconciliationResolvedAt: new Date(now - 60 * 60 * 1000),
       reconciliationResolvedByUserId: superAdminId,
+    }),
+    transaction(transactionIds.concurrentResolved, {
+      settlementAmount: "899.98",
     }),
   ]);
 
@@ -471,6 +492,53 @@ try {
     "Selisih diverifikasi dengan bukti bank",
   );
 
+  const concurrentResolutions = await Promise.all([
+    requestAs(
+      superAdminId,
+      `/admin/transactions/${transactionIds.concurrentResolved}/reconciliation`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ note: "Resolve bersamaan dari super admin pertama" }),
+      },
+    ),
+    requestAs(
+      secondSuperAdminId,
+      `/admin/transactions/${transactionIds.concurrentResolved}/reconciliation`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ note: "Resolve bersamaan dari super admin kedua" }),
+      },
+    ),
+  ]);
+  assert.deepEqual(
+    concurrentResolutions.map(({ response }) => response.status).sort(),
+    [200, 409],
+  );
+  const successfulConcurrentResolution = concurrentResolutions.find(
+    ({ response }) => response.status === 200,
+  );
+  assert.ok(successfulConcurrentResolution);
+  ResolveAdminTransactionReconciliationResponse.parse(
+    successfulConcurrentResolution.body,
+  );
+  const concurrentResolutionConflict = concurrentResolutions.find(
+    ({ response }) => response.status === 409,
+  );
+  assert.equal(
+    concurrentResolutionConflict?.body.error,
+    "Rekonsiliasi transaksi ini sudah diselesaikan.",
+  );
+  const concurrentResolutionAudits = await db
+    .select()
+    .from(auditLogsTable)
+    .where(
+      and(
+        eq(auditLogsTable.entityId, transactionIds.concurrentResolved),
+        eq(auditLogsTable.action, "transaction.reconciliation_resolved"),
+      ),
+    );
+  assert.equal(concurrentResolutionAudits.length, 1);
+
   result = await requestAs(
     superAdminId,
     `/admin/transactions/${transactionIds.mismatch}/reconciliation`,
@@ -479,7 +547,7 @@ try {
       body: JSON.stringify({ note: "Percobaan resolve ulang" }),
     },
   );
-  assert.equal(result.response.status, 400);
+  assert.equal(result.response.status, 409);
   assert.equal(
     (
       await db
@@ -516,10 +584,9 @@ try {
       .where(inArray(transactionsTable.id, Object.values(transactionIds)));
     await tx
       .delete(usersTable)
-      .where(inArray(usersTable.id, [adminId, superAdminId, memberId]));
+      .where(inArray(usersTable.id, [adminId, superAdminId, secondSuperAdminId, memberId]));
   });
 }
-
 async function loadUser(id: string) {
   const [user] = await db
     .select()

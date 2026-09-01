@@ -1290,22 +1290,21 @@ router.patch(
       return;
     }
     const actor = getAuthenticatedUser(req);
-    const [existing] = await db
-      .select()
-      .from(transactionsTable)
-      .where(eq(transactionsTable.id, params.data.id))
-      .limit(1);
-    if (!existing) {
-      res.status(404).json({ error: "Transaksi tidak ditemukan." });
-      return;
-    }
-    const current = transactionResponse(existing);
-    if (current.reconciliationStatus === "resolved") {
-      res.status(400).json({ error: "Rekonsiliasi transaksi ini sudah diselesaikan." });
-      return;
-    }
-    const now = new Date();
-    const [updated] = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(transactionsTable)
+        .where(eq(transactionsTable.id, params.data.id))
+        .limit(1)
+        .for("update");
+      if (!existing) return { kind: "not_found" as const };
+
+      const current = transactionResponse(existing);
+      if (current.reconciliationStatus === "resolved") {
+        return { kind: "already_resolved" as const };
+      }
+
+      const now = new Date();
       const [transaction] = await tx
         .update(transactionsTable)
         .set({
@@ -1324,9 +1323,21 @@ router.patch(
         toStatus: "resolved",
         note: body.data.note,
       });
-      return [transaction];
+      return { kind: "resolved" as const, transaction, now };
     });
-    res.json(ResolveAdminTransactionReconciliationResponse.parse(transactionResponse(updated, now)));
+    if (result.kind === "not_found") {
+      res.status(404).json({ error: "Transaksi tidak ditemukan." });
+      return;
+    }
+    if (result.kind === "already_resolved") {
+      res.status(409).json({ error: "Rekonsiliasi transaksi ini sudah diselesaikan." });
+      return;
+    }
+    res.json(
+      ResolveAdminTransactionReconciliationResponse.parse(
+        transactionResponse(result.transaction, result.now),
+      ),
+    );
   },
 );
 
