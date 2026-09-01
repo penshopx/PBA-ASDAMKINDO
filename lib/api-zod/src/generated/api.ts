@@ -1291,6 +1291,7 @@ export const getAdminOperationsResponseVerificationsItemPendingAgeHoursMin = 0;
 
 
 
+
 export const GetAdminOperationsResponse = zod.object({
   "permissions": zod.object({
   "canReviewVerifications": zod.boolean(),
@@ -1311,7 +1312,8 @@ export const GetAdminOperationsResponse = zod.object({
   "revenue": zod.number(),
   "pendingRevenue": zod.number(),
   "reconciliationIssues": zod.number(),
-  "overdueSettlements": zod.number()
+  "overdueSettlements": zod.number(),
+  "settlementIngestFailures": zod.number()
 }),
   "verifications": zod.array(zod.object({
   "id": zod.string(),
@@ -1405,6 +1407,18 @@ export const GetAdminOperationsResponse = zod.object({
   "note": zod.string().nullable(),
   "createdAt": zod.coerce.date()
 })),
+  "settlementIngestFailures": zod.array(zod.object({
+  "id": zod.string(),
+  "failureCode": zod.enum(['invalid_payload', 'missing_identifier', 'transaction_not_found', 'ambiguous_identifier', 'conflicting_identifiers']),
+  "identifierType": zod.enum(['referenceId', 'invoiceNumber', 'reference_and_invoice', 'unknown']),
+  "identifierHint": zod.string(),
+  "status": zod.enum(['open', 'resolved']),
+  "attemptCount": zod.int().min(1),
+  "firstSeenAt": zod.coerce.date(),
+  "lastSeenAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "resolvedByUserId": zod.string().nullable()
+}).describe('Operational failure record containing only a masked identifier hint and no source payload or credential.')),
   "verificationSlaWorker": zod.object({
   "state": zod.enum(['idle', 'running', 'succeeded', 'failed']),
   "intervalMs": zod.number(),
@@ -1424,6 +1438,42 @@ export const GetAdminOperationsResponse = zod.object({
 }).nullable()
 })
 })
+
+
+/**
+ * @summary Resolve an operational bank-settlement ingest failure
+ */
+
+
+
+export const ResolveAdminSettlementIngestFailureParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const resolveAdminSettlementIngestFailureBodyNoteMin = 3;
+export const resolveAdminSettlementIngestFailureBodyNoteMax = 500;
+
+
+
+export const ResolveAdminSettlementIngestFailureBody = zod.object({
+  "note": zod.string().min(resolveAdminSettlementIngestFailureBodyNoteMin).max(resolveAdminSettlementIngestFailureBodyNoteMax)
+})
+
+
+
+
+export const ResolveAdminSettlementIngestFailureResponse = zod.object({
+  "id": zod.string(),
+  "failureCode": zod.enum(['invalid_payload', 'missing_identifier', 'transaction_not_found', 'ambiguous_identifier', 'conflicting_identifiers']),
+  "identifierType": zod.enum(['referenceId', 'invoiceNumber', 'reference_and_invoice', 'unknown']),
+  "identifierHint": zod.string(),
+  "status": zod.enum(['open', 'resolved']),
+  "attemptCount": zod.int().min(1),
+  "firstSeenAt": zod.coerce.date(),
+  "lastSeenAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "resolvedByUserId": zod.string().nullable()
+}).describe('Operational failure record containing only a masked identifier hint and no source payload or credential.')
 
 
 /**

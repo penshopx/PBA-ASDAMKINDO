@@ -35,6 +35,7 @@ import {
   useUpdateAdminProgram,
   useUpdateAdminTransaction,
   useResolveAdminTransactionReconciliation,
+  useResolveAdminSettlementIngestFailure,
   useListAdminMatchings,
   getListAdminMatchingsQueryKey,
   listAdminMatchings,
@@ -56,12 +57,13 @@ import type {
   AdminMatchingCandidate,
   AdminFunnel,
   AdminPilotFeedback,
+  SettlementIngestFailure,
 } from "@workspace/api-client-react";
 import { QueryState } from "@/components/ui-kit";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 
-type Tab = "funnel" | "pilot" | "verifications" | "programs" | "pipeline" | "revenue" | "audit";
+type Tab = "funnel" | "pilot" | "verifications" | "programs" | "pipeline" | "revenue" | "settlement-failures" | "audit";
 
 const tabs: Array<{ id: Tab; label: string; icon: typeof ClipboardCheck }> = [
   { id: "funnel", label: "Funnel bisnis", icon: UsersRound },
@@ -70,6 +72,7 @@ const tabs: Array<{ id: Tab; label: string; icon: typeof ClipboardCheck }> = [
   { id: "programs", label: "Program & enrollment", icon: BookOpen },
   { id: "pipeline", label: "Matching / placement", icon: UsersRound },
   { id: "revenue", label: "Komisi & pendapatan", icon: ReceiptText },
+  { id: "settlement-failures", label: "Gagal ingest", icon: AlertTriangle },
   { id: "audit", label: "Audit log", icon: ShieldCheck },
 ];
 
@@ -136,8 +139,9 @@ function SummaryStrip({ summary }: { summary: AdminOperations["summary"] }) {
   items.push(
     ["Perlu rekonsiliasi", summary.reconciliationIssues, "mismatch / lewat SLA"],
     ["Lewat SLA settlement", summary.overdueSettlements, "perlu ditindaklanjuti"],
+    ["Gagal ingest", summary.settlementIngestFailures, "antrean operasional"],
   );
-  return <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 xl:grid-cols-9">{items.map(([label, value, note], index) => <div className="bg-card p-5" key={label} data-testid={`admin-summary-${index}`}><p className="text-xs font-semibold uppercase tracking-[.1em] text-muted-foreground">{label}</p><strong className="display-font mt-3 block text-2xl font-semibold">{value}</strong><p className="mt-1 text-xs text-muted-foreground">{note}</p></div>)}</div>;
+  return <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 xl:grid-cols-10">{items.map(([label, value, note], index) => <div className="bg-card p-5" key={label} data-testid={`admin-summary-${index}`}><p className="text-xs font-semibold uppercase tracking-[.1em] text-muted-foreground">{label}</p><strong className="display-font mt-3 block text-2xl font-semibold">{value}</strong><p className="mt-1 text-xs text-muted-foreground">{note}</p></div>)}</div>;
 }
 
 export function AdminOperations() {
@@ -158,6 +162,7 @@ export function AdminOperations() {
   const updateMatching = useUpdateAdminMatching({ mutation: { onSuccess: () => { refresh(); notifySuccess("Pipeline matching diperbarui"); }, onError: notifyError } });
   const updateTransaction = useUpdateAdminTransaction({ mutation: { onSuccess: () => { refresh(); notifySuccess("Status transaksi diperbarui"); }, onError: notifyError } });
   const resolveReconciliation = useResolveAdminTransactionReconciliation({ mutation: { onSuccess: () => { refresh(); notifySuccess("Rekonsiliasi diselesaikan"); }, onError: notifyError } });
+  const resolveSettlementFailure = useResolveAdminSettlementIngestFailure({ mutation: { onSuccess: () => { refresh(); notifySuccess("Kegagalan ingest ditandai selesai"); }, onError: notifyError } });
 
   return <div className="mx-auto max-w-7xl px-5 py-9 sm:px-8 lg:px-10 lg:py-12">
     <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
@@ -166,7 +171,7 @@ export function AdminOperations() {
     </div>
     <QueryState loading={query.isLoading} error={query.isError} retry={() => query.refetch()}>
       {data && <><SummaryStrip summary={data.summary} /><div className="mt-7 grid gap-6 lg:grid-cols-[220px_1fr]">
-        <nav className="flex gap-1 overflow-auto rounded-2xl border border-border bg-card p-2 lg:block lg:h-fit lg:space-y-1" aria-label="Menu operasi">{tabs.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setTab(id)} className={`flex min-w-max items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold lg:w-full ${tab === id ? "bg-sidebar text-sidebar-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} data-testid={`tab-admin-${id}`}><Icon size={17} /><span>{label}</span>{id === "verifications" && data.summary.pendingVerifications > 0 && <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground">{data.summary.pendingVerifications}</span>}</button>)}</nav>
+        <nav className="flex gap-1 overflow-auto rounded-2xl border border-border bg-card p-2 lg:block lg:h-fit lg:space-y-1" aria-label="Menu operasi">{tabs.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setTab(id)} className={`flex min-w-max items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold lg:w-full ${tab === id ? "bg-sidebar text-sidebar-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`} data-testid={`tab-admin-${id}`}><Icon size={17} /><span>{label}</span>{id === "verifications" && data.summary.pendingVerifications > 0 && <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[10px] text-primary-foreground">{data.summary.pendingVerifications}</span>}{id === "settlement-failures" && data.summary.settlementIngestFailures > 0 && <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-[10px] text-destructive-foreground">{data.summary.settlementIngestFailures}</span>}</button>)}</nav>
         <section className="min-w-0">
           {tab === "verifications" && <VerificationQueue items={data.verifications} mutation={review} />}
           {tab === "funnel" && <FunnelWorkspace />}
@@ -174,6 +179,7 @@ export function AdminOperations() {
           {tab === "programs" && <ProgramWorkspace data={data} showForm={showProgramForm} setShowForm={setShowProgramForm} createMutation={createProgram} updateMutation={updateProgram} updateEnrollment={updateEnrollment} />}
           {tab === "pipeline" && <PipelineWorkspace mutation={updateMatching} />}
           {tab === "revenue" && <RevenueWorkspace items={data.transactions} canManage={data.permissions.canManageTransactions} mutation={updateTransaction} resolveMutation={resolveReconciliation} />}
+          {tab === "settlement-failures" && <SettlementIngestFailureWorkspace items={data.settlementIngestFailures} canManage={data.permissions.canManageTransactions} mutation={resolveSettlementFailure} />}
           {tab === "audit" && <AuditWorkspace items={data.auditLogs} canView={data.permissions.canViewAudit} />}
         </section>
       </div></>}
@@ -848,6 +854,66 @@ function PipelineWorkspace({ mutation }: { mutation: ReturnType<typeof useUpdate
       </QueryState>
     </div>
   );
+}
+
+function SettlementIngestFailureWorkspace({ items, canManage, mutation }: {
+  items: SettlementIngestFailure[];
+  canManage: boolean;
+  mutation: ReturnType<typeof useResolveAdminSettlementIngestFailure>;
+}) {
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const failureLabels: Record<SettlementIngestFailure["failureCode"], string> = {
+    invalid_payload: "Payload tidak valid",
+    missing_identifier: "Identifier belum diisi",
+    transaction_not_found: "Transaksi tidak ditemukan",
+    ambiguous_identifier: "Identifier ambigu",
+    conflicting_identifiers: "Identifier saling bertentangan",
+  };
+
+  return <div className="rounded-2xl border border-border bg-card p-5 sm:p-7">
+    <SectionHeader
+      eyebrow="Settlement ingest control"
+      title="Antrean kegagalan ingest bank"
+      copy="Setiap fingerprint mewakili payload yang sama. Identifier hanya ditampilkan dalam bentuk tersamarkan; payload dan credential sumber tidak disimpan."
+    />
+    {items.length === 0 ? <Empty label="Tidak ada kegagalan ingest terbuka" /> : <div className="mt-5 space-y-3">{items.map((item) => {
+      const note = notes[item.id]?.trim() ?? "";
+      return <article key={item.id} className="rounded-xl border border-destructive/25 bg-destructive/[0.025] p-4" data-testid={`settlement-ingest-failure-${item.id}`}>
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <AlertTriangle size={16} className="text-destructive" />
+              <strong className="text-sm">{failureLabels[item.failureCode]}</strong>
+              <StatusBadge status={item.status} />
+              {item.attemptCount >= 3 && <span className="rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-bold text-destructive">Berulang</span>}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">{item.identifierHint} · {item.identifierType}</p>
+          </div>
+          <div className="text-xs text-muted-foreground sm:text-right">
+            <p><strong className="text-foreground">{item.attemptCount} percobaan</strong></p>
+            <p className="mt-1">Terakhir {formatDate(item.lastSeenAt)}</p>
+          </div>
+        </div>
+        {canManage ? <div className="mt-4 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row">
+          <input
+            value={notes[item.id] ?? ""}
+            onChange={(event) => setNotes((current) => ({ ...current, [item.id]: event.target.value }))}
+            placeholder="Catatan tindak lanjut wajib (min. 3 karakter)"
+            className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs"
+            aria-label={`Catatan kegagalan ingest ${item.id}`}
+          />
+          <button
+            disabled={mutation.isPending || note.length < 3}
+            onClick={() => mutation.mutate({ id: item.id, data: { note } })}
+            className="rounded-lg bg-accent px-3 py-2 text-xs font-bold text-accent-foreground disabled:opacity-50"
+            data-testid={`button-resolve-settlement-ingest-${item.id}`}
+          >
+            Tandai selesai
+          </button>
+        </div> : <div className="mt-4 flex items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground"><LockKeyhole size={14} /> Penyelesaian antrean membutuhkan super admin.</div>}
+      </article>;
+    })}</div>}
+  </div>;
 }
 
 function RevenueWorkspace({ items, canManage, mutation, resolveMutation }: {

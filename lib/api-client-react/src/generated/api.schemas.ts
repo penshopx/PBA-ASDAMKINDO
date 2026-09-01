@@ -1357,6 +1357,62 @@ export interface TransactionReconciliationResolution {
   note: string;
 }
 
+export type SettlementIngestFailureFailureCode = typeof SettlementIngestFailureFailureCode[keyof typeof SettlementIngestFailureFailureCode];
+
+
+export const SettlementIngestFailureFailureCode = {
+  invalid_payload: 'invalid_payload',
+  missing_identifier: 'missing_identifier',
+  transaction_not_found: 'transaction_not_found',
+  ambiguous_identifier: 'ambiguous_identifier',
+  conflicting_identifiers: 'conflicting_identifiers',
+} as const;
+
+export type SettlementIngestFailureIdentifierType = typeof SettlementIngestFailureIdentifierType[keyof typeof SettlementIngestFailureIdentifierType];
+
+
+export const SettlementIngestFailureIdentifierType = {
+  referenceId: 'referenceId',
+  invoiceNumber: 'invoiceNumber',
+  reference_and_invoice: 'reference_and_invoice',
+  unknown: 'unknown',
+} as const;
+
+export type SettlementIngestFailureStatus = typeof SettlementIngestFailureStatus[keyof typeof SettlementIngestFailureStatus];
+
+
+export const SettlementIngestFailureStatus = {
+  open: 'open',
+  resolved: 'resolved',
+} as const;
+
+/**
+ * Operational failure record containing only a masked identifier hint and no source payload or credential.
+ */
+export interface SettlementIngestFailure {
+  id: string;
+  failureCode: SettlementIngestFailureFailureCode;
+  identifierType: SettlementIngestFailureIdentifierType;
+  identifierHint: string;
+  status: SettlementIngestFailureStatus;
+  /** @minimum 1 */
+  attemptCount: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  /** @nullable */
+  resolvedAt: string | null;
+  /** @nullable */
+  resolvedByUserId: string | null;
+}
+
+export interface SettlementIngestFailureResolution {
+  /**
+     * @minLength 3
+     * @maxLength 500
+     */
+  note: string;
+}
+
 export type AuditLogActorRole = typeof AuditLogActorRole[keyof typeof AuditLogActorRole];
 
 
@@ -1407,6 +1463,7 @@ export interface AdminSummary {
   pendingRevenue: number;
   reconciliationIssues: number;
   overdueSettlements: number;
+  settlementIngestFailures: number;
 }
 
 export type VerificationSlaWorkerStatusState = typeof VerificationSlaWorkerStatusState[keyof typeof VerificationSlaWorkerStatusState];
@@ -1458,6 +1515,7 @@ export interface AdminOperations {
   matchings: Matching[];
   transactions: Transaction[];
   auditLogs: AuditLog[];
+  settlementIngestFailures: SettlementIngestFailure[];
   verificationSlaWorker: VerificationSlaWorkerStatus;
 }
 

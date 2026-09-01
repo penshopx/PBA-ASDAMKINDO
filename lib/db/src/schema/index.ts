@@ -8,6 +8,7 @@ export * from "./enrollments";
 export * from "./matchings";
 export * from "./transactions";
 export * from "./audit-logs";
+export * from "./settlement-ingest-failures";
 export * from "./member-journey";
 export * from "./professional-passport";
 export * from "./company-recruitment";

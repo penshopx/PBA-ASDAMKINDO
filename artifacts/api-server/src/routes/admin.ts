@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, count, countDistinct, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -24,6 +24,9 @@ import {
   ResolveAdminPilotFeedbackBody,
   ResolveAdminPilotFeedbackParams,
   ResolveAdminPilotFeedbackResponse,
+  ResolveAdminSettlementIngestFailureBody,
+  ResolveAdminSettlementIngestFailureParams,
+  ResolveAdminSettlementIngestFailureResponse,
   ResolveAdminTransactionReconciliationBody,
   ResolveAdminTransactionReconciliationParams,
   ResolveAdminTransactionReconciliationResponse,
@@ -50,9 +53,11 @@ import {
   matchingsTable,
   memberEvidenceTable,
   memberProfilesTable,
+  notificationsTable,
   professionalPassportsTable,
   programsTable,
   readinessDiagnosticsTable,
+  settlementIngestFailuresTable,
   transactionsTable,
   usersTable,
   verificationsTable,
@@ -134,6 +139,159 @@ function isValidIsoDateTime(value: unknown): value is string {
     offsetMinute <= 59 &&
     (offsetHour < 14 || offsetMinute === 0)
   );
+}
+
+type SettlementIngestFailureCode =
+  | "invalid_payload"
+  | "missing_identifier"
+  | "transaction_not_found"
+  | "ambiguous_identifier"
+  | "conflicting_identifiers";
+
+type SettlementIngestFailureDetails = {
+  referenceId?: string;
+  invoiceNumber?: string;
+  settlementAmount?: unknown;
+  settledAt?: unknown;
+};
+
+function normalizedString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function maskedIdentifier(value: string | undefined): string {
+  if (!value) return "Tidak tersedia";
+  if (value.length <= 4) return "••••";
+  return `${value.slice(0, 2)}••••${value.slice(-2)}`;
+}
+
+function failureIdentifierType(details: SettlementIngestFailureDetails): string {
+  if (details.referenceId && details.invoiceNumber) return "reference_and_invoice";
+  if (details.referenceId) return "referenceId";
+  if (details.invoiceNumber) return "invoiceNumber";
+  return "unknown";
+}
+
+function failureIdentifierHint(details: SettlementIngestFailureDetails): string {
+  const parts = [
+    details.referenceId ? `reference ${maskedIdentifier(details.referenceId)}` : null,
+    details.invoiceNumber ? `invoice ${maskedIdentifier(details.invoiceNumber)}` : null,
+  ].filter((part): part is string => Boolean(part));
+  return parts.join(" · ") || "Identifier tidak tersedia";
+}
+
+function settlementFailureFingerprint(
+  code: SettlementIngestFailureCode,
+  details: SettlementIngestFailureDetails,
+): string {
+  const amount =
+    typeof details.settlementAmount === "number" && Number.isFinite(details.settlementAmount)
+      ? details.settlementAmount.toFixed(2)
+      : typeof details.settlementAmount;
+  const settledAt =
+    details.settledAt instanceof Date && !Number.isNaN(details.settledAt.getTime())
+      ? details.settledAt.toISOString()
+      : typeof details.settledAt;
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        code,
+        referenceId: details.referenceId ?? null,
+        invoiceNumber: details.invoiceNumber ?? null,
+        amount,
+        settledAt,
+      }),
+    )
+    .digest("hex");
+}
+
+async function recordRejectedSettlementIngest(
+  executor: any,
+  actor: ReturnType<typeof getAuthenticatedUser>,
+  code: SettlementIngestFailureCode,
+  details: SettlementIngestFailureDetails = {},
+) {
+  const fingerprint = settlementFailureFingerprint(code, details);
+  const now = new Date();
+  const [failure] = await executor
+    .insert(settlementIngestFailuresTable)
+    .values({
+      id: fingerprint,
+      failureCode: code,
+      identifierType: failureIdentifierType(details),
+      identifierHint: failureIdentifierHint(details),
+      status: "open",
+      attemptCount: 1,
+      lastSeenAt: now,
+    })
+    .onConflictDoUpdate({
+      target: settlementIngestFailuresTable.id,
+      set: {
+        attemptCount: sql`${settlementIngestFailuresTable.attemptCount} + 1`,
+        lastSeenAt: now,
+        status: "open",
+        resolvedAt: null,
+        resolvedByUserId: null,
+      },
+    })
+    .returning();
+
+  if (!failure) return;
+
+  if (failure.attemptCount === 1) {
+    await executor
+      .insert(auditLogsTable)
+      .values({
+        id: `settlement-ingest-failure:${fingerprint}`,
+        actorUserId: actor.id,
+        actorRole: actor.role,
+        action: "transaction.settlement_ingest_rejected",
+        entityType: "settlement_ingest_failure",
+        entityId: fingerprint,
+        toStatus: "open",
+        note: `Ingest settlement ditolak: ${code}.`,
+        metadata: {
+          failureCode: code,
+          identifierType: failure.identifierType,
+          identifierHint: failure.identifierHint,
+        },
+      })
+      .onConflictDoNothing();
+  }
+
+  const shouldNotify =
+    code === "transaction_not_found"
+      ? failure.attemptCount === 1
+      : failure.attemptCount === 3;
+  if (!shouldNotify) return;
+
+  const admins = await executor
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.role, "super_admin"));
+  if (admins.length === 0) return;
+
+  const title =
+    code === "transaction_not_found"
+      ? "Settlement bank tidak menemukan transaksi"
+      : "Kegagalan ingest settlement berulang";
+  const description =
+    code === "transaction_not_found"
+      ? `Identifier ${failure.identifierHint} tidak menemukan transaksi. Tinjau antrean ingest settlement di Workbench.`
+      : `Ingest settlement dengan identifier ${failure.identifierHint} gagal ${failure.attemptCount} kali. Tinjau dan tindak lanjuti di Workbench.`;
+  await executor
+    .insert(notificationsTable)
+    .values(
+      admins.map((admin: { id: string }) => ({
+        id: `notification-${randomUUID()}`,
+        userId: admin.id,
+        title,
+        description,
+        type: "system",
+        dedupeKey: `settlement-ingest:${code}:${fingerprint}:${admin.id}`,
+      })),
+    )
+    .onConflictDoNothing();
 }
 
 function transactionResponse(transaction: typeof transactionsTable.$inferSelect, now = new Date()) {
@@ -743,7 +901,7 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
     );
   }
   await expireCompanyTalentConsents();
-  const [verifications, programs, enrollments, matchings, transactions, auditLogs] = await Promise.all([
+  const [verifications, programs, enrollments, matchings, transactions, auditLogs, settlementIngestFailures] = await Promise.all([
     db.select().from(verificationsTable).orderBy(desc(verificationsTable.submittedAt)).limit(100),
     db.select().from(programsTable).orderBy(desc(programsTable.updatedAt)).limit(100),
     db.select().from(enrollmentsTable).orderBy(desc(enrollmentsTable.createdAt)).limit(100),
@@ -771,6 +929,12 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
       .then((rows) => rows.map(({ matching }) => matching)),
     db.select().from(transactionsTable).orderBy(desc(transactionsTable.occurredAt)).limit(100),
     getAuditLogs(user.role === "super_admin"),
+    db
+      .select()
+      .from(settlementIngestFailuresTable)
+      .where(eq(settlementIngestFailuresTable.status, "open"))
+      .orderBy(desc(settlementIngestFailuresTable.lastSeenAt))
+      .limit(100),
   ]);
 
   const programNames = new Map(programs.map((program) => [program.id, program.name]));
@@ -834,6 +998,7 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
         pendingRevenue,
         reconciliationIssues,
         overdueSettlements,
+        settlementIngestFailures: settlementIngestFailures.length,
       },
       verificationSlaWorker: getVerificationSlaReminderWorkerStatus(),
       verifications: verificationResponses,
@@ -850,6 +1015,7 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
       matchings,
       transactions: transactionResponses,
       auditLogs,
+      settlementIngestFailures,
     }),
   );
 });
@@ -863,17 +1029,43 @@ router.post(
   requireUser,
   requireRole(...adminRoles),
   async (req, res): Promise<void> => {
-    const rawSettledAt =
+    const actor = getAuthenticatedUser(req);
+    const rawBody =
       typeof req.body === "object" && req.body !== null
-        ? (req.body as Record<string, unknown>).settledAt
+        ? (req.body as Record<string, unknown>)
         : undefined;
+    const rawSettledAt =
+      rawBody?.settledAt;
     if (!isValidIsoDateTime(rawSettledAt)) {
+      await db.transaction((tx) =>
+        recordRejectedSettlementIngest(tx, actor, "invalid_payload", {
+          referenceId: normalizedString(rawBody?.referenceId),
+          invoiceNumber: normalizedString(rawBody?.invoiceNumber),
+          settlementAmount: rawBody?.settlementAmount,
+          settledAt: rawSettledAt,
+        }),
+      );
       res.status(400).json({ error: "settledAt wajib berupa ISO date-time yang valid." });
       return;
     }
 
     const body = IngestAdminTransactionSettlementBody.safeParse(req.body);
     if (!body.success) {
+      const referenceId = normalizedString(rawBody?.referenceId);
+      const invoiceNumber = normalizedString(rawBody?.invoiceNumber);
+      await db.transaction((tx) =>
+        recordRejectedSettlementIngest(
+          tx,
+          actor,
+          referenceId || invoiceNumber ? "invalid_payload" : "missing_identifier",
+          {
+            referenceId,
+            invoiceNumber,
+            settlementAmount: rawBody?.settlementAmount,
+            settledAt: rawSettledAt,
+          },
+        ),
+      );
       res.status(400).json({
         error: "Settlement wajib memiliki referenceId atau invoiceNumber, nominal, dan waktu settlement yang valid.",
       });
@@ -883,11 +1075,16 @@ router.post(
     const referenceId = body.data.referenceId?.trim();
     const invoiceNumber = body.data.invoiceNumber?.trim();
     if (!referenceId && !invoiceNumber) {
+      await db.transaction((tx) =>
+        recordRejectedSettlementIngest(tx, actor, "missing_identifier", {
+          settlementAmount: body.data.settlementAmount,
+          settledAt: body.data.settledAt,
+        }),
+      );
       res.status(400).json({ error: "referenceId atau invoiceNumber wajib diisi." });
       return;
     }
 
-    const actor = getAuthenticatedUser(req);
     const settledAt = body.data.settledAt;
     const normalizedSettlementAmount = Number(body.data.settlementAmount.toFixed(2));
     const settlementAmount = normalizedSettlementAmount.toFixed(2);
@@ -916,8 +1113,24 @@ router.post(
         .orderBy(transactionsTable.id)
         .for("update");
 
-      if (matches.length === 0) return { kind: "not_found" as const };
-      if (matches.length > 1) return { kind: "ambiguous" as const };
+      if (matches.length === 0) {
+        await recordRejectedSettlementIngest(tx, actor, "transaction_not_found", {
+          referenceId,
+          invoiceNumber,
+          settlementAmount: normalizedSettlementAmount,
+          settledAt,
+        });
+        return { kind: "not_found" as const };
+      }
+      if (matches.length > 1) {
+        await recordRejectedSettlementIngest(tx, actor, "ambiguous_identifier", {
+          referenceId,
+          invoiceNumber,
+          settlementAmount: normalizedSettlementAmount,
+          settledAt,
+        });
+        return { kind: "ambiguous" as const };
+      }
 
       const existing = matches[0]!;
       const effectiveInvoiceNumber = existing.invoiceNumber ?? `INV-${existing.referenceId}`;
@@ -925,6 +1138,12 @@ router.post(
         (referenceId && existing.referenceId !== referenceId) ||
         (invoiceNumber && effectiveInvoiceNumber !== invoiceNumber)
       ) {
+        await recordRejectedSettlementIngest(tx, actor, "conflicting_identifiers", {
+          referenceId,
+          invoiceNumber,
+          settlementAmount: normalizedSettlementAmount,
+          settledAt,
+        });
         return { kind: "conflicting_identifiers" as const };
       }
 
@@ -976,6 +1195,56 @@ router.post(
       return;
     }
     res.json(IngestAdminTransactionSettlementResponse.parse(transactionResponse(result.transaction, now)));
+  },
+);
+
+router.patch(
+  "/admin/settlement-ingest-failures/:id",
+  ...superAdminOnly,
+  async (req, res): Promise<void> => {
+    const params = ResolveAdminSettlementIngestFailureParams.safeParse(req.params);
+    const body = ResolveAdminSettlementIngestFailureBody.safeParse(req.body);
+    if (!params.success || !body.success) {
+      res.status(400).json({ error: "Catatan penyelesaian wajib diisi minimal 3 karakter." });
+      return;
+    }
+    const actor = getAuthenticatedUser(req);
+    const updated = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(settlementIngestFailuresTable)
+        .where(eq(settlementIngestFailuresTable.id, params.data.id))
+        .for("update");
+      if (!existing) return { kind: "not_found" as const };
+      if (existing.status === "resolved") return { kind: "resolved" as const };
+      const [failure] = await tx
+        .update(settlementIngestFailuresTable)
+        .set({
+          status: "resolved",
+          resolvedAt: new Date(),
+          resolvedByUserId: actor.id,
+        })
+        .where(eq(settlementIngestFailuresTable.id, existing.id))
+        .returning();
+      await recordAudit(tx, actor, {
+        action: "transaction.settlement_ingest_failure_resolved",
+        entityType: "settlement_ingest_failure",
+        entityId: existing.id,
+        fromStatus: existing.status,
+        toStatus: "resolved",
+        note: body.data.note,
+      });
+      return { kind: "ok" as const, failure };
+    });
+    if (updated.kind === "not_found") {
+      res.status(404).json({ error: "Kegagalan ingest settlement tidak ditemukan." });
+      return;
+    }
+    if (updated.kind === "resolved") {
+      res.status(409).json({ error: "Kegagalan ingest settlement ini sudah diselesaikan." });
+      return;
+    }
+    res.json(ResolveAdminSettlementIngestFailureResponse.parse(updated.failure));
   },
 );
 

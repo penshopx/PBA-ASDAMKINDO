@@ -6,7 +6,7 @@ import express, {
   type Request,
   type Response,
 } from "express";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import {
   GetAdminOperationsResponse,
   IngestAdminTransactionSettlementResponse,
@@ -15,6 +15,8 @@ import {
 import {
   auditLogsTable,
   db,
+  notificationsTable,
+  settlementIngestFailuresTable,
   transactionsTable,
   usersTable,
   type User,
@@ -214,6 +216,7 @@ try {
     "matchings",
     "permissions",
     "programs",
+    "settlementIngestFailures",
     "summary",
     "transactions",
     "verificationSlaWorker",
@@ -286,6 +289,7 @@ try {
   assert.ok(resolved.reconciliationResolvedAt);
   assert.equal(result.body.summary.reconciliationIssues >= 2, true);
   assert.equal(result.body.summary.overdueSettlements >= 2, true);
+  assert.equal(typeof result.body.summary.settlementIngestFailures, "number");
 
   const missingSettlementAt = new Date(now - 30 * 60 * 1000).toISOString();
   result = await requestAs(
@@ -634,15 +638,43 @@ try {
 } finally {
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await db.transaction(async (tx) => {
+    const testActorIds = [adminId, superAdminId, secondSuperAdminId, memberId];
+    const failureAudits = await tx
+      .select({ entityId: auditLogsTable.entityId })
+      .from(auditLogsTable)
+      .where(
+        and(
+          inArray(auditLogsTable.actorUserId, testActorIds),
+          eq(auditLogsTable.entityType, "settlement_ingest_failure"),
+        ),
+      );
+    await tx
+      .delete(notificationsTable)
+      .where(inArray(notificationsTable.userId, testActorIds));
     await tx
       .delete(auditLogsTable)
-      .where(inArray(auditLogsTable.entityId, Object.values(transactionIds)));
+      .where(
+        or(
+          inArray(auditLogsTable.entityId, Object.values(transactionIds)),
+          inArray(auditLogsTable.actorUserId, testActorIds),
+        ),
+      );
+    if (failureAudits.length > 0) {
+      await tx
+        .delete(settlementIngestFailuresTable)
+        .where(
+          inArray(
+            settlementIngestFailuresTable.id,
+            failureAudits.map((audit) => audit.entityId),
+          ),
+        );
+    }
     await tx
       .delete(transactionsTable)
       .where(inArray(transactionsTable.id, Object.values(transactionIds)));
     await tx
       .delete(usersTable)
-      .where(inArray(usersTable.id, [adminId, superAdminId, secondSuperAdminId, memberId]));
+      .where(inArray(usersTable.id, testActorIds));
   });
 }
 async function loadUser(id: string) {

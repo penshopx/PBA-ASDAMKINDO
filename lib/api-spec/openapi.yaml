@@ -1078,6 +1078,55 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /admin/settlement-ingest-failures/{id}:
+    patch:
+      operationId: resolveAdminSettlementIngestFailure
+      tags: [admin]
+      summary: Resolve an operational bank-settlement ingest failure
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettlementIngestFailureResolution"
+      responses:
+        "200":
+          description: Resolved ingest failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettlementIngestFailure"
+        "400":
+          description: Invalid resolution note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Super admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Ingest failure not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Ingest failure already resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /admin/funnel:
     get:
       operationId: getAdminFunnel
@@ -3013,6 +3062,46 @@ components:
           type: string
           minLength: 3
       required: [note]
+    SettlementIngestFailure:
+      type: object
+      description: Operational failure record containing only a masked identifier hint and no source payload or credential.
+      properties:
+        id:
+          type: string
+        failureCode:
+          type: string
+          enum: [invalid_payload, missing_identifier, transaction_not_found, ambiguous_identifier, conflicting_identifiers]
+        identifierType:
+          type: string
+          enum: [referenceId, invoiceNumber, reference_and_invoice, unknown]
+        identifierHint:
+          type: string
+        status:
+          type: string
+          enum: [open, resolved]
+        attemptCount:
+          type: integer
+          minimum: 1
+        firstSeenAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: ["string", "null"]
+          format: date-time
+        resolvedByUserId:
+          type: ["string", "null"]
+      required: [id, failureCode, identifierType, identifierHint, status, attemptCount, firstSeenAt, lastSeenAt, resolvedAt, resolvedByUserId]
+    SettlementIngestFailureResolution:
+      type: object
+      properties:
+        note:
+          type: string
+          minLength: 3
+          maxLength: 500
+      required: [note]
     AuditLog:
       type: object
       properties:
@@ -3082,7 +3171,9 @@ components:
           type: number
         overdueSettlements:
           type: number
-      required: [pendingVerifications, approachingVerifications, overdueVerifications, activePrograms, activeEnrollments, completions, placements, revenue, pendingRevenue, reconciliationIssues, overdueSettlements]
+        settlementIngestFailures:
+          type: number
+      required: [pendingVerifications, approachingVerifications, overdueVerifications, activePrograms, activeEnrollments, completions, placements, revenue, pendingRevenue, reconciliationIssues, overdueSettlements, settlementIngestFailures]
     AdminOperations:
       type: object
       properties:
@@ -3114,9 +3205,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AuditLog"
+        settlementIngestFailures:
+          type: array
+          items:
+            $ref: "#/components/schemas/SettlementIngestFailure"
         verificationSlaWorker:
           $ref: "#/components/schemas/VerificationSlaWorkerStatus"
-      required: [permissions, summary, verifications, programs, enrollments, matchings, transactions, auditLogs, verificationSlaWorker]
+      required: [permissions, summary, verifications, programs, enrollments, matchings, transactions, auditLogs, settlementIngestFailures, verificationSlaWorker]
     VerificationSlaWorkerStatus:
       type: object
       properties:

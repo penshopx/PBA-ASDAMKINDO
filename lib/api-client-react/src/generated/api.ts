@@ -80,6 +80,8 @@ import type {
   ProgramUpdate,
   PublicPassport,
   ReadinessDiagnostic,
+  SettlementIngestFailure,
+  SettlementIngestFailureResolution,
   TalentConsentSettings,
   TalentConsentSettingsUpdate,
   TalentPoolMatchesPage,
@@ -2842,6 +2844,78 @@ export function useGetAdminOperations<TData = Awaited<ReturnType<typeof getAdmin
 
 
 
+
+export const getResolveAdminSettlementIngestFailureUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/settlement-ingest-failures/${id}`
+}
+
+/**
+ * @summary Resolve an operational bank-settlement ingest failure
+ */
+export const resolveAdminSettlementIngestFailure = async (id: string,
+    settlementIngestFailureResolution: SettlementIngestFailureResolution, options?: Parameters<typeof customFetch>[1]): Promise<SettlementIngestFailure> => {
+
+  return customFetch<SettlementIngestFailure>(getResolveAdminSettlementIngestFailureUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(settlementIngestFailureResolution)
+  }
+);}
+
+
+
+
+
+export const getResolveAdminSettlementIngestFailureMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAdminSettlementIngestFailure>>, TError,{id: string;data: BodyType<SettlementIngestFailureResolution>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveAdminSettlementIngestFailure>>, TError,{id: string;data: BodyType<SettlementIngestFailureResolution>}, TContext> => {
+
+const mutationKey = ['resolveAdminSettlementIngestFailure'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveAdminSettlementIngestFailure>>, {id: string;data: BodyType<SettlementIngestFailureResolution>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  resolveAdminSettlementIngestFailure(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveAdminSettlementIngestFailureMutationResult = NonNullable<Awaited<ReturnType<typeof resolveAdminSettlementIngestFailure>>>
+    export type ResolveAdminSettlementIngestFailureMutationBody = BodyType<SettlementIngestFailureResolution>
+    export type ResolveAdminSettlementIngestFailureMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Resolve an operational bank-settlement ingest failure
+ */
+export const useResolveAdminSettlementIngestFailure = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAdminSettlementIngestFailure>>, TError,{id: string;data: BodyType<SettlementIngestFailureResolution>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveAdminSettlementIngestFailure>>,
+        TError,
+        {id: string;data: BodyType<SettlementIngestFailureResolution>},
+        TContext
+      > => {
+      return useMutation(getResolveAdminSettlementIngestFailureMutationOptions(options));
+    }
 
 export const getGetAdminFunnelUrl = () => {
 

@@ -18,4 +18,5 @@ export interface AdminSummary {
   pendingRevenue: number;
   reconciliationIssues: number;
   overdueSettlements: number;
+  settlementIngestFailures: number;
 }

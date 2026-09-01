@@ -18,6 +18,7 @@ const testFiles = requestedTests.length
       "company-security.integration",
       "pilot-evaluation.integration",
       "settlement-reconciliation.integration",
+      "settlement-ingest-failures.integration",
       "verification-sla-reminder.integration",
       "consent-expiry-reminder.integration",
     ];
