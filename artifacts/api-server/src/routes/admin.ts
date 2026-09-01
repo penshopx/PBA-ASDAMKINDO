@@ -948,7 +948,7 @@ router.post(
           reconciliationResolvedByUserId: null,
           updatedAt: now,
         })
-        .where(eq(programsTable.id, existing.id))
+        .where(eq(transactionsTable.id, existing.id))
         .returning();
       const next = transactionResponse(transaction, now);
 

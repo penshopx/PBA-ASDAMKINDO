@@ -378,6 +378,64 @@ try {
     ).length,
     1,
   );
+  const settlementAfterFirstIngest = (
+    await db
+      .select({
+        settlementAmount: transactionsTable.settlementAmount,
+        settledAt: transactionsTable.settledAt,
+        updatedAt: transactionsTable.updatedAt,
+      })
+      .from(transactionsTable)
+      .where(eq(transactionsTable.id, transactionIds.missing))
+  )[0]!;
+  const settlementAuditCountAfterFirstIngest = (
+    await db
+      .select()
+      .from(auditLogsTable)
+      .where(
+        and(
+          eq(auditLogsTable.entityId, transactionIds.missing),
+          eq(auditLogsTable.action, "transaction.settlement_ingested"),
+        ),
+      )
+  ).length;
+  result = await request("/admin/transactions/settlement", {
+    method: "POST",
+    body: JSON.stringify({
+      referenceId: `reference-${transactionIds.missing}`,
+      settlementAmount: 900,
+      settledAt: missingSettlementAt,
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.updatedAt, settlementAfterFirstIngest.updatedAt.toISOString());
+  const settlementAfterDuplicate = (
+    await db
+      .select({
+        settlementAmount: transactionsTable.settlementAmount,
+        settledAt: transactionsTable.settledAt,
+        updatedAt: transactionsTable.updatedAt,
+      })
+      .from(transactionsTable)
+      .where(eq(transactionsTable.id, transactionIds.missing))
+  )[0]!;
+  assert.equal(settlementAfterDuplicate.settlementAmount, settlementAfterFirstIngest.settlementAmount);
+  assert.equal(settlementAfterDuplicate.settledAt?.toISOString(), settlementAfterFirstIngest.settledAt?.toISOString());
+  assert.equal(settlementAfterDuplicate.updatedAt.toISOString(), settlementAfterFirstIngest.updatedAt.toISOString());
+  assert.equal(
+    (
+      await db
+        .select()
+        .from(auditLogsTable)
+        .where(
+          and(
+            eq(auditLogsTable.entityId, transactionIds.missing),
+            eq(auditLogsTable.action, "transaction.settlement_ingested"),
+          ),
+        )
+    ).length,
+    settlementAuditCountAfterFirstIngest,
+  );
 
   const fallbackInvoiceSettlementAt = new Date(now - 20 * 60 * 1000).toISOString();
   result = await request("/admin/transactions/settlement", {
