@@ -9,13 +9,20 @@ import express, {
 import { and, desc, eq, inArray, or } from "drizzle-orm";
 import {
   CreateAdminProgramResponse,
+  CreateAdminPilotFeedbackResponse,
   DecideVerificationResponse,
   GetAdminFunnelResponse,
   GetAdminOperationsResponse,
+  GetAdminPilotEvaluationOptionsResponse,
+  GetAdminPilotEvaluationResponse,
+  GetAdminTalentConsentSettingsResponse,
+  GetAdminTalentPoolResponse,
   IngestAdminTransactionSettlementResponse,
   ListAdminAuditLogsResponse,
   ListAdminMatchingsResponse,
+  ListAdminPilotFeedbackResponse,
   ResolveAdminSettlementIngestFailureResponse,
+  ResolveAdminPilotFeedbackResponse,
   ResolveAdminTransactionReconciliationResponse,
   UpdateAdminEnrollmentResponse,
   UpdateAdminMatchingResponse,
@@ -64,6 +71,118 @@ const failureIds = new Set<string>();
 let actor: User;
 let createdProgramId: string | undefined;
 
+type AdminRouteLayer = {
+  handle?: {
+    stack?: AdminRouteLayer[];
+  };
+  route?: {
+    path?: string;
+    methods?: Record<string, boolean>;
+  };
+};
+
+const contractAssertions = new Set<string>();
+
+function canonicalRoutePath(path: string) {
+  return path
+    .split("/")
+    .map((segment) => (segment.startsWith(":") ? ":param" : segment))
+    .join("/");
+}
+
+function apiRouteLayers(
+  router: { stack?: AdminRouteLayer[] },
+  visited = new Set<object>(),
+): AdminRouteLayer[] {
+  if (visited.has(router)) return [];
+  visited.add(router);
+
+  return (router.stack ?? []).flatMap((layer) => [
+    ...(layer.route ? [layer] : []),
+    ...(layer.handle?.stack ? apiRouteLayers(layer.handle, visited) : []),
+  ]);
+}
+
+function adminRouteInventory() {
+  return new Set(
+    apiRouteLayers(apiRouter as unknown as { stack?: AdminRouteLayer[] }).flatMap((layer) => {
+      const path = layer.route?.path;
+      if (
+        !path ||
+        (path !== "/admin" && !path.startsWith("/admin/")) ||
+        !layer.route.methods
+      ) {
+        return [];
+      }
+      return Object.entries(layer.route.methods)
+        .filter(([, enabled]) => enabled)
+        .map(([method]) => `${method.toUpperCase()} ${canonicalRoutePath(path)}`);
+    }),
+  );
+}
+
+function routeMatchesPath(routePath: string, requestPath: string) {
+  const routeSegments = routePath.split("/").filter(Boolean);
+  const requestSegments = requestPath.split("/").filter(Boolean);
+  return (
+    routeSegments.length === requestSegments.length &&
+    routeSegments.every(
+      (segment, index) =>
+        segment.startsWith(":") || segment === requestSegments[index],
+    )
+  );
+}
+
+function trackContractAssertion(path: string, init?: RequestInit) {
+  const pathname = new URL(path, "http://admin-contract.test").pathname;
+  if (!pathname.startsWith("/admin/")) return;
+
+  const method = (init?.method ?? "GET").toLowerCase();
+  const matchedRoute = apiRouteLayers(
+    apiRouter as unknown as { stack?: AdminRouteLayer[] },
+  ).find((layer) => {
+    const route = layer.route;
+    return (
+      typeof route?.path === "string" &&
+      route.methods?.[method] === true &&
+      routeMatchesPath(route.path, pathname)
+    );
+  });
+  if (matchedRoute?.route?.path) {
+    contractAssertions.add(
+      `${method.toUpperCase()} ${canonicalRoutePath(matchedRoute.route.path)}`,
+    );
+  }
+}
+
+function assertAdminContractCoverage() {
+  const inventory = adminRouteInventory();
+  assert.ok(
+    inventory.size > 0,
+    "Admin route inventory is empty; the contract test could not inspect the registered router.",
+  );
+  const missing = [...inventory].filter((route) => !contractAssertions.has(route)).sort();
+  const unexpected = [...contractAssertions].filter((route) => !inventory.has(route)).sort();
+
+  assert.equal(
+    missing.length,
+    0,
+    [
+      "Admin endpoint contract coverage is incomplete.",
+      "Add a contract assertion that exercises each missing method/path.",
+      ...missing.map((route) => `Missing: ${route}`),
+    ].join("\n"),
+  );
+  assert.equal(
+    unexpected.length,
+    0,
+    [
+      "Admin contract assertions reference routes that are not registered.",
+      ...unexpected.map((route) => `Unexpected: ${route}`),
+    ].join("\n"),
+  );
+}
+
 const app = express();
 app.use(express.json());
 app.use(async (req: Request, _res: Response, next: NextFunction) => {
@@ -94,6 +213,7 @@ const port = (server.address() as AddressInfo).port;
 const baseUrl = `http://127.0.0.1:${port}/api`;
 
 async function request(path: string, init?: RequestInit) {
+  trackContractAssertion(path, init);
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: { "content-type": "application/json", ...init?.headers },
@@ -313,7 +433,7 @@ try {
       price: "100.00",
       instructor: "Instruktur Contract",
       description: "Program fixture untuk contract test.",
-      status: "draft",
+      status: "published",
       capacity: 20,
     });
     await tx.insert(enrollmentsTable).values({
@@ -348,7 +468,91 @@ try {
 
   actor = await loadUser(adminId);
 
-  let result = await request("/admin/funnel");
+  let result = await request("/admin/pilot-evaluation/options", {
+    headers: { "x-test-user": memberId },
+  });
+  assert.equal(result.response.status, 403);
+
+  result = await request("/admin/pilot-evaluation/options");
+  assert.equal(result.response.status, 200, JSON.stringify(result.body));
+  GetAdminPilotEvaluationOptionsResponse.parse(result.body);
+  assert.ok(result.body.programs.some((program: { id: string }) => program.id === programId));
+  assert.ok(
+    result.body.requirements.some(
+      (requirement: { id: string }) => requirement.id === requirementId,
+    ),
+  );
+
+  result = await request(
+    `/admin/pilot-evaluation?programId=${programId}&requirementId=${requirementId}`,
+  );
+  assert.equal(result.response.status, 200, JSON.stringify(result.body));
+  GetAdminPilotEvaluationResponse.parse(result.body);
+  assert.equal(result.body.cohort.programName, "Program Contract Admin");
+  assert.equal(result.body.cohort.requirementTitle, "Project Engineer Contract");
+
+  result = await request("/admin/pilot-feedback", {
+    method: "POST",
+    body: JSON.stringify({
+      programId,
+      requirementId,
+      note: "Kendala akses materi contract test",
+    }),
+  });
+  assert.equal(result.response.status, 201, JSON.stringify(result.body));
+  CreateAdminPilotFeedbackResponse.parse(result.body);
+  assert.deepEqual(result.body, { status: "recorded" });
+
+  result = await request(
+    `/admin/pilot-feedback?programId=${programId}&requirementId=${requirementId}`,
+  );
+  assert.equal(result.response.status, 200, JSON.stringify(result.body));
+  ListAdminPilotFeedbackResponse.parse(result.body);
+  assert.equal(result.body.length, 1);
+  assert.equal(result.body[0].status, "open");
+  const feedbackId = result.body[0].id as string;
+
+  result = await request(`/admin/pilot-feedback/${feedbackId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      status: "resolved",
+      note: "Kendala contract test sudah selesai",
+    }),
+  });
+  assert.equal(result.response.status, 200, JSON.stringify(result.body));
+  ResolveAdminPilotFeedbackResponse.parse(result.body);
+  assert.deepEqual(result.body, { status: "resolved" });
+
+  result = await request("/admin/talent-pool/settings");
+  assert.equal(result.response.status, 200, JSON.stringify(result.body));
+  GetAdminTalentConsentSettingsResponse.parse(result.body);
+
+  await assertJsonError("/admin/talent-pool/settings", 400, {
+    method: "PATCH",
+    body: JSON.stringify({ defaultDurationDays: 0 }),
+  });
+
+  result = await request(
+    `/admin/talent-pool?companyId=${companyId}&consent=active&page=1&pageSize=10`,
+  );
+  assert.equal(result.response.status, 200, JSON.stringify(result.body));
+  GetAdminTalentPoolResponse.parse(result.body);
+  assert.equal(result.body.total, 1);
+  assert.equal(result.body.items[0].id, `admin-contract-consent-${suffix}`);
+
+  await assertJsonError(
+    `/admin/talent-pool/consents/consent-tidak-ada-${suffix}`,
+    404,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        action: "revoke",
+        note: "Consent contract tidak ditemukan",
+      }),
+    },
+  );
+
+  result = await request("/admin/funnel");
   assert.equal(result.response.status, 200);
   GetAdminFunnelResponse.parse(result.body);
   assert.deepEqual(
@@ -595,6 +799,7 @@ try {
     body: JSON.stringify({ name: "Tidak lengkap" }),
   });
 
+  assertAdminContractCoverage();
   console.log("admin contract integration tests passed");
 } finally {
   await new Promise<void>((resolve) => server.close(() => resolve()));
