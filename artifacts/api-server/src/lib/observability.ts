@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import type { Request, RequestHandler } from "express";
 import { pool } from "@workspace/db";
 import { logger } from "./logger";
+import {
+  dispatchOperationalAlert,
+  getAlertDeliveryStatus,
+  resetAlertDeliveryForTests,
+} from "./alert-delivery";
 
 const STARTED_AT = Date.now();
 const MAX_CORRELATION_ID_LENGTH = 128;
@@ -107,7 +112,12 @@ function percentile(values: number[], quantile: number): number {
   return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * quantile) - 1)] ?? 0;
 }
 
-function emitAlert(name: string, value: number, definition: AlertDefinition): void {
+function emitAlert(
+  name: string,
+  value: number,
+  definition: AlertDefinition,
+  correlationContext: Record<string, string> = {},
+): void {
   const now = Date.now();
   const previous = lastAlertAt.get(name) ?? 0;
   if (now - previous < definition.cooldownMs) return;
@@ -124,9 +134,22 @@ function emitAlert(name: string, value: number, definition: AlertDefinition): vo
     },
     "Operational alert triggered",
   );
+  void dispatchOperationalAlert({
+    deduplicationKey: `${name}:${now}`,
+    name: definition.name,
+    value,
+    threshold: definition.threshold,
+    correlationContext,
+    runbook: definition.runbook,
+    triggeredAt: new Date(now).toISOString(),
+  });
 }
 
-function evaluateRouteAlerts(routeGroup: string, metric: RouteMetric): void {
+function evaluateRouteAlerts(
+  routeGroup: string,
+  metric: RouteMetric,
+  correlationId: string,
+): void {
   if (metric.requests >= 20) {
     const rate = metric.errors / metric.requests;
     if (rate >= errorRateThreshold()) {
@@ -139,7 +162,7 @@ function evaluateRouteAlerts(routeGroup: string, metric: RouteMetric): void {
           "Check database health and recent deployments.",
           "Rollback the latest deployment if failures began immediately after release.",
         ],
-      });
+      }, { routeGroup, correlationId });
     }
   }
   const p95 = percentile(metric.durationsMs, 0.95);
@@ -153,7 +176,7 @@ function evaluateRouteAlerts(routeGroup: string, metric: RouteMetric): void {
         "Check database latency and connection saturation.",
         "Reduce load or rollback a recent expensive query.",
       ],
-    });
+    }, { routeGroup, correlationId });
   }
 }
 
@@ -183,7 +206,7 @@ export const observabilityMiddleware: RequestHandler = (req, res, next) => {
       { correlationId, routeGroup, durationMs: Math.round(durationMs), statusCode: res.statusCode },
       "Request observed",
     );
-    evaluateRouteAlerts(routeGroup, metric);
+    evaluateRouteAlerts(routeGroup, metric, correlationId);
   });
   next();
 };
@@ -200,7 +223,7 @@ export function recordRateLimitEvent(policy: string, event: "near-capacity" | "b
           ? "Check PostgreSQL health and rate limiter failure mode."
           : "Confirm whether traffic is legitimate before changing limits.",
       ],
-    });
+    }, { policy, event });
   }
 }
 
@@ -239,7 +262,7 @@ export function recordWorkerRun(name: string, outcome: WorkerOutcome, durationMs
         "Check database connectivity and the worker's latest error.",
         "Pause dependent operations and restart the service after correcting the cause.",
       ],
-    });
+    }, { workerName: name });
   }
 }
 
@@ -264,7 +287,7 @@ export async function runSyntheticChecks() {
         "Confirm DATABASE_URL is available to the production service.",
         "Restore database connectivity before investigating downstream API failures.",
       ],
-    });
+    }, { checkName: "database-connectivity" });
     return {
       status: "failed" as const,
       checkedAt: new Date().toISOString(),
@@ -338,6 +361,7 @@ export function getObservabilityDashboard() {
       workerConsecutiveFailureThreshold: workerFailureThreshold(),
       cooldownMs: alertCooldownMs(),
     },
+    alertDelivery: getAlertDeliveryStatus(),
   };
 }
 
@@ -346,4 +370,5 @@ export function resetObservabilityForTests(): void {
   routeMetrics.clear();
   workerMetrics.clear();
   lastAlertAt.clear();
+  resetAlertDeliveryForTests();
 }
