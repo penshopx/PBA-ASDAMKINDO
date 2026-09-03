@@ -30,6 +30,7 @@ const enrollmentRaceMemberIds = [
   `test-enrollment-race-b-${suffix}`,
 ];
 const enrollmentRaceProgramId = `test-last-seat-${suffix}`;
+const journeyEnrollmentProgramId = `test-journey-enrollment-${suffix}`;
 const evidenceKey = `evidence-${suffix}`;
 let actor: User;
 const actors = new Map<string, User>();
@@ -136,6 +137,19 @@ try {
     description: "Fixture terisolasi untuk regresi perebutan kursi terakhir.",
     status: "published",
     capacity: 1,
+  });
+  await db.insert(programsTable).values({
+    id: journeyEnrollmentProgramId,
+    name: "Bimtek Journey Integration",
+    category: "Manajemen proyek",
+    mode: "online",
+    schedule: "September 2026",
+    duration: "2 hari",
+    price: "0",
+    instructor: "PBA ASDAMKINDO",
+    description: "Fixture terisolasi untuk memastikan hasil pendaftaran tampil di journey.",
+    status: "published",
+    capacity: 10,
   });
 
   const enrollmentAttempts = await Promise.all(
@@ -293,6 +307,41 @@ try {
   assert.equal(result.response.status, 409);
 
   actor = await loadUser(memberId);
+  const unavailableEnrollment = await request(`/member/programs/program-tidak-tersedia-${suffix}/enroll`, {
+    method: "POST",
+  });
+  assert.equal(unavailableEnrollment.response.status, 404);
+  assert.equal(unavailableEnrollment.body.error, "Program terbit tidak ditemukan.");
+
+  const successfulEnrollment = await request(`/member/programs/${journeyEnrollmentProgramId}/enroll`, {
+    method: "POST",
+  });
+  assert.equal(successfulEnrollment.response.status, 201);
+  assert.equal(successfulEnrollment.body.programName, "Bimtek Journey Integration");
+
+  const idempotentEnrollment = await request(`/member/programs/${journeyEnrollmentProgramId}/enroll`, {
+    method: "POST",
+  });
+  assert.equal(idempotentEnrollment.response.status, 200);
+  assert.equal(idempotentEnrollment.body.id, successfulEnrollment.body.id);
+
+  const journeyAfterEnrollment = await request("/member/journey");
+  assert.equal(journeyAfterEnrollment.response.status, 200);
+  assert.equal(
+    journeyAfterEnrollment.body.learningProgress.some(
+      (item: { programId: string; programName: string }) =>
+        item.programId === journeyEnrollmentProgramId &&
+        item.programName === "Bimtek Journey Integration",
+    ),
+    true,
+  );
+  assert.equal(
+    journeyAfterEnrollment.body.recommendedPrograms.some(
+      (program: { id: string }) => program.id === journeyEnrollmentProgramId,
+    ),
+    false,
+  );
+
   result = await request(`/member/evidence/${evidenceId}`, {
     method: "PATCH",
     body: JSON.stringify({ description: "Deskripsi bukti yang sudah diperbaiki" }),
@@ -375,7 +424,9 @@ try {
   server.close();
   await db.transaction(async (tx) => {
     await tx.delete(enrollmentsTable).where(eq(enrollmentsTable.programId, enrollmentRaceProgramId));
+    await tx.delete(enrollmentsTable).where(eq(enrollmentsTable.programId, journeyEnrollmentProgramId));
     await tx.delete(programsTable).where(eq(programsTable.id, enrollmentRaceProgramId));
+    await tx.delete(programsTable).where(eq(programsTable.id, journeyEnrollmentProgramId));
     await tx.delete(auditLogsTable).where(eq(auditLogsTable.actorUserId, adminId));
     await tx.delete(verificationsTable).where(eq(verificationsTable.submittedByUserId, memberId));
     await tx.delete(memberEvidenceTable).where(eq(memberEvidenceTable.memberUserId, memberId));
