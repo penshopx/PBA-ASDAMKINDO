@@ -161,7 +161,8 @@ const routeGroups: RouteGroup[] = [
       path === "/member/journey" ||
       path === "/member/diagnostics" ||
       path === "/member/evidence" ||
-      path.startsWith("/member/evidence/"),
+      path.startsWith("/member/evidence/") ||
+      path.startsWith("/member/programs/"),
   },
   {
     name: "passport",
@@ -459,6 +460,14 @@ async function assertNonAdminRouteCoverage() {
     200,
     GetMemberJourneyResponse,
     { headers: { "x-test-user": memberId } },
+  );
+  await assertJsonError(
+    `/member/programs/${programId}/enrollment`,
+    409,
+    {
+      method: "POST",
+      headers: { "x-test-user": memberId },
+    },
   );
   await assertContract(
     "/member/diagnostics",

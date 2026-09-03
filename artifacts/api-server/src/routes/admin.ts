@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, count, countDistinct, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateAdminProgramBody,
@@ -1425,7 +1425,23 @@ router.patch(
       return;
     }
     const now = new Date();
-    const [updated] = await db.transaction(async (tx) => {
+    const updateResult = await db.transaction(async (tx) => {
+      if (existing.status === "cancelled" && body.data.status !== "cancelled") {
+        await tx.execute(sql`select id from ${programsTable} where id = ${existing.programId} for update`);
+        const [program] = await tx
+          .select({ capacity: programsTable.capacity })
+          .from(programsTable)
+          .where(eq(programsTable.id, existing.programId))
+          .limit(1);
+        const [{ occupied }] = await tx
+          .select({ occupied: count() })
+          .from(enrollmentsTable)
+          .where(and(
+            eq(enrollmentsTable.programId, existing.programId),
+            ne(enrollmentsTable.status, "cancelled"),
+          ));
+        if (program && occupied >= program.capacity) return { kind: "full" as const };
+      }
       const [enrollment] = await tx
         .update(enrollmentsTable)
         .set({
@@ -1434,8 +1450,9 @@ router.patch(
           completedAt: body.data.status === "completed" ? now : null,
           updatedAt: now,
         })
-        .where(eq(enrollmentsTable.id, existing.id))
+        .where(and(eq(enrollmentsTable.id, existing.id), eq(enrollmentsTable.status, existing.status)))
         .returning();
+      if (!enrollment) return { kind: "stale" as const };
       await recordAudit(tx, actor, {
         action: "enrollment.status_changed",
         entityType: "enrollment",
@@ -1444,8 +1461,17 @@ router.patch(
         toStatus: body.data.status,
         note: body.data.note,
       });
-      return [enrollment];
+      return { kind: "updated" as const, enrollment };
     });
+    if (updateResult.kind === "full") {
+      res.status(409).json({ error: "Kapasitas program sudah penuh." });
+      return;
+    }
+    if (updateResult.kind === "stale") {
+      res.status(409).json({ error: "Status enrollment berubah. Muat ulang sebelum mencoba kembali." });
+      return;
+    }
+    const updated = updateResult.enrollment;
     const [program] = await db.select().from(programsTable).where(eq(programsTable.id, updated.programId)).limit(1);
     res.json(
       UpdateAdminEnrollmentResponse.parse({

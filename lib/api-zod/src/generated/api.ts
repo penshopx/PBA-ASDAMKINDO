@@ -194,6 +194,29 @@ export const GetMemberJourneyResponse = zod.object({
 
 
 /**
+ * @summary Enroll the current member in a published program
+ */
+
+
+
+export const EnrollMemberInProgramParams = zod.object({
+  "programId": zod.coerce.string().min(1)
+})
+
+export const EnrollMemberInProgramResponse = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "programName": zod.string(),
+  "memberUserId": zod.string(),
+  "memberName": zod.string(),
+  "status": zod.enum(['pending', 'enrolled', 'completed', 'cancelled']),
+  "enrolledAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Save a member readiness diagnostic
  */
 export const saveMemberDiagnosticBodyAnswersMaxOne = 5;

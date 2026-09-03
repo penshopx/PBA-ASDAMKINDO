@@ -184,6 +184,51 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /member/programs/{programId}/enrollment:
+    post:
+      operationId: enrollMemberInProgram
+      tags: [member]
+      summary: Enroll the current member in a published program
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "201":
+          description: Enrollment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+        "400":
+          description: Invalid program identifier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Member role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Published program not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Member is already enrolled or the program is full
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /member/diagnostics:
     post:
       operationId: saveMemberDiagnostic

@@ -573,6 +573,77 @@ export function useGetMemberJourney<TData = Awaited<ReturnType<typeof getMemberJ
 
 
 
+export const getEnrollMemberInProgramUrl = (programId: string,) => {
+
+
+
+
+  return `/api/member/programs/${programId}/enrollment`
+}
+
+/**
+ * @summary Enroll the current member in a published program
+ */
+export const enrollMemberInProgram = async (programId: string, options?: Parameters<typeof customFetch>[1]): Promise<Enrollment> => {
+
+  return customFetch<Enrollment>(getEnrollMemberInProgramUrl(programId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getEnrollMemberInProgramMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enrollMemberInProgram>>, TError,{programId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof enrollMemberInProgram>>, TError,{programId: string}, TContext> => {
+
+const mutationKey = ['enrollMemberInProgram'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof enrollMemberInProgram>>, {programId: string}> = (props) => {
+          const {programId} = props ?? {};
+
+          return  enrollMemberInProgram(programId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EnrollMemberInProgramMutationResult = NonNullable<Awaited<ReturnType<typeof enrollMemberInProgram>>>
+
+    export type EnrollMemberInProgramMutationError = ErrorType<ErrorResponse | RateLimitedResponse>
+
+    /**
+ * @summary Enroll the current member in a published program
+ */
+export const useEnrollMemberInProgram = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enrollMemberInProgram>>, TError,{programId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof enrollMemberInProgram>>,
+        TError,
+        {programId: string},
+        TContext
+      > => {
+      return useMutation(getEnrollMemberInProgramMutationOptions(options));
+    }
+
 export const getSaveMemberDiagnosticUrl = () => {
 
 

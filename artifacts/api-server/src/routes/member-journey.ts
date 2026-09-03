@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   GetMemberJourneyResponse,
+  EnrollMemberInProgramParams,
+  EnrollMemberInProgramResponse,
   SaveMemberDiagnosticBody,
   SaveMemberDiagnosticResponse,
   SaveMemberEvidenceBody,
@@ -12,6 +14,7 @@ import {
   UpdateMemberEvidenceResponse,
 } from "@workspace/api-zod";
 import {
+  auditLogsTable,
   db,
   enrollmentsTable,
   matchingsTable,
@@ -63,7 +66,7 @@ function evidenceResponse(evidence: typeof memberEvidenceTable.$inferSelect) {
 
 router.get("/member/journey", ...memberOnly, async (req, res): Promise<void> => {
   const user = getAuthenticatedUser(req);
-  const [[diagnostic], profile, evidences, enrollments, matchings, programs, progressRows] = await Promise.all([
+  const [[diagnostic], profile, evidences, enrollments, matchings, programs, progressRows, programEnrollmentRows] = await Promise.all([
     db.select().from(readinessDiagnosticsTable).where(eq(readinessDiagnosticsTable.memberUserId, user.id)).limit(1),
     db.select().from(memberProfilesTable).where(eq(memberProfilesTable.userId, user.id)).limit(1),
     db.select().from(memberEvidenceTable).where(eq(memberEvidenceTable.memberUserId, user.id)).orderBy(desc(memberEvidenceTable.updatedAt)),
@@ -71,6 +74,7 @@ router.get("/member/journey", ...memberOnly, async (req, res): Promise<void> => 
     db.select().from(matchingsTable).where(eq(matchingsTable.candidateUserId, user.id)).orderBy(desc(matchingsTable.score)),
     db.select().from(programsTable).where(eq(programsTable.status, "published")),
     db.select().from(programProgressTable).where(eq(programProgressTable.memberUserId, user.id)),
+    db.select({ programId: enrollmentsTable.programId, status: enrollmentsTable.status }).from(enrollmentsTable),
   ]);
   const programById = new Map(programs.map((program) => [program.id, program]));
   const progressByProgram = new Map(progressRows.map((row) => [row.programId, row]));
@@ -92,8 +96,13 @@ router.get("/member/journey", ...memberOnly, async (req, res): Promise<void> => 
       };
     });
   const profileText = `${profile[0]?.expertise ?? ""} ${profile[0]?.primaryGoal ?? ""}`.toLowerCase();
+  const enrollmentCounts = new Map<string, number>();
+  for (const enrollment of programEnrollmentRows) {
+    if (enrollment.status === "cancelled") continue;
+    enrollmentCounts.set(enrollment.programId, (enrollmentCounts.get(enrollment.programId) ?? 0) + 1);
+  }
   const recommendedPrograms = programs
-    .filter((program) => !enrollments.some((enrollment) => enrollment.programId === program.id))
+    .filter((program) => !enrollments.some((enrollment) => enrollment.programId === program.id && enrollment.status !== "cancelled"))
     .sort((a, b) => {
       const aMatch = profileText.includes(a.category.toLowerCase()) ? 1 : 0;
       const bMatch = profileText.includes(b.category.toLowerCase()) ? 1 : 0;
@@ -103,7 +112,7 @@ router.get("/member/journey", ...memberOnly, async (req, res): Promise<void> => 
     .map((program) => ({
       ...program,
       price: Number(program.price),
-      enrolledCount: 0,
+      enrolledCount: enrollmentCounts.get(program.id) ?? 0,
       completedCount: 0,
     }));
 
@@ -116,6 +125,86 @@ router.get("/member/journey", ...memberOnly, async (req, res): Promise<void> => 
       recommendedPrograms,
     }),
   );
+});
+
+router.post("/member/programs/:programId/enrollment", ...memberOnly, async (req, res): Promise<void> => {
+  const params = EnrollMemberInProgramParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Program tidak valid." });
+    return;
+  }
+  const user = getAuthenticatedUser(req);
+  const now = new Date();
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`select id from ${programsTable} where id = ${params.data.programId} for update`);
+    const [program] = await tx
+      .select()
+      .from(programsTable)
+      .where(and(eq(programsTable.id, params.data.programId), eq(programsTable.status, "published")))
+      .limit(1);
+    if (!program) return { kind: "not_found" as const };
+
+    const [existing] = await tx
+      .select()
+      .from(enrollmentsTable)
+      .where(and(
+        eq(enrollmentsTable.programId, program.id),
+        eq(enrollmentsTable.memberUserId, user.id),
+        ne(enrollmentsTable.status, "cancelled"),
+      ))
+      .limit(1);
+    if (existing) return { kind: "duplicate" as const };
+
+    const [{ occupied }] = await tx
+      .select({ occupied: count() })
+      .from(enrollmentsTable)
+      .where(and(eq(enrollmentsTable.programId, program.id), ne(enrollmentsTable.status, "cancelled")));
+    if (occupied >= program.capacity) return { kind: "full" as const };
+
+    const [enrollment] = await tx
+      .insert(enrollmentsTable)
+      .values({
+        id: randomUUID(),
+        programId: program.id,
+        memberUserId: user.id,
+        memberName: user.name,
+        status: "pending",
+      })
+      .returning();
+    await tx.insert(auditLogsTable).values({
+      id: randomUUID(),
+      actorUserId: user.id,
+      actorRole: user.role,
+      action: "enrollment.created",
+      entityType: "enrollment",
+      entityId: enrollment.id,
+      fromStatus: null,
+      toStatus: "pending",
+      note: "Anggota mendaftar program melalui aplikasi.",
+      metadata: { programId: program.id },
+      createdAt: now,
+    });
+    return { kind: "created" as const, enrollment, program };
+  });
+
+  if (result.kind === "not_found") {
+    res.status(404).json({ error: "Program tidak ditemukan atau belum dipublikasikan." });
+    return;
+  }
+  if (result.kind === "duplicate") {
+    res.status(409).json({ error: "Anda sudah terdaftar pada program ini." });
+    return;
+  }
+  if (result.kind === "full") {
+    res.status(409).json({ error: "Kapasitas program sudah penuh." });
+    return;
+  }
+  res.status(201).json(EnrollMemberInProgramResponse.parse({
+    ...result.enrollment,
+    programName: result.program.name,
+    enrolledAt: dateOrNull(result.enrollment.enrolledAt),
+    completedAt: dateOrNull(result.enrollment.completedAt),
+  }));
 });
 
 router.post("/member/diagnostics", ...memberOnly, async (req, res): Promise<void> => {
