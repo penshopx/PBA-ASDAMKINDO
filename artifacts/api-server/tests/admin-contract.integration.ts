@@ -10,24 +10,54 @@ import { and, desc, eq, inArray, or } from "drizzle-orm";
 import {
   CreateAdminProgramResponse,
   CreateAdminPilotFeedbackResponse,
+  CreateCompanyRequirementResponse,
+  CreateCompanyShortlistResponse,
   DecideVerificationResponse,
+  GetAdminDashboardResponse,
   GetAdminFunnelResponse,
   GetAdminOperationsResponse,
   GetAdminPilotEvaluationOptionsResponse,
   GetAdminPilotEvaluationResponse,
   GetAdminTalentConsentSettingsResponse,
   GetAdminTalentPoolResponse,
+  GetCompanyDashboardResponse,
+  GetCompanyTalentPoolResponse,
+  GetCurrentUserResponse,
+  GetMemberDashboardResponse,
+  GetMemberJourneyResponse,
+  GetMemberPassportResponse,
+  GetPublicPassportResponse,
+  GrantMemberCompanyConsentResponse,
   IngestAdminTransactionSettlementResponse,
   ListAdminAuditLogsResponse,
   ListAdminMatchingsResponse,
   ListAdminPilotFeedbackResponse,
+  ListCompanyConsentRequestsResponse,
+  ListCompanyRequirementsResponse,
+  ListCompanyShortlistResponse,
+  ListCompanyTalentPoolResponse,
+  ListMemberCompaniesResponse,
+  ListNotificationsResponse,
+  ListProgramsResponse,
+  MarkNotificationReadResponse,
+  RequestCompanyTalentConsentResponse,
   ResolveAdminSettlementIngestFailureResponse,
   ResolveAdminPilotFeedbackResponse,
   ResolveAdminTransactionReconciliationResponse,
+  SaveCompanyOnboardingResponse,
+  SaveMemberDiagnosticResponse,
+  SaveMemberEvidenceResponse,
+  SaveMemberOnboardingResponse,
   UpdateAdminEnrollmentResponse,
   UpdateAdminMatchingResponse,
   UpdateAdminProgramResponse,
   UpdateAdminTransactionResponse,
+  UpdateCompanyRequirementResponse,
+  UpdateCompanyShortlistResponse,
+  UpdateMemberCompanyConsentResponse,
+  UpdateMemberEvidenceResponse,
+  UpdateMemberPassportResponse,
+  HealthCheckResponse,
 } from "@workspace/api-zod";
 import {
   auditLogsTable,
@@ -42,6 +72,7 @@ import {
   notificationsTable,
   professionalPassportsTable,
   programsTable,
+  readinessDiagnosticsTable,
   settlementIngestFailuresTable,
   transactionsTable,
   usersTable,
@@ -56,6 +87,7 @@ const adminId = `admin-contract-admin-${suffix}`;
 const superAdminId = `admin-contract-super-${suffix}`;
 const companyId = `admin-contract-company-${suffix}`;
 const memberId = `admin-contract-member-${suffix}`;
+const onboardingMemberId = `admin-contract-onboarding-member-${suffix}`;
 const companyProfileId = `admin-contract-company-profile-${suffix}`;
 const memberProfileId = `admin-contract-member-profile-${suffix}`;
 const passportId = `admin-contract-passport-${suffix}`;
@@ -68,12 +100,14 @@ const matchingId = `admin-contract-matching-${suffix}`;
 const settlementTransactionId = `admin-contract-settlement-${suffix}`;
 const reconciliationTransactionId = `admin-contract-reconciliation-${suffix}`;
 const failureIds = new Set<string>();
+const contractEvidenceIds = new Set<string>();
+const contractRequirementIds = new Set<string>();
 let actor: User;
 let createdProgramId: string | undefined;
 
-type AdminRouteLayer = {
+type ApiRouteLayer = {
   handle?: {
-    stack?: AdminRouteLayer[];
+    stack?: ApiRouteLayer[];
   };
   route?: {
     path?: string;
@@ -91,9 +125,9 @@ function canonicalRoutePath(path: string) {
 }
 
 function apiRouteLayers(
-  router: { stack?: AdminRouteLayer[] },
+  router: { stack?: ApiRouteLayer[] },
   visited = new Set<object>(),
-): AdminRouteLayer[] {
+): ApiRouteLayer[] {
   if (visited.has(router)) return [];
   visited.add(router);
 
@@ -103,15 +137,59 @@ function apiRouteLayers(
   ]);
 }
 
-function adminRouteInventory() {
+type RouteGroup = {
+  name: string;
+  matches: (path: string) => boolean;
+};
+
+const routeGroups: RouteGroup[] = [
+  { name: "health", matches: (path) => path === "/healthz" },
+  {
+    name: "identity",
+    matches: (path) => path === "/me" || path.startsWith("/onboarding/"),
+  },
+  { name: "programs", matches: (path) => path === "/programs" },
+  {
+    name: "notifications",
+    matches: (path) => path === "/notifications" || path.startsWith("/notifications/"),
+  },
+  { name: "dashboards", matches: (path) => path.startsWith("/dashboard/") },
+  { name: "admin", matches: (path) => path === "/admin" || path.startsWith("/admin/") },
+  {
+    name: "member-journey",
+    matches: (path) =>
+      path === "/member/journey" ||
+      path === "/member/diagnostics" ||
+      path === "/member/evidence" ||
+      path.startsWith("/member/evidence/"),
+  },
+  {
+    name: "passport",
+    matches: (path) =>
+      path === "/member/passport" ||
+      path.startsWith("/member/passport/") ||
+      path === "/member/companies" ||
+      path === "/passport" ||
+      path.startsWith("/passport/") ||
+      path === "/company/talent-pool" ||
+      path.startsWith("/company/talent-pool/consent-requests"),
+  },
+  {
+    name: "company",
+    matches: (path) =>
+      path === "/company/talent-pool/matches" ||
+      path === "/company/requirements" ||
+      path.startsWith("/company/requirements/") ||
+      path === "/company/shortlist" ||
+      path.startsWith("/company/shortlist/"),
+  },
+];
+
+function apiRouteInventory(matches: (path: string) => boolean = () => true) {
   return new Set(
-    apiRouteLayers(apiRouter as unknown as { stack?: AdminRouteLayer[] }).flatMap((layer) => {
+    apiRouteLayers(apiRouter as unknown as { stack?: ApiRouteLayer[] }).flatMap((layer) => {
       const path = layer.route?.path;
-      if (
-        !path ||
-        (path !== "/admin" && !path.startsWith("/admin/")) ||
-        !layer.route.methods
-      ) {
+      if (!path || !matches(path) || !layer.route.methods) {
         return [];
       }
       return Object.entries(layer.route.methods)
@@ -135,11 +213,9 @@ function routeMatchesPath(routePath: string, requestPath: string) {
 
 function trackContractAssertion(path: string, init?: RequestInit) {
   const pathname = new URL(path, "http://admin-contract.test").pathname;
-  if (!pathname.startsWith("/admin/")) return;
-
   const method = (init?.method ?? "GET").toLowerCase();
   const matchedRoute = apiRouteLayers(
-    apiRouter as unknown as { stack?: AdminRouteLayer[] },
+    apiRouter as unknown as { stack?: ApiRouteLayer[] },
   ).find((layer) => {
     const route = layer.route;
     return (
@@ -155,12 +231,46 @@ function trackContractAssertion(path: string, init?: RequestInit) {
   }
 }
 
-function assertAdminContractCoverage() {
-  const inventory = adminRouteInventory();
+function assertApiContractCoverage() {
+  const inventory = apiRouteInventory();
   assert.ok(
     inventory.size > 0,
-    "Admin route inventory is empty; the contract test could not inspect the registered router.",
+    "API route inventory is empty; the contract test could not inspect the registered router.",
   );
+  const groupedInventory = new Set<string>();
+  for (const group of routeGroups) {
+    const groupInventory = apiRouteInventory(group.matches);
+    assert.ok(
+      groupInventory.size > 0,
+      `${group.name} route inventory is empty; add the router group to the contract inventory.`,
+    );
+    for (const route of groupInventory) groupedInventory.add(route);
+
+    const missing = [...groupInventory]
+      .filter((route) => !contractAssertions.has(route))
+      .sort();
+    assert.equal(
+      missing.length,
+      0,
+      [
+        `${group.name} endpoint contract coverage is incomplete.`,
+        "Add a contract assertion that exercises each missing method/path.",
+        ...missing.map((route) => `Missing: ${route}`),
+      ].join("\n"),
+    );
+  }
+
+  const unclassified = [...inventory].filter((route) => !groupedInventory.has(route)).sort();
+  assert.equal(
+    unclassified.length,
+    0,
+    [
+      "API route inventory contains an unclassified method/path.",
+      "Assign the route to a router group before adding its contract assertion.",
+      ...unclassified.map((route) => `Unclassified: ${route}`),
+    ].join("\n"),
+  );
+
   const missing = [...inventory].filter((route) => !contractAssertions.has(route)).sort();
   const unexpected = [...contractAssertions].filter((route) => !inventory.has(route)).sort();
 
@@ -168,7 +278,7 @@ function assertAdminContractCoverage() {
     missing.length,
     0,
     [
-      "Admin endpoint contract coverage is incomplete.",
+      "API endpoint contract coverage is incomplete.",
       "Add a contract assertion that exercises each missing method/path.",
       ...missing.map((route) => `Missing: ${route}`),
     ].join("\n"),
@@ -177,7 +287,7 @@ function assertAdminContractCoverage() {
     unexpected.length,
     0,
     [
-      "Admin contract assertions reference routes that are not registered.",
+      "API contract assertions reference routes that are not registered.",
       ...unexpected.map((route) => `Unexpected: ${route}`),
     ].join("\n"),
   );
@@ -203,7 +313,8 @@ app.use("/api", apiRouter);
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: "Endpoint tidak ditemukan." });
 });
-app.use((_error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
+  console.error(`Unexpected ${req.method} ${req.path} failure`, error);
   res.status(500).json({ error: "Terjadi kesalahan pada server." });
 });
 
@@ -249,6 +360,307 @@ async function assertJsonError(
   assert.equal(typeof result.body.error, "string");
   assert.ok(result.body.error.length > 0);
   return result;
+}
+
+async function assertContract(
+  path: string,
+  status: number,
+  schema: { parse: (value: unknown) => unknown },
+  init?: RequestInit,
+) {
+  const result = await request(path, init);
+  assert.equal(
+    result.response.status,
+    status,
+    `${init?.method ?? "GET"} ${path} returned ${result.response.status}: ${JSON.stringify(result.body)}`,
+  );
+  schema.parse(result.body);
+  return result;
+}
+
+async function assertNonAdminRouteCoverage() {
+  await assertContract("/healthz", 200, HealthCheckResponse);
+  await assertContract("/me", 200, GetCurrentUserResponse);
+  await assertContract(
+    "/onboarding/member",
+    200,
+    SaveMemberOnboardingResponse,
+    {
+      method: "POST",
+      headers: { "x-test-user": onboardingMemberId },
+      body: JSON.stringify({
+        fullName: "Member Onboarding Contract",
+        phone: "0815550001",
+        domicile: "Jakarta",
+        education: "S1 Teknik Sipil",
+        expertise: "Manajemen proyek",
+        experienceYears: 2,
+        primaryGoal: "competency",
+        dataConsent: true,
+      }),
+    },
+  );
+  await assertContract(
+    "/onboarding/company",
+    200,
+    SaveCompanyOnboardingResponse,
+    {
+      method: "POST",
+      headers: { "x-test-user": companyId },
+      body: JSON.stringify({
+        companyName: "PT Contract Admin",
+        companyType: "Kontraktor",
+        phone: "0215550000",
+        businessEmail: `${companyId}@business.test`,
+        address: "Jakarta",
+        picName: "PIC Contract",
+        picTitle: "HR Manager",
+        primaryNeed: "talent",
+      }),
+    },
+  );
+  await assertContract("/programs", 200, ListProgramsResponse);
+
+  const notificationId = `notification-contract-${suffix}`;
+  await db.insert(notificationsTable).values({
+    id: notificationId,
+    userId: adminId,
+    title: "Notifikasi kontrak",
+    description: "Notifikasi untuk pemeriksaan kontrak API.",
+    type: "system",
+  });
+  await assertContract("/notifications", 200, ListNotificationsResponse);
+  await assertContract(
+    `/notifications/${notificationId}/read`,
+    200,
+    MarkNotificationReadResponse,
+    {
+      method: "PATCH",
+      body: JSON.stringify({}),
+    },
+  );
+
+  await assertContract(
+    "/dashboard/member",
+    200,
+    GetMemberDashboardResponse,
+    { headers: { "x-test-user": memberId } },
+  );
+  await assertContract(
+    "/dashboard/company",
+    200,
+    GetCompanyDashboardResponse,
+    { headers: { "x-test-user": companyId } },
+  );
+  await assertContract("/dashboard/admin", 200, GetAdminDashboardResponse);
+
+  await assertContract(
+    "/member/journey",
+    200,
+    GetMemberJourneyResponse,
+    { headers: { "x-test-user": memberId } },
+  );
+  await assertContract(
+    "/member/diagnostics",
+    200,
+    SaveMemberDiagnosticResponse,
+    {
+      method: "POST",
+      headers: { "x-test-user": memberId },
+      body: JSON.stringify({
+        answers: {
+          technical: 5,
+          safety: 4,
+          communication: 4,
+          problemSolving: 5,
+          evidence: 3,
+        },
+      }),
+    },
+  );
+  const evidenceResult = await assertContract(
+    "/member/evidence",
+    201,
+    SaveMemberEvidenceResponse,
+    {
+      method: "POST",
+      headers: { "x-test-user": memberId },
+      body: JSON.stringify({
+        clientRequestId: `contract-${suffix}`,
+        evidenceType: "project",
+        title: "Bukti kontrak API",
+        description: "Bukti draft untuk validasi response kontrak.",
+        referenceUrl: null,
+        status: "draft",
+      }),
+    },
+  );
+  const contractEvidenceId = evidenceResult.body.id as string;
+  contractEvidenceIds.add(contractEvidenceId);
+  await assertContract(
+    `/member/evidence/${contractEvidenceId}`,
+    200,
+    UpdateMemberEvidenceResponse,
+    {
+      method: "PATCH",
+      headers: { "x-test-user": memberId },
+      body: JSON.stringify({ title: "Bukti kontrak API diperbarui" }),
+    },
+  );
+
+  await assertContract(
+    "/member/passport",
+    200,
+    GetMemberPassportResponse,
+    { headers: { "x-test-user": memberId } },
+  );
+  await assertContract(
+    "/member/passport",
+    200,
+    UpdateMemberPassportResponse,
+    {
+      method: "PATCH",
+      headers: { "x-test-user": memberId },
+      body: JSON.stringify({ headline: "Project Engineer Contract API" }),
+    },
+  );
+  await assertContract(
+    "/member/companies",
+    200,
+    ListMemberCompaniesResponse,
+    { headers: { "x-test-user": memberId } },
+  );
+  await assertContract(
+    "/member/passport/consents",
+    201,
+    GrantMemberCompanyConsentResponse,
+    {
+      method: "POST",
+      headers: { "x-test-user": memberId },
+      body: JSON.stringify({
+        companyId,
+        note: "Consent valid untuk pemeriksaan kontrak.",
+      }),
+    },
+  );
+  await assertContract(
+    `/member/passport/consents/admin-contract-consent-${suffix}`,
+    200,
+    UpdateMemberCompanyConsentResponse,
+    {
+      method: "PATCH",
+      headers: { "x-test-user": memberId },
+      body: JSON.stringify({
+        action: "grant",
+        note: "Consent tetap aktif untuk pemeriksaan kontrak.",
+      }),
+    },
+  );
+  await assertContract(
+    `/passport/admin-contract-passport-${suffix}`,
+    200,
+    GetPublicPassportResponse,
+  );
+  await assertContract(
+    "/company/talent-pool",
+    200,
+    GetCompanyTalentPoolResponse,
+    { headers: { "x-test-user": companyId } },
+  );
+  await assertContract(
+    "/company/talent-pool/consent-requests",
+    200,
+    ListCompanyConsentRequestsResponse,
+    { headers: { "x-test-user": companyId } },
+  );
+  await assertContract(
+    "/company/talent-pool/consent-requests",
+    201,
+    RequestCompanyTalentConsentResponse,
+    {
+      method: "POST",
+      headers: { "x-test-user": companyId },
+      body: JSON.stringify({
+        passportSlug: `admin-contract-passport-${suffix}`,
+        note: "Permintaan valid untuk pemeriksaan kontrak.",
+      }),
+    },
+  );
+
+  await assertContract(
+    "/company/requirements",
+    200,
+    ListCompanyRequirementsResponse,
+    { headers: { "x-test-user": companyId } },
+  );
+  const requirementResult = await assertContract(
+    "/company/requirements",
+    201,
+    CreateCompanyRequirementResponse,
+    {
+      method: "POST",
+      headers: { "x-test-user": companyId },
+      body: JSON.stringify({
+        kind: "talent",
+        title: "Site Engineer Contract API",
+        description: "Kebutuhan untuk validasi response kontrak.",
+        location: "Jakarta",
+        competencies: ["Manajemen proyek"],
+        minimumSkkLevel: 4,
+        minimumExperience: 3,
+        headcount: 1,
+        deadline: "2026-12-31",
+        status: "draft",
+      }),
+    },
+  );
+  const contractRequirementId = requirementResult.body.id as string;
+  contractRequirementIds.add(contractRequirementId);
+  await assertContract(
+    `/company/requirements/${contractRequirementId}`,
+    200,
+    UpdateCompanyRequirementResponse,
+    {
+      method: "PATCH",
+      headers: { "x-test-user": companyId },
+      body: JSON.stringify({ status: "open" }),
+    },
+  );
+  await assertContract(
+    `/company/talent-pool/matches?requirementId=${requirementId}`,
+    200,
+    ListCompanyTalentPoolResponse,
+    { headers: { "x-test-user": companyId } },
+  );
+  await assertContract(
+    "/company/shortlist",
+    200,
+    ListCompanyShortlistResponse,
+    { headers: { "x-test-user": companyId } },
+  );
+  const createdShortlist = await assertContract(
+    "/company/shortlist",
+    200,
+    CreateCompanyShortlistResponse,
+    {
+      method: "POST",
+      headers: { "x-test-user": companyId },
+      body: JSON.stringify({ requirementId, candidateId: passportId }),
+    },
+  );
+  await assertContract(
+    `/company/shortlist/${createdShortlist.body.id}`,
+    200,
+    UpdateCompanyShortlistResponse,
+    {
+      method: "PATCH",
+      headers: { "x-test-user": companyId },
+      body: JSON.stringify({
+        status: "interview",
+        note: "Kandidat masuk tahap wawancara.",
+      }),
+    },
+  );
 }
 
 function transaction(
@@ -347,6 +759,14 @@ try {
         role: "member",
         onboardingComplete: true,
       },
+      {
+        id: onboardingMemberId,
+        clerkUserId: onboardingMemberId,
+        name: "Member Onboarding Contract",
+        email: `${onboardingMemberId}@example.test`,
+        role: "member",
+        onboardingComplete: false,
+      },
     ]);
     await tx.insert(companyProfilesTable).values({
       id: companyProfileId,
@@ -410,7 +830,7 @@ try {
     await tx.insert(memberEvidenceTable).values({
       id: evidenceId,
       memberUserId: memberId,
-      evidenceType: "certificate",
+      evidenceType: "certification",
       title: "Sertifikat Contract Admin",
       status: "submitted",
     });
@@ -799,12 +1219,19 @@ try {
     body: JSON.stringify({ name: "Tidak lengkap" }),
   });
 
-  assertAdminContractCoverage();
-  console.log("admin contract integration tests passed");
+  await assertNonAdminRouteCoverage();
+  assertApiContractCoverage();
+  console.log("API contract integration tests passed");
 } finally {
   await new Promise<void>((resolve) => server.close(() => resolve()));
   await db.transaction(async (tx) => {
-    const userIds = [adminId, superAdminId, companyId, memberId];
+    const userIds = [
+      adminId,
+      superAdminId,
+      companyId,
+      memberId,
+      onboardingMemberId,
+    ];
     const entityIds = [
       requirementId,
       evidenceId,
@@ -835,7 +1262,12 @@ try {
       .where(eq(verificationsTable.id, verificationId));
     await tx
       .delete(memberEvidenceTable)
-      .where(eq(memberEvidenceTable.id, evidenceId));
+      .where(
+        inArray(memberEvidenceTable.id, [evidenceId, ...contractEvidenceIds]),
+      );
+    await tx
+      .delete(readinessDiagnosticsTable)
+      .where(eq(readinessDiagnosticsTable.memberUserId, memberId));
     await tx
       .delete(matchingsTable)
       .where(eq(matchingsTable.id, matchingId));
@@ -866,10 +1298,20 @@ try {
       );
     await tx
       .delete(companyRequirementsTable)
-      .where(eq(companyRequirementsTable.id, requirementId));
+      .where(
+        inArray(companyRequirementsTable.id, [
+          requirementId,
+          ...contractRequirementIds,
+        ]),
+      );
     await tx
       .delete(memberProfilesTable)
-      .where(eq(memberProfilesTable.id, memberProfileId));
+      .where(
+        inArray(memberProfilesTable.id, [
+          memberProfileId,
+          `${onboardingMemberId}-profile`,
+        ]),
+      );
     await tx
       .delete(companyProfilesTable)
       .where(eq(companyProfilesTable.id, companyProfileId));
