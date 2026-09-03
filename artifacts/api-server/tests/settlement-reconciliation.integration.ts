@@ -440,14 +440,73 @@ try {
     ).length,
     settlementAuditCountAfterFirstIngest,
   );
+  result = await request("/admin/transactions/settlement", {
+    method: "POST",
+    body: JSON.stringify({
+      referenceId: `reference-${transactionIds.missing}`,
+      settlementAmount: 901,
+      settledAt: missingSettlementAt,
+    }),
+  });
+  assert.equal(result.response.status, 409);
+  assert.equal(
+    result.body.error,
+    "Transaksi sudah memiliki settlement bank dengan nominal atau waktu berbeda.",
+  );
+  const settlementAfterConflictingReplay = (
+    await db
+      .select({
+        settlementAmount: transactionsTable.settlementAmount,
+        settledAt: transactionsTable.settledAt,
+        updatedAt: transactionsTable.updatedAt,
+      })
+      .from(transactionsTable)
+      .where(eq(transactionsTable.id, transactionIds.missing))
+  )[0]!;
+  assert.equal(
+    settlementAfterConflictingReplay.settlementAmount,
+    settlementAfterFirstIngest.settlementAmount,
+  );
+  assert.equal(
+    settlementAfterConflictingReplay.settledAt?.toISOString(),
+    settlementAfterFirstIngest.settledAt?.toISOString(),
+  );
+  assert.equal(
+    settlementAfterConflictingReplay.updatedAt.toISOString(),
+    settlementAfterFirstIngest.updatedAt.toISOString(),
+  );
+  assert.equal(
+    (
+      await db
+        .select()
+        .from(auditLogsTable)
+        .where(
+          and(
+            eq(auditLogsTable.entityId, transactionIds.missing),
+            eq(auditLogsTable.action, "transaction.settlement_ingested"),
+          ),
+        )
+    ).length,
+    settlementAuditCountAfterFirstIngest,
+  );
 
-  const fallbackInvoiceSettlementAt = new Date(now - 20 * 60 * 1000).toISOString();
+  const matchedSettlement = (
+    await db
+      .select({
+        settlementAmount: transactionsTable.settlementAmount,
+        settledAt: transactionsTable.settledAt,
+      })
+      .from(transactionsTable)
+      .where(eq(transactionsTable.id, transactionIds.matched))
+  )[0]!;
+  assert.notEqual(matchedSettlement.settlementAmount, null);
+  assert.notEqual(matchedSettlement.settledAt, null);
   result = await request("/admin/transactions/settlement", {
     method: "POST",
     body: JSON.stringify({
       invoiceNumber: `INV-reference-${transactionIds.matched}`,
-      settlementAmount: 900,
-      settledAt: fallbackInvoiceSettlementAt,
+      settlementAmount: Number(matchedSettlement.settlementAmount),
+      settledAt: matchedSettlement.settledAt?.toISOString(),
     }),
   });
   assert.equal(result.response.status, 200);

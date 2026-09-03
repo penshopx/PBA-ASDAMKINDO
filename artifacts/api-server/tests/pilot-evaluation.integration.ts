@@ -137,7 +137,7 @@ try {
     ]);
     await tx.insert(memberEvidenceTable).values([
       { id: `pilot-eval-evidence-a-${suffix}`, memberUserId: memberAId, evidenceType: "certificate", title: "SKK BIM", status: "verified" },
-      { id: `pilot-eval-evidence-b-${suffix}`, memberUserId: memberBId, evidenceType: "certificate", title: "Bukti BIM", status: "submitted" },
+      { id: `pilot-eval-evidence-b-${suffix}`, memberUserId: memberBId, evidenceType: "certificate", title: "Bukti BIM", status: "verified" },
     ]);
     await tx.insert(companyTalentConsentsTable).values([
       { id: `pilot-eval-consent-a-${suffix}`, memberUserId: memberAId, companyUserId: companyId, status: "active", grantedAt: now, expiresAt: future, grantedBy: memberAId },

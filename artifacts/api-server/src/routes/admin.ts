@@ -674,7 +674,7 @@ router.get(
         (select count(distinct c.member_user_id)::int from cohort c inner join enrollments e on e.member_user_id = c.member_user_id and e.program_id = ${anchors.program.id} and e.status <> 'cancelled' inner join transactions t on t.reference_id = e.id and t.kind = 'program' and t.status = 'paid') as "paidParticipants",
         (select count(distinct c.member_user_id)::int from cohort c inner join enrollments e on e.member_user_id = c.member_user_id and e.program_id = ${anchors.program.id} and e.status = 'completed') as "completedProgram",
         (select count(distinct c.member_user_id)::int from cohort c inner join member_profiles p on p.user_id = c.member_user_id and p.data_consent = true inner join company_talent_consents tc on tc.member_user_id = c.member_user_id and tc.company_user_id = ${anchors.requirement.companyUserId} and tc.status = 'active' and tc.expires_at > now()) as "activeConsent",
-        (select count(distinct c.member_user_id)::int from cohort c inner join professional_passports pp on pp.member_user_id = c.member_user_id inner join member_evidence me on me.member_user_id = c.member_user_id and me.status = 'verified') as "verifiedTalent",
+        (select count(distinct c.member_user_id)::int from cohort c inner join member_profiles p on p.user_id = c.member_user_id and p.data_consent = true inner join professional_passports pp on pp.member_user_id = c.member_user_id inner join member_evidence me on me.member_user_id = c.member_user_id and me.status = 'verified') as "verifiedTalent",
         (select count(distinct c.member_user_id)::int from cohort c inner join matchings m on m.candidate_user_id = c.member_user_id and m.requirement_id = ${anchors.requirement.id} and m.status in ('new', 'review', 'shortlisted', 'interview', 'placed')) as "matchedCandidates",
         (select count(distinct c.member_user_id)::int from cohort c inner join matchings m on m.candidate_user_id = c.member_user_id and m.requirement_id = ${anchors.requirement.id} and m.status in ('shortlisted', 'interview', 'placed')) as "shortlistPipeline",
         (select count(distinct c.member_user_id)::int from cohort c inner join matchings m on m.candidate_user_id = c.member_user_id and m.requirement_id = ${anchors.requirement.id} and m.status = 'placed') as "placementSimulation",
@@ -1156,6 +1156,10 @@ router.post(
         return { kind: "ok" as const, transaction: existing };
       }
 
+      if (existing.settlementAmount !== null || existing.settledAt !== null) {
+        return { kind: "conflicting_settlement" as const };
+      }
+
       const current = transactionResponse(existing, now);
       const [transaction] = await tx
         .update(transactionsTable)
@@ -1192,6 +1196,10 @@ router.post(
     }
     if (result.kind === "conflicting_identifiers") {
       res.status(409).json({ error: "referenceId dan invoiceNumber tidak menunjuk ke transaksi yang sama." });
+      return;
+    }
+    if (result.kind === "conflicting_settlement") {
+      res.status(409).json({ error: "Transaksi sudah memiliki settlement bank dengan nominal atau waktu berbeda." });
       return;
     }
     res.json(IngestAdminTransactionSettlementResponse.parse(transactionResponse(result.transaction, now)));
