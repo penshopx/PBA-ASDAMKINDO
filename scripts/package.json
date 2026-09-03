@@ -8,6 +8,9 @@
     "pilot:seed": "tsx ./src/pilot-data.ts seed",
     "pilot:reset": "tsx ./src/pilot-data.ts reset",
     "pilot:cleanup-user": "tsx ./src/pilot-data.ts cleanup-user",
+    "recovery:attest": "tsx ./src/recovery-attestation.ts",
+    "recovery:validate": "tsx ./src/recovery-integrity.ts",
+    "test:recovery": "tsx ./tests/recovery-checks.integration.ts",
     "test": "tsx ./tests/pilot-data.integration.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

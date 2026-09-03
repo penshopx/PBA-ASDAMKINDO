@@ -14,6 +14,8 @@ Before any pilot reset or operational bulk action, verify that Replit's daily da
 
 Code rollback is separate: use Replit Deployments to redeploy a known-good prior release (or revert the approved source change and publish). Do not assume a database restore changes deployed code, and do not use code rollback as a substitute for restoring data. Record the backup/PITR point, deployment version, approver, operator, and validation result in the incident record.
 
+Target RPO/RTO, quarterly isolated restore drill, integrity command, evidence template, and PII retention/deletion rules are defined in [the member-data recovery runbook](./member-data-recovery-runbook.md). A pilot reset must not be treated as proof that production backup restoration works.
+
 ## Daily Admin checklist
 
 1. Confirm the current deployment health and that no emergency change is in progress.
