@@ -255,6 +255,44 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /member/programs/{id}/enroll:
+    post:
+      operationId: enrollMemberProgram
+      tags: [dashboards]
+      summary: Enroll the signed-in member in a published program
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Existing idempotent enrollment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+        "201":
+          description: Created enrollment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Enrollment"
+        "404":
+          description: Published program not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Program capacity is full
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /member/evidence:
     post:
       operationId: saveMemberEvidence
@@ -1727,6 +1765,32 @@ paths:
                 $ref: "#/components/schemas/Transaction"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /admin/transactions/manual:
+    post:
+      operationId: createAdminManualTransaction
+      tags: [admin]
+      summary: Record a sandbox or manual program payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualProgramTransactionInput"
+      responses:
+        "201":
+          description: Created or existing manual transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "404":
+          description: Enrollment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/transactions/{id}/reconciliation:
     patch:
       operationId: resolveAdminTransactionReconciliation
@@ -3147,6 +3211,19 @@ components:
           type: string
           minLength: 3
       required: [status]
+    ManualProgramTransactionInput:
+      type: object
+      properties:
+        enrollmentId:
+          type: string
+          minLength: 1
+        amount:
+          type: number
+          minimum: 0
+        source:
+          type: string
+          enum: [manual, sandbox]
+      required: [enrollmentId, amount, source]
     Transaction:
       type: object
       properties:

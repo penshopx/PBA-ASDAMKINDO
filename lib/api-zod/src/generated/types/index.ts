@@ -101,6 +101,8 @@ export * from './listCompanyTalentPoolParams';
 export * from './listCompanyTalentPoolStatus';
 export * from './listCompanyTalentPoolVerificationStatus';
 export * from './listProgramsParams';
+export * from './manualProgramTransactionInput';
+export * from './manualProgramTransactionInputSource';
 export * from './matching';
 export * from './matchingScoreBreakdown';
 export * from './matchingStatus';

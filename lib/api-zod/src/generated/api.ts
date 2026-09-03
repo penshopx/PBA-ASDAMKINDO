@@ -48,7 +48,6 @@ export const saveMemberOnboardingBodyExperienceYearsMin = 0;
 export const saveMemberOnboardingBodyExperienceYearsMax = 80;
 
 
-
 export const SaveMemberOnboardingBody = zod.object({
   "fullName": zod.string().min(saveMemberOnboardingBodyFullNameMin),
   "phone": zod.string().min(saveMemberOnboardingBodyPhoneMin),
@@ -79,7 +78,6 @@ export const SaveMemberOnboardingResponse = zod.object({
 export const saveCompanyOnboardingBodyCompanyNameMin = 2;
 
 export const saveCompanyOnboardingBodyPhoneMin = 8;
-
 
 
 export const SaveCompanyOnboardingBody = zod.object({
@@ -198,7 +196,6 @@ export const GetMemberJourneyResponse = zod.object({
  */
 
 
-
 export const EnrollMemberInProgramParams = zod.object({
   "programId": zod.coerce.string().min(1)
 })
@@ -222,7 +219,6 @@ export const EnrollMemberInProgramResponse = zod.object({
 export const saveMemberDiagnosticBodyAnswersMaxOne = 5;
 
 
-
 export const SaveMemberDiagnosticBody = zod.object({
   "answers": zod.record(zod.string(), zod.number().min(1).max(saveMemberDiagnosticBodyAnswersMaxOne)),
   "areaLabels": zod.record(zod.string(), zod.string()).optional().describe('Optional legacy labels; the server owns the diagnostic question set and ignores client-provided labels.')
@@ -238,7 +234,12 @@ export const SaveMemberDiagnosticResponse = zod.object({
   "updatedAt": zod.coerce.date()
 })
 
-
+/**
+ * @summary Enroll the signed-in member in a published program
+ */
+export const EnrollMemberProgramParams = zod.object({
+  "id": zod.coerce.string()
+})
 /**
  * @summary Save a project, certification, or work evidence item
  */
@@ -246,8 +247,6 @@ export const saveMemberEvidenceBodyClientRequestIdMin = 8;
 export const saveMemberEvidenceBodyClientRequestIdMax = 100;
 
 export const saveMemberEvidenceBodyTitleMin = 2;
-
-
 
 
 export const SaveMemberEvidenceBody = zod.object({
@@ -284,8 +283,6 @@ export const UpdateMemberEvidenceParams = zod.object({
 export const updateMemberEvidenceBodyTitleMin = 2;
 
 
-
-
 export const UpdateMemberEvidenceBody = zod.object({
   "evidenceType": zod.enum(['project', 'certification', 'work']).optional(),
   "title": zod.string().min(updateMemberEvidenceBodyTitleMin).optional(),
@@ -316,7 +313,6 @@ export const UpdateMemberEvidenceResponse = zod.object({
 export const getMemberPassportResponseConsentSettingsDefaultDurationDaysMax = 365;
 
 export const getMemberPassportResponseConsentSettingsReminderDaysBeforeExpiryMax = 365;
-
 
 
 export const GetMemberPassportResponse = zod.object({
@@ -390,7 +386,6 @@ export const updateMemberPassportBodyPreferredLocationsMax = 10;
 export const updateMemberPassportBodyPreferredWorkModesMax = 5;
 
 
-
 export const UpdateMemberPassportBody = zod.object({
   "slug": zod.string().min(updateMemberPassportBodySlugMin).max(updateMemberPassportBodySlugMax).regex(updateMemberPassportBodySlugRegExp).optional(),
   "isPublic": zod.boolean().optional(),
@@ -406,7 +401,6 @@ export const UpdateMemberPassportBody = zod.object({
 export const updateMemberPassportResponseConsentSettingsDefaultDurationDaysMax = 365;
 
 export const updateMemberPassportResponseConsentSettingsReminderDaysBeforeExpiryMax = 365;
-
 
 
 export const UpdateMemberPassportResponse = zod.object({
@@ -463,13 +457,10 @@ export const UpdateMemberPassportResponse = zod.object({
 export const grantMemberCompanyConsentBodyNoteMax = 300;
 
 
-
 export const GrantMemberCompanyConsentBody = zod.object({
   "companyId": zod.string(),
   "note": zod.string().max(grantMemberCompanyConsentBodyNoteMax).optional()
 })
-
-
 
 
 export const GrantMemberCompanyConsentResponse = zod.object({
@@ -510,13 +501,10 @@ export const UpdateMemberCompanyConsentParams = zod.object({
 export const updateMemberCompanyConsentBodyNoteMax = 300;
 
 
-
 export const UpdateMemberCompanyConsentBody = zod.object({
   "action": zod.enum(['grant', 'deny', 'revoke']),
   "note": zod.string().max(updateMemberCompanyConsentBodyNoteMax).optional()
 })
-
-
 
 
 export const UpdateMemberCompanyConsentResponse = zod.object({
@@ -594,7 +582,6 @@ export const getAdminTalentPoolQueryPageSizeDefault = 20;
 export const getAdminTalentPoolQueryPageSizeMax = 100;
 
 
-
 export const GetAdminTalentPoolQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
   "availability": zod.enum(['available', 'open_to_offer', 'unavailable']).optional(),
@@ -644,7 +631,6 @@ export const overrideAdminTalentConsentBodyNoteMin = 3;
 export const overrideAdminTalentConsentBodyNoteMax = 300;
 
 
-
 export const OverrideAdminTalentConsentBody = zod.object({
   "action": zod.enum(['revoke', 'set_expiry']),
   "expiresAt": zod.coerce.date().nullish(),
@@ -680,7 +666,6 @@ export const getAdminTalentConsentSettingsResponseDefaultDurationDaysMax = 365;
 export const getAdminTalentConsentSettingsResponseReminderDaysBeforeExpiryMax = 365;
 
 
-
 export const GetAdminTalentConsentSettingsResponse = zod.object({
   "defaultDurationDays": zod.int().min(1).max(getAdminTalentConsentSettingsResponseDefaultDurationDaysMax),
   "reminderDaysBeforeExpiry": zod.int().min(1).max(getAdminTalentConsentSettingsResponseReminderDaysBeforeExpiryMax),
@@ -699,7 +684,6 @@ export const updateAdminTalentConsentSettingsBodyNoteMin = 3;
 export const updateAdminTalentConsentSettingsBodyNoteMax = 300;
 
 
-
 export const UpdateAdminTalentConsentSettingsBody = zod.object({
   "defaultDurationDays": zod.int().min(1).max(updateAdminTalentConsentSettingsBodyDefaultDurationDaysMax),
   "reminderDaysBeforeExpiry": zod.int().min(1).max(updateAdminTalentConsentSettingsBodyReminderDaysBeforeExpiryMax).optional(),
@@ -709,7 +693,6 @@ export const UpdateAdminTalentConsentSettingsBody = zod.object({
 export const updateAdminTalentConsentSettingsResponseDefaultDurationDaysMax = 365;
 
 export const updateAdminTalentConsentSettingsResponseReminderDaysBeforeExpiryMax = 365;
-
 
 
 export const UpdateAdminTalentConsentSettingsResponse = zod.object({
@@ -726,7 +709,6 @@ export const getCompanyTalentPoolQueryPageDefault = 1;
 
 export const getCompanyTalentPoolQueryPageSizeDefault = 20;
 export const getCompanyTalentPoolQueryPageSizeMax = 100;
-
 
 
 export const GetCompanyTalentPoolQueryParams = zod.object({
@@ -770,7 +752,6 @@ export const listCompanyConsentRequestsQueryPageSizeDefault = 20;
 export const listCompanyConsentRequestsQueryPageSizeMax = 100;
 
 
-
 export const ListCompanyConsentRequestsQueryParams = zod.object({
   "status": zod.enum(['all', 'requested', 'active', 'denied', 'revoked', 'expired']).default(listCompanyConsentRequestsQueryStatusDefault),
   "page": zod.coerce.number().int().min(1).default(listCompanyConsentRequestsQueryPageDefault),
@@ -801,7 +782,6 @@ export const ListCompanyConsentRequestsResponse = zod.object({
  */
 export const requestCompanyTalentConsentBodyPassportSlugRegExp = new RegExp('^[a-z0-9]+(?:-[a-z0-9]+)*$');
 export const requestCompanyTalentConsentBodyNoteMax = 300;
-
 
 
 export const RequestCompanyTalentConsentBody = zod.object({
@@ -876,7 +856,6 @@ export const createCompanyRequirementBodyTitleMin = 2;
 export const createCompanyRequirementBodyLocationMin = 2;
 
 
-
 export const createCompanyRequirementBodyCompetenciesItemRegExp = new RegExp('\\S');
 
 export const createCompanyRequirementBodyMinimumSkkLevelMin = 0;
@@ -886,7 +865,6 @@ export const createCompanyRequirementBodyMinimumExperienceMin = 0;
 export const createCompanyRequirementBodyMinimumExperienceMax = 80;
 
 export const createCompanyRequirementBodyHeadcountMax = 10000;
-
 
 
 export const CreateCompanyRequirementBody = zod.object({
@@ -932,7 +910,6 @@ export const updateCompanyRequirementBodyTitleMin = 2;
 export const updateCompanyRequirementBodyLocationMin = 2;
 
 
-
 export const updateCompanyRequirementBodyCompetenciesItemRegExp = new RegExp('\\S');
 
 export const updateCompanyRequirementBodyMinimumSkkLevelMin = 0;
@@ -942,7 +919,6 @@ export const updateCompanyRequirementBodyMinimumExperienceMin = 0;
 export const updateCompanyRequirementBodyMinimumExperienceMax = 80;
 
 export const updateCompanyRequirementBodyHeadcountMax = 10000;
-
 
 
 export const UpdateCompanyRequirementBody = zod.object({
@@ -996,7 +972,6 @@ export const listCompanyTalentPoolQueryPageSizeDefault = 20;
 export const listCompanyTalentPoolQueryPageSizeMax = 100;
 
 
-
 export const ListCompanyTalentPoolQueryParams = zod.object({
   "requirementId": zod.coerce.string(),
   "search": zod.coerce.string().optional(),
@@ -1029,7 +1004,6 @@ export const listCompanyTalentPoolResponseItemsItemScoreBreakdownLocationMax = 1
 
 export const listCompanyTalentPoolResponseItemsItemScoreBreakdownAvailabilityMin = 0;
 export const listCompanyTalentPoolResponseItemsItemScoreBreakdownAvailabilityMax = 10;
-
 
 
 export const ListCompanyTalentPoolResponse = zod.object({
@@ -1087,7 +1061,6 @@ export const listAdminMatchingsQueryPageSizeDefault = 20;
 export const listAdminMatchingsQueryPageSizeMax = 100;
 
 
-
 export const ListAdminMatchingsQueryParams = zod.object({
   "requirementId": zod.coerce.string().optional(),
   "companyId": zod.coerce.string().optional(),
@@ -1121,7 +1094,6 @@ export const listAdminMatchingsResponseItemsItemOneScoreBreakdownLocationMax = 1
 
 export const listAdminMatchingsResponseItemsItemOneScoreBreakdownAvailabilityMin = 0;
 export const listAdminMatchingsResponseItemsItemOneScoreBreakdownAvailabilityMax = 10;
-
 
 
 export const ListAdminMatchingsResponse = zod.object({
@@ -1205,7 +1177,6 @@ export const UpdateCompanyShortlistParams = zod.object({
 })
 
 export const updateCompanyShortlistBodyNoteMin = 3;
-
 
 
 export const UpdateCompanyShortlistBody = zod.object({
@@ -1311,8 +1282,6 @@ export const MarkNotificationReadResponse = zod.object({
  * @summary Get the Admin PBA operations workspace
  */
 export const getAdminOperationsResponseVerificationsItemPendingAgeHoursMin = 0;
-
-
 
 
 export const GetAdminOperationsResponse = zod.object({
@@ -1468,7 +1437,6 @@ export const GetAdminOperationsResponse = zod.object({
  */
 
 
-
 export const ResolveAdminSettlementIngestFailureParams = zod.object({
   "id": zod.coerce.string().min(1)
 })
@@ -1477,12 +1445,9 @@ export const resolveAdminSettlementIngestFailureBodyNoteMin = 3;
 export const resolveAdminSettlementIngestFailureBodyNoteMax = 500;
 
 
-
 export const ResolveAdminSettlementIngestFailureBody = zod.object({
   "note": zod.string().min(resolveAdminSettlementIngestFailureBodyNoteMin).max(resolveAdminSettlementIngestFailureBodyNoteMax)
 })
-
-
 
 
 export const ResolveAdminSettlementIngestFailureResponse = zod.object({
@@ -1504,7 +1469,6 @@ export const ResolveAdminSettlementIngestFailureResponse = zod.object({
  * @summary Get aggregate business funnel metrics for Admin PBA
  */
 export const getAdminFunnelResponseMetricsItemValueMin = 0;
-
 
 
 export const GetAdminFunnelResponse = zod.object({
@@ -1541,8 +1505,6 @@ export const GetAdminPilotEvaluationOptionsResponse = zod.object({
  */
 
 
-
-
 export const GetAdminPilotEvaluationQueryParams = zod.object({
   "programId": zod.coerce.string().min(1),
   "requirementId": zod.coerce.string().min(1)
@@ -1559,7 +1521,6 @@ export const getAdminPilotEvaluationResponseFunnelItemCountMin = 0;
 
 export const getAdminPilotEvaluationResponseFunnelItemPercentageMin = 0;
 export const getAdminPilotEvaluationResponseFunnelItemPercentageMax = 100;
-
 
 
 export const GetAdminPilotEvaluationResponse = zod.object({
@@ -1593,8 +1554,6 @@ export const GetAdminPilotEvaluationResponse = zod.object({
  */
 
 
-
-
 export const ListAdminPilotFeedbackQueryParams = zod.object({
   "programId": zod.coerce.string().min(1),
   "requirementId": zod.coerce.string().min(1)
@@ -1619,7 +1578,6 @@ export const createAdminPilotFeedbackBodyNoteMin = 3;
 export const createAdminPilotFeedbackBodyNoteMax = 500;
 
 
-
 export const CreateAdminPilotFeedbackBody = zod.object({
   "programId": zod.string().min(1),
   "requirementId": zod.string().min(1),
@@ -1636,14 +1594,12 @@ export const CreateAdminPilotFeedbackResponse = zod.object({
  */
 
 
-
 export const ResolveAdminPilotFeedbackParams = zod.object({
   "id": zod.coerce.string().min(1)
 })
 
 export const resolveAdminPilotFeedbackBodyNoteMin = 3;
 export const resolveAdminPilotFeedbackBodyNoteMax = 500;
-
 
 
 export const ResolveAdminPilotFeedbackBody = zod.object({
@@ -1685,10 +1641,8 @@ export const ingestAdminTransactionSettlementBodyOneSettlementAmountMin = 0;
 export const ingestAdminTransactionSettlementBodyOneSettlementAmountMultipleOf = 0.01;
 
 
-
 export const ingestAdminTransactionSettlementBodyTwoSettlementAmountMin = 0;
 export const ingestAdminTransactionSettlementBodyTwoSettlementAmountMultipleOf = 0.01;
-
 
 
 export const IngestAdminTransactionSettlementBody = zod.union([zod.object({
@@ -1739,14 +1693,12 @@ export const DecideVerificationParams = zod.object({
 export const decideVerificationBodyNoteMin = 3;
 
 
-
 export const DecideVerificationBody = zod.object({
   "status": zod.enum(['approved', 'changes_requested', 'rejected']),
   "note": zod.string().min(decideVerificationBodyNoteMin)
 })
 
 export const decideVerificationResponsePendingAgeHoursMin = 0;
-
 
 
 export const DecideVerificationResponse = zod.object({
@@ -1774,8 +1726,6 @@ export const DecideVerificationResponse = zod.object({
 export const createAdminProgramBodyNameMin = 2;
 
 export const createAdminProgramBodyPriceMin = 0;
-
-
 
 
 export const CreateAdminProgramBody = zod.object({
@@ -1820,8 +1770,6 @@ export const updateAdminProgramBodyNameMin = 2;
 export const updateAdminProgramBodyPriceMin = 0;
 
 
-
-
 export const UpdateAdminProgramBody = zod.object({
   "name": zod.string().min(updateAdminProgramBodyNameMin).optional(),
   "category": zod.string().optional(),
@@ -1862,7 +1810,6 @@ export const UpdateAdminEnrollmentParams = zod.object({
 export const updateAdminEnrollmentBodyNoteMin = 3;
 
 
-
 export const UpdateAdminEnrollmentBody = zod.object({
   "status": zod.enum(['pending', 'enrolled', 'completed', 'cancelled']),
   "note": zod.string().min(updateAdminEnrollmentBodyNoteMin).optional()
@@ -1891,7 +1838,6 @@ export const UpdateAdminMatchingParams = zod.object({
 export const updateAdminMatchingBodyNoteMin = 3;
 
 
-
 export const UpdateAdminMatchingBody = zod.object({
   "status": zod.enum(['new', 'review', 'shortlisted', 'interview', 'placed', 'declined']),
   "note": zod.string().min(updateAdminMatchingBodyNoteMin).optional()
@@ -1916,7 +1862,6 @@ export const UpdateAdminTransactionParams = zod.object({
 })
 
 export const updateAdminTransactionBodyNoteMin = 3;
-
 
 
 export const UpdateAdminTransactionBody = zod.object({
@@ -1949,7 +1894,11 @@ export const UpdateAdminTransactionResponse = zod.object({
   "updatedAt": zod.coerce.date()
 })
 
+/**
+ * @summary Record a sandbox or manual program payment
+ */
 
+export const createAdminManualTransactionBodyAmountMin = 0;
 /**
  * @summary Resolve a transaction reconciliation exception
  */
@@ -1958,7 +1907,6 @@ export const ResolveAdminTransactionReconciliationParams = zod.object({
 })
 
 export const resolveAdminTransactionReconciliationBodyNoteMin = 3;
-
 
 
 export const ResolveAdminTransactionReconciliationBody = zod.object({
@@ -1991,3 +1939,45 @@ export const ResolveAdminTransactionReconciliationResponse = zod.object({
 })
 
 
+export const CreateAdminManualTransactionBody = zod.object({
+  "enrollmentId": zod.string().min(1),
+  "amount": zod.number().min(createAdminManualTransactionBodyAmountMin),
+  "source": zod.enum(['manual', 'sandbox'])
+})
+
+export const EnrollMemberProgramResponse = zod.object({
+  "id": zod.string(),
+  "programId": zod.string(),
+  "programName": zod.string(),
+  "memberUserId": zod.string(),
+  "memberName": zod.string(),
+  "status": zod.enum(['pending', 'enrolled', 'completed', 'cancelled']),
+  "enrolledAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+export const CreateAdminManualTransactionResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['program', 'placement']),
+  "referenceId": zod.string(),
+  "customerName": zod.string(),
+  "amount": zod.number(),
+  "invoiceNumber": zod.string(),
+  "invoiceAmount": zod.number(),
+  "feeAmount": zod.number(),
+  "commission": zod.number(),
+  "refundAmount": zod.number(),
+  "expectedSettlement": zod.number(),
+  "settlementAmount": zod.number().nullable(),
+  "netSettlement": zod.number().nullable(),
+  "settlementDifference": zod.number().nullable(),
+  "settlementDueAt": zod.coerce.date(),
+  "settledAt": zod.coerce.date().nullable(),
+  "reconciliationStatus": zod.enum(['pending', 'matched', 'mismatch', 'overdue', 'resolved']),
+  "reconciliationFlags": zod.array(zod.enum(['settlement_missing', 'amount_mismatch', 'settlement_sla_breached'])),
+  "reconciliationResolvedAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['pending', 'paid', 'refunded']),
+  "occurredAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})

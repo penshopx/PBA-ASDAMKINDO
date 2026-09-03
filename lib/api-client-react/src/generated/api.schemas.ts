@@ -1263,6 +1263,22 @@ export interface MatchingUpdate {
   note?: string;
 }
 
+export type ManualProgramTransactionInputSource = typeof ManualProgramTransactionInputSource[keyof typeof ManualProgramTransactionInputSource];
+
+
+export const ManualProgramTransactionInputSource = {
+  manual: 'manual',
+  sandbox: 'sandbox',
+} as const;
+
+export interface ManualProgramTransactionInput {
+  /** @minLength 1 */
+  enrollmentId: string;
+  /** @minimum 0 */
+  amount: number;
+  source: ManualProgramTransactionInputSource;
+}
+
 export type TransactionKind = typeof TransactionKind[keyof typeof TransactionKind];
 
 

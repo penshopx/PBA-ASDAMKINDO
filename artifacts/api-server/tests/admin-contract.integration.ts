@@ -13,6 +13,7 @@ import {
   CreateCompanyRequirementResponse,
   CreateCompanyShortlistResponse,
   DecideVerificationResponse,
+  EnrollMemberProgramResponse,
   GetAdminDashboardResponse,
   GetAdminFunnelResponse,
   GetAdminOperationsResponse,
@@ -160,6 +161,7 @@ const routeGroups: RouteGroup[] = [
     matches: (path) =>
       path === "/member/journey" ||
       path === "/member/diagnostics" ||
+      path.startsWith("/member/programs/") ||
       path === "/member/evidence" ||
       path.startsWith("/member/evidence/") ||
       path.startsWith("/member/programs/"),
@@ -485,6 +487,16 @@ async function assertNonAdminRouteCoverage() {
           evidence: 3,
         },
       }),
+    },
+  );
+  await assertContract(
+    `/member/programs/${programId}/enroll`,
+    200,
+    EnrollMemberProgramResponse,
+    {
+      method: "POST",
+      headers: { "x-test-user": memberId },
+      body: JSON.stringify({}),
     },
   );
   const evidenceResult = await assertContract(
@@ -1087,6 +1099,16 @@ try {
   assert.equal(result.body.status, "enrolled");
   assert.ok(result.body.enrolledAt);
   assert.equal(result.body.completedAt, null);
+
+  result = await request("/admin/transactions/manual", {
+    method: "POST",
+    body: JSON.stringify({
+      enrollmentId,
+      amount: 100,
+      source: "sandbox",
+    }),
+  });
+  assert.equal(result.response.status, 403);
 
   result = await request(`/admin/matchings/${matchingId}`, {
     method: "PATCH",

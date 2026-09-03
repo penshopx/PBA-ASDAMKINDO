@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
+  EnrollMemberProgramParams,
+  EnrollMemberProgramResponse,
   GetMemberJourneyResponse,
   EnrollMemberInProgramParams,
   EnrollMemberInProgramResponse,
@@ -200,6 +202,61 @@ router.post("/member/programs/:programId/enrollment", ...memberOnly, async (req,
     return;
   }
   res.status(201).json(EnrollMemberInProgramResponse.parse({
+    ...result.enrollment,
+    programName: result.program.name,
+    enrolledAt: dateOrNull(result.enrollment.enrolledAt),
+    completedAt: dateOrNull(result.enrollment.completedAt),
+  }));
+});
+
+router.post("/member/programs/:id/enroll", ...memberOnly, async (req, res): Promise<void> => {
+  const params = EnrollMemberProgramParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Program tidak valid." });
+    return;
+  }
+  const member = getAuthenticatedUser(req);
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${params.data.id}))`);
+    const [program] = await tx
+      .select()
+      .from(programsTable)
+      .where(and(eq(programsTable.id, params.data.id), eq(programsTable.status, "published")))
+      .limit(1);
+    if (!program) return { kind: "not_found" as const };
+    const [existing] = await tx
+      .select()
+      .from(enrollmentsTable)
+      .where(and(eq(enrollmentsTable.programId, program.id), eq(enrollmentsTable.memberUserId, member.id)))
+      .limit(1);
+    if (existing) return { kind: "ok" as const, enrollment: existing, program, created: false };
+    const [used] = await tx
+      .select({ value: count(enrollmentsTable.id) })
+      .from(enrollmentsTable)
+      .where(and(eq(enrollmentsTable.programId, program.id), ne(enrollmentsTable.status, "cancelled")));
+    if (Number(used?.value ?? 0) >= program.capacity) return { kind: "full" as const };
+    const [enrollment] = await tx
+      .insert(enrollmentsTable)
+      .values({
+        id: `enrollment-${randomUUID()}`,
+        programId: program.id,
+        memberUserId: member.id,
+        memberName: member.name,
+        status: "enrolled",
+        enrolledAt: new Date(),
+      })
+      .returning();
+    return { kind: "ok" as const, enrollment, program, created: true };
+  });
+  if (result.kind === "not_found") {
+    res.status(404).json({ error: "Program terbit tidak ditemukan." });
+    return;
+  }
+  if (result.kind === "full") {
+    res.status(409).json({ error: "Kapasitas program sudah penuh." });
+    return;
+  }
+  res.status(result.created ? 201 : 200).json(EnrollMemberProgramResponse.parse({
     ...result.enrollment,
     programName: result.program.name,
     enrolledAt: dateOrNull(result.enrollment.enrolledAt),

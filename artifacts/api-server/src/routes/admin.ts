@@ -4,6 +4,8 @@ import { Router, type IRouter } from "express";
 import {
   CreateAdminProgramBody,
   CreateAdminProgramResponse,
+  CreateAdminManualTransactionBody,
+  CreateAdminManualTransactionResponse,
   DecideVerificationBody,
   DecideVerificationParams,
   DecideVerificationResponse,
@@ -1579,6 +1581,62 @@ router.patch(
     res.json(
       UpdateAdminTransactionResponse.parse(transactionResponse(updated)),
     );
+  },
+);
+
+router.post(
+  "/admin/transactions/manual",
+  ...superAdminOnly,
+  async (req, res): Promise<void> => {
+    const body = CreateAdminManualTransactionBody.safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ error: "Data pembayaran manual atau sandbox tidak valid." });
+      return;
+    }
+    const actor = getAuthenticatedUser(req);
+    const result = await db.transaction(async (tx) => {
+      const [enrollment] = await tx
+        .select()
+        .from(enrollmentsTable)
+        .where(eq(enrollmentsTable.id, body.data.enrollmentId))
+        .limit(1)
+        .for("update");
+      if (!enrollment) return null;
+      const [existing] = await tx
+        .select()
+        .from(transactionsTable)
+        .where(and(eq(transactionsTable.kind, "program"), eq(transactionsTable.referenceId, enrollment.id)))
+        .limit(1);
+      if (existing) return existing;
+      const amount = body.data.amount.toFixed(2);
+      const [transaction] = await tx
+        .insert(transactionsTable)
+        .values({
+          id: `transaction-${randomUUID()}`,
+          kind: "program",
+          referenceId: enrollment.id,
+          customerName: enrollment.memberName,
+          amount,
+          invoiceAmount: amount,
+          invoiceNumber: `PILOT-${body.data.source.toUpperCase()}-${randomUUID()}`,
+          status: "paid",
+          settlementDueAt: new Date(Date.now() + SETTLEMENT_SLA_DAYS * 24 * 60 * 60 * 1000),
+        })
+        .returning();
+      await recordAudit(tx, actor, {
+        action: "transaction.manual_created",
+        entityType: "transaction",
+        entityId: transaction.id,
+        toStatus: "paid",
+        note: `Pembayaran ${body.data.source} dicatat tanpa provider eksternal.`,
+      });
+      return transaction;
+    });
+    if (!result) {
+      res.status(404).json({ error: "Enrollment tidak ditemukan." });
+      return;
+    }
+    res.status(201).json(CreateAdminManualTransactionResponse.parse(transactionResponse(result)));
   },
 );
 
