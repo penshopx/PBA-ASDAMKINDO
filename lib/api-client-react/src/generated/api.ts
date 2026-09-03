@@ -106,6 +106,7 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
+
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
   const result = { queryKey } as T & { queryKey: K };
   for (const key of Object.keys(query)) {
@@ -122,6 +123,8 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 };
 
 export const getHealthCheckUrl = () => {
+
+
 
 
   return `/api/healthz`
@@ -143,6 +146,9 @@ export const healthCheck = async ( options?: Parameters<typeof customFetch>[1]):
 );}
 
 
+
+
+
 export const getHealthCheckQueryKey = () => {
     return [
     `/api/healthz`
@@ -158,7 +164,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getHealthCheckQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof healthCheck>>> = ({ signal }) => healthCheck({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData> & { queryKey: QueryKey }
@@ -185,7 +195,14 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 }
 
 
+
+
+
+
+
 export const getGetCurrentUserUrl = () => {
+
+
 
 
   return `/api/me`
@@ -207,6 +224,9 @@ export const getCurrentUser = async ( options?: Parameters<typeof customFetch>[1
 );}
 
 
+
+
+
 export const getGetCurrentUserQueryKey = () => {
     return [
     `/api/me`
@@ -222,7 +242,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetCurrentUserQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentUser>>> = ({ signal }) => getCurrentUser({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCurrentUser>>, TError, TData> & { queryKey: QueryKey }
@@ -249,7 +273,14 @@ export function useGetCurrentUser<TData = Awaited<ReturnType<typeof getCurrentUs
 }
 
 
+
+
+
+
+
 export const getSaveMemberOnboardingUrl = () => {
+
+
 
 
   return `/api/onboarding/member`
@@ -270,6 +301,9 @@ export const saveMemberOnboarding = async (memberOnboardingInput: MemberOnboardi
 );}
 
 
+
+
+
 export const getSaveMemberOnboardingMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveMemberOnboarding>>, TError,{data: BodyType<MemberOnboardingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof saveMemberOnboarding>>, TError,{data: BodyType<MemberOnboardingInput>}, TContext> => {
@@ -282,11 +316,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveMemberOnboarding>>, {data: BodyType<MemberOnboardingInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  saveMemberOnboarding(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -312,6 +352,8 @@ export const useSaveMemberOnboarding = <TError = ErrorType<ErrorResponse | RateL
 export const getSaveCompanyOnboardingUrl = () => {
 
 
+
+
   return `/api/onboarding/company`
 }
 
@@ -330,6 +372,9 @@ export const saveCompanyOnboarding = async (companyOnboardingInput: CompanyOnboa
 );}
 
 
+
+
+
 export const getSaveCompanyOnboardingMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCompanyOnboarding>>, TError,{data: BodyType<CompanyOnboardingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof saveCompanyOnboarding>>, TError,{data: BodyType<CompanyOnboardingInput>}, TContext> => {
@@ -342,11 +387,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveCompanyOnboarding>>, {data: BodyType<CompanyOnboardingInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  saveCompanyOnboarding(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -372,6 +423,8 @@ export const useSaveCompanyOnboarding = <TError = ErrorType<ErrorResponse | Rate
 export const getGetMemberDashboardUrl = () => {
 
 
+
+
   return `/api/dashboard/member`
 }
 
@@ -390,6 +443,9 @@ export const getMemberDashboard = async ( options?: Parameters<typeof customFetc
 );}
 
 
+
+
+
 export const getGetMemberDashboardQueryKey = () => {
     return [
     `/api/dashboard/member`
@@ -405,7 +461,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetMemberDashboardQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getMemberDashboard>>> = ({ signal }) => getMemberDashboard({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMemberDashboard>>, TError, TData> & { queryKey: QueryKey }
@@ -432,7 +492,14 @@ export function useGetMemberDashboard<TData = Awaited<ReturnType<typeof getMembe
 }
 
 
+
+
+
+
+
 export const getGetMemberJourneyUrl = () => {
+
+
 
 
   return `/api/member/journey`
@@ -453,6 +520,9 @@ export const getMemberJourney = async ( options?: Parameters<typeof customFetch>
 );}
 
 
+
+
+
 export const getGetMemberJourneyQueryKey = () => {
     return [
     `/api/member/journey`
@@ -468,7 +538,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetMemberJourneyQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getMemberJourney>>> = ({ signal }) => getMemberJourney({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMemberJourney>>, TError, TData> & { queryKey: QueryKey }
@@ -495,7 +569,14 @@ export function useGetMemberJourney<TData = Awaited<ReturnType<typeof getMemberJ
 }
 
 
+
+
+
+
+
 export const getEnrollMemberInProgramUrl = (programId: string,) => {
+
+
 
 
   return `/api/member/programs/${programId}/enrollment`
@@ -516,6 +597,9 @@ export const enrollMemberInProgram = async (programId: string, options?: Paramet
 );}
 
 
+
+
+
 export const getEnrollMemberInProgramMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enrollMemberInProgram>>, TError,{programId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof enrollMemberInProgram>>, TError,{programId: string}, TContext> => {
@@ -528,11 +612,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof enrollMemberInProgram>>, {programId: string}> = (props) => {
           const {programId} = props ?? {};
 
           return  enrollMemberInProgram(programId,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -558,6 +648,8 @@ export const useEnrollMemberInProgram = <TError = ErrorType<ErrorResponse | Rate
 export const getSaveMemberDiagnosticUrl = () => {
 
 
+
+
   return `/api/member/diagnostics`
 }
 
@@ -576,6 +668,9 @@ export const saveMemberDiagnostic = async (memberDiagnosticInput: MemberDiagnost
 );}
 
 
+
+
+
 export const getSaveMemberDiagnosticMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveMemberDiagnostic>>, TError,{data: BodyType<MemberDiagnosticInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof saveMemberDiagnostic>>, TError,{data: BodyType<MemberDiagnosticInput>}, TContext> => {
@@ -588,11 +683,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveMemberDiagnostic>>, {data: BodyType<MemberDiagnosticInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  saveMemberDiagnostic(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -618,9 +719,77 @@ export const useSaveMemberDiagnostic = <TError = ErrorType<ErrorResponse | RateL
 export const getEnrollMemberProgramUrl = (id: string,) => {
 
 
+
+
   return `/api/member/programs/${id}/enroll`
 }
+
+/**
+ * @summary Enroll the signed-in member in a published program
+ */
+export const enrollMemberProgram = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<Enrollment> => {
+
+  return customFetch<Enrollment>(getEnrollMemberProgramUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getEnrollMemberProgramMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enrollMemberProgram>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof enrollMemberProgram>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['enrollMemberProgram'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof enrollMemberProgram>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  enrollMemberProgram(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EnrollMemberProgramMutationResult = NonNullable<Awaited<ReturnType<typeof enrollMemberProgram>>>
+
+    export type EnrollMemberProgramMutationError = ErrorType<ErrorResponse | RateLimitedResponse>
+
+    /**
+ * @summary Enroll the signed-in member in a published program
+ */
+export const useEnrollMemberProgram = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enrollMemberProgram>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof enrollMemberProgram>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getEnrollMemberProgramMutationOptions(options));
+    }
+
 export const getSaveMemberEvidenceUrl = () => {
+
+
 
 
   return `/api/member/evidence`
@@ -641,6 +810,9 @@ export const saveMemberEvidence = async (memberEvidenceInput: MemberEvidenceInpu
 );}
 
 
+
+
+
 export const getSaveMemberEvidenceMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveMemberEvidence>>, TError,{data: BodyType<MemberEvidenceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof saveMemberEvidence>>, TError,{data: BodyType<MemberEvidenceInput>}, TContext> => {
@@ -653,11 +825,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveMemberEvidence>>, {data: BodyType<MemberEvidenceInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  saveMemberEvidence(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -683,6 +861,8 @@ export const useSaveMemberEvidence = <TError = ErrorType<ErrorResponse | RateLim
 export const getUpdateMemberEvidenceUrl = (id: string,) => {
 
 
+
+
   return `/api/member/evidence/${id}`
 }
 
@@ -702,6 +882,9 @@ export const updateMemberEvidence = async (id: string,
 );}
 
 
+
+
+
 export const getUpdateMemberEvidenceMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberEvidence>>, TError,{id: string;data: BodyType<MemberEvidenceUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateMemberEvidence>>, TError,{id: string;data: BodyType<MemberEvidenceUpdate>}, TContext> => {
@@ -714,11 +897,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMemberEvidence>>, {id: string;data: BodyType<MemberEvidenceUpdate>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  updateMemberEvidence(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -744,6 +933,8 @@ export const useUpdateMemberEvidence = <TError = ErrorType<ErrorResponse | RateL
 export const getGetMemberPassportUrl = () => {
 
 
+
+
   return `/api/member/passport`
 }
 
@@ -762,6 +953,9 @@ export const getMemberPassport = async ( options?: Parameters<typeof customFetch
 );}
 
 
+
+
+
 export const getGetMemberPassportQueryKey = () => {
     return [
     `/api/member/passport`
@@ -777,7 +971,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetMemberPassportQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getMemberPassport>>> = ({ signal }) => getMemberPassport({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMemberPassport>>, TError, TData> & { queryKey: QueryKey }
@@ -804,7 +1002,14 @@ export function useGetMemberPassport<TData = Awaited<ReturnType<typeof getMember
 }
 
 
+
+
+
+
+
 export const getUpdateMemberPassportUrl = () => {
+
+
 
 
   return `/api/member/passport`
@@ -825,6 +1030,9 @@ export const updateMemberPassport = async (professionalPassportUpdate: Professio
 );}
 
 
+
+
+
 export const getUpdateMemberPassportMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberPassport>>, TError,{data: BodyType<ProfessionalPassportUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateMemberPassport>>, TError,{data: BodyType<ProfessionalPassportUpdate>}, TContext> => {
@@ -837,11 +1045,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMemberPassport>>, {data: BodyType<ProfessionalPassportUpdate>}> = (props) => {
           const {data} = props ?? {};
 
           return  updateMemberPassport(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -867,6 +1081,8 @@ export const useUpdateMemberPassport = <TError = ErrorType<ErrorResponse | RateL
 export const getGrantMemberCompanyConsentUrl = () => {
 
 
+
+
   return `/api/member/passport/consents`
 }
 
@@ -885,6 +1101,9 @@ export const grantMemberCompanyConsent = async (memberCompanyConsentCreate: Memb
 );}
 
 
+
+
+
 export const getGrantMemberCompanyConsentMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof grantMemberCompanyConsent>>, TError,{data: BodyType<MemberCompanyConsentCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof grantMemberCompanyConsent>>, TError,{data: BodyType<MemberCompanyConsentCreate>}, TContext> => {
@@ -897,11 +1116,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof grantMemberCompanyConsent>>, {data: BodyType<MemberCompanyConsentCreate>}> = (props) => {
           const {data} = props ?? {};
 
           return  grantMemberCompanyConsent(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -927,6 +1152,8 @@ export const useGrantMemberCompanyConsent = <TError = ErrorType<ErrorResponse | 
 export const getUpdateMemberCompanyConsentUrl = (id: string,) => {
 
 
+
+
   return `/api/member/passport/consents/${id}`
 }
 
@@ -946,6 +1173,9 @@ export const updateMemberCompanyConsent = async (id: string,
 );}
 
 
+
+
+
 export const getUpdateMemberCompanyConsentMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMemberCompanyConsent>>, TError,{id: string;data: BodyType<MemberCompanyConsentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateMemberCompanyConsent>>, TError,{id: string;data: BodyType<MemberCompanyConsentUpdate>}, TContext> => {
@@ -958,11 +1188,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMemberCompanyConsent>>, {id: string;data: BodyType<MemberCompanyConsentUpdate>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  updateMemberCompanyConsent(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -988,6 +1224,8 @@ export const useUpdateMemberCompanyConsent = <TError = ErrorType<ErrorResponse |
 export const getListMemberCompaniesUrl = () => {
 
 
+
+
   return `/api/member/companies`
 }
 
@@ -1006,6 +1244,9 @@ export const listMemberCompanies = async ( options?: Parameters<typeof customFet
 );}
 
 
+
+
+
 export const getListMemberCompaniesQueryKey = () => {
     return [
     `/api/member/companies`
@@ -1021,7 +1262,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getListMemberCompaniesQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof listMemberCompanies>>> = ({ signal }) => listMemberCompanies({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMemberCompanies>>, TError, TData> & { queryKey: QueryKey }
@@ -1048,7 +1293,14 @@ export function useListMemberCompanies<TData = Awaited<ReturnType<typeof listMem
 }
 
 
+
+
+
+
+
 export const getGetPublicPassportUrl = (slug: string,) => {
+
+
 
 
   return `/api/passport/${slug}`
@@ -1069,6 +1321,9 @@ export const getPublicPassport = async (slug: string, options?: Parameters<typeo
 );}
 
 
+
+
+
 export const getGetPublicPassportQueryKey = (slug: string,) => {
     return [
     `/api/passport/${slug}`
@@ -1084,7 +1339,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetPublicPassportQueryKey(slug);
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicPassport>>> = ({ signal }) => getPublicPassport(slug, { signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, enabled: slug !== null && slug !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicPassport>>, TError, TData> & { queryKey: QueryKey }
@@ -1109,6 +1368,11 @@ export function useGetPublicPassport<TData = Awaited<ReturnType<typeof getPublic
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
 
 
 export const getGetAdminTalentPoolUrl = (params?: GetAdminTalentPoolParams,) => {
@@ -1141,6 +1405,9 @@ export const getAdminTalentPool = async (params?: GetAdminTalentPoolParams, opti
 );}
 
 
+
+
+
 export const getGetAdminTalentPoolQueryKey = (params?: GetAdminTalentPoolParams,) => {
     return [
     `/api/admin/talent-pool`, ...(params ? [params] : [])
@@ -1156,7 +1423,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetAdminTalentPoolQueryKey(params);
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminTalentPool>>> = ({ signal }) => getAdminTalentPool(params, { signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminTalentPool>>, TError, TData> & { queryKey: QueryKey }
@@ -1183,7 +1454,14 @@ export function useGetAdminTalentPool<TData = Awaited<ReturnType<typeof getAdmin
 }
 
 
+
+
+
+
+
 export const getOverrideAdminTalentConsentUrl = (id: string,) => {
+
+
 
 
   return `/api/admin/talent-pool/consents/${id}`
@@ -1205,6 +1483,9 @@ export const overrideAdminTalentConsent = async (id: string,
 );}
 
 
+
+
+
 export const getOverrideAdminTalentConsentMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof overrideAdminTalentConsent>>, TError,{id: string;data: BodyType<AdminTalentConsentOverride>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof overrideAdminTalentConsent>>, TError,{id: string;data: BodyType<AdminTalentConsentOverride>}, TContext> => {
@@ -1217,11 +1498,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof overrideAdminTalentConsent>>, {id: string;data: BodyType<AdminTalentConsentOverride>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  overrideAdminTalentConsent(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1247,6 +1534,8 @@ export const useOverrideAdminTalentConsent = <TError = ErrorType<ErrorResponse |
 export const getGetAdminTalentConsentSettingsUrl = () => {
 
 
+
+
   return `/api/admin/talent-pool/settings`
 }
 
@@ -1265,6 +1554,9 @@ export const getAdminTalentConsentSettings = async ( options?: Parameters<typeof
 );}
 
 
+
+
+
 export const getGetAdminTalentConsentSettingsQueryKey = () => {
     return [
     `/api/admin/talent-pool/settings`
@@ -1280,7 +1572,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetAdminTalentConsentSettingsQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminTalentConsentSettings>>> = ({ signal }) => getAdminTalentConsentSettings({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminTalentConsentSettings>>, TError, TData> & { queryKey: QueryKey }
@@ -1307,7 +1603,14 @@ export function useGetAdminTalentConsentSettings<TData = Awaited<ReturnType<type
 }
 
 
+
+
+
+
+
 export const getUpdateAdminTalentConsentSettingsUrl = () => {
+
+
 
 
   return `/api/admin/talent-pool/settings`
@@ -1328,6 +1631,9 @@ export const updateAdminTalentConsentSettings = async (talentConsentSettingsUpda
 );}
 
 
+
+
+
 export const getUpdateAdminTalentConsentSettingsMutationOptions = <TError = ErrorType<RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminTalentConsentSettings>>, TError,{data: BodyType<TalentConsentSettingsUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateAdminTalentConsentSettings>>, TError,{data: BodyType<TalentConsentSettingsUpdate>}, TContext> => {
@@ -1340,11 +1646,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminTalentConsentSettings>>, {data: BodyType<TalentConsentSettingsUpdate>}> = (props) => {
           const {data} = props ?? {};
 
           return  updateAdminTalentConsentSettings(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1397,6 +1709,9 @@ export const getCompanyTalentPool = async (params?: GetCompanyTalentPoolParams, 
 );}
 
 
+
+
+
 export const getGetCompanyTalentPoolQueryKey = (params?: GetCompanyTalentPoolParams,) => {
     return [
     `/api/company/talent-pool`, ...(params ? [params] : [])
@@ -1412,7 +1727,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetCompanyTalentPoolQueryKey(params);
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getCompanyTalentPool>>> = ({ signal }) => getCompanyTalentPool(params, { signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCompanyTalentPool>>, TError, TData> & { queryKey: QueryKey }
@@ -1437,6 +1756,11 @@ export function useGetCompanyTalentPool<TData = Awaited<ReturnType<typeof getCom
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
 
 
 export const getListCompanyConsentRequestsUrl = (params?: ListCompanyConsentRequestsParams,) => {
@@ -1469,6 +1793,9 @@ export const listCompanyConsentRequests = async (params?: ListCompanyConsentRequ
 );}
 
 
+
+
+
 export const getListCompanyConsentRequestsQueryKey = (params?: ListCompanyConsentRequestsParams,) => {
     return [
     `/api/company/talent-pool/consent-requests`, ...(params ? [params] : [])
@@ -1484,7 +1811,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getListCompanyConsentRequestsQueryKey(params);
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyConsentRequests>>> = ({ signal }) => listCompanyConsentRequests(params, { signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyConsentRequests>>, TError, TData> & { queryKey: QueryKey }
@@ -1511,7 +1842,14 @@ export function useListCompanyConsentRequests<TData = Awaited<ReturnType<typeof 
 }
 
 
+
+
+
+
+
 export const getRequestCompanyTalentConsentUrl = () => {
+
+
 
 
   return `/api/company/talent-pool/consent-requests`
@@ -1532,6 +1870,9 @@ export const requestCompanyTalentConsent = async (companyConsentRequestInput: Co
 );}
 
 
+
+
+
 export const getRequestCompanyTalentConsentMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestCompanyTalentConsent>>, TError,{data: BodyType<CompanyConsentRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof requestCompanyTalentConsent>>, TError,{data: BodyType<CompanyConsentRequestInput>}, TContext> => {
@@ -1544,11 +1885,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestCompanyTalentConsent>>, {data: BodyType<CompanyConsentRequestInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  requestCompanyTalentConsent(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1574,6 +1921,8 @@ export const useRequestCompanyTalentConsent = <TError = ErrorType<ErrorResponse 
 export const getGetCompanyDashboardUrl = () => {
 
 
+
+
   return `/api/dashboard/company`
 }
 
@@ -1592,6 +1941,9 @@ export const getCompanyDashboard = async ( options?: Parameters<typeof customFet
 );}
 
 
+
+
+
 export const getGetCompanyDashboardQueryKey = () => {
     return [
     `/api/dashboard/company`
@@ -1607,7 +1959,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetCompanyDashboardQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getCompanyDashboard>>> = ({ signal }) => getCompanyDashboard({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCompanyDashboard>>, TError, TData> & { queryKey: QueryKey }
@@ -1634,7 +1990,14 @@ export function useGetCompanyDashboard<TData = Awaited<ReturnType<typeof getComp
 }
 
 
+
+
+
+
+
 export const getListCompanyRequirementsUrl = () => {
+
+
 
 
   return `/api/company/requirements`
@@ -1655,6 +2018,9 @@ export const listCompanyRequirements = async ( options?: Parameters<typeof custo
 );}
 
 
+
+
+
 export const getListCompanyRequirementsQueryKey = () => {
     return [
     `/api/company/requirements`
@@ -1670,7 +2036,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getListCompanyRequirementsQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyRequirements>>> = ({ signal }) => listCompanyRequirements({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyRequirements>>, TError, TData> & { queryKey: QueryKey }
@@ -1697,7 +2067,14 @@ export function useListCompanyRequirements<TData = Awaited<ReturnType<typeof lis
 }
 
 
+
+
+
+
+
 export const getCreateCompanyRequirementUrl = () => {
+
+
 
 
   return `/api/company/requirements`
@@ -1718,6 +2095,9 @@ export const createCompanyRequirement = async (companyRequirementInput: CompanyR
 );}
 
 
+
+
+
 export const getCreateCompanyRequirementMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyRequirement>>, TError,{data: BodyType<CompanyRequirementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createCompanyRequirement>>, TError,{data: BodyType<CompanyRequirementInput>}, TContext> => {
@@ -1730,11 +2110,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCompanyRequirement>>, {data: BodyType<CompanyRequirementInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  createCompanyRequirement(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1760,6 +2146,8 @@ export const useCreateCompanyRequirement = <TError = ErrorType<ErrorResponse | R
 export const getUpdateCompanyRequirementUrl = (id: string,) => {
 
 
+
+
   return `/api/company/requirements/${id}`
 }
 
@@ -1779,6 +2167,9 @@ export const updateCompanyRequirement = async (id: string,
 );}
 
 
+
+
+
 export const getUpdateCompanyRequirementMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyRequirement>>, TError,{id: string;data: BodyType<CompanyRequirementUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateCompanyRequirement>>, TError,{id: string;data: BodyType<CompanyRequirementUpdate>}, TContext> => {
@@ -1791,11 +2182,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCompanyRequirement>>, {id: string;data: BodyType<CompanyRequirementUpdate>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  updateCompanyRequirement(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1848,6 +2245,9 @@ export const listCompanyTalentPool = async (params: ListCompanyTalentPoolParams,
 );}
 
 
+
+
+
 export const getListCompanyTalentPoolQueryKey = (params?: ListCompanyTalentPoolParams,) => {
     return [
     `/api/company/talent-pool/matches`, ...(params ? [params] : [])
@@ -1863,7 +2263,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getListCompanyTalentPoolQueryKey(params);
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyTalentPool>>> = ({ signal }) => listCompanyTalentPool(params, { signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyTalentPool>>, TError, TData> & { queryKey: QueryKey }
@@ -1888,6 +2292,11 @@ export function useListCompanyTalentPool<TData = Awaited<ReturnType<typeof listC
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
 
 
 export const getListAdminMatchingsUrl = (params?: ListAdminMatchingsParams,) => {
@@ -1920,6 +2329,9 @@ export const listAdminMatchings = async (params?: ListAdminMatchingsParams, opti
 );}
 
 
+
+
+
 export const getListAdminMatchingsQueryKey = (params?: ListAdminMatchingsParams,) => {
     return [
     `/api/admin/matchings`, ...(params ? [params] : [])
@@ -1935,7 +2347,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getListAdminMatchingsQueryKey(params);
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminMatchings>>> = ({ signal }) => listAdminMatchings(params, { signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminMatchings>>, TError, TData> & { queryKey: QueryKey }
@@ -1962,7 +2378,14 @@ export function useListAdminMatchings<TData = Awaited<ReturnType<typeof listAdmi
 }
 
 
+
+
+
+
+
 export const getListCompanyShortlistUrl = () => {
+
+
 
 
   return `/api/company/shortlist`
@@ -1983,6 +2406,9 @@ export const listCompanyShortlist = async ( options?: Parameters<typeof customFe
 );}
 
 
+
+
+
 export const getListCompanyShortlistQueryKey = () => {
     return [
     `/api/company/shortlist`
@@ -1998,7 +2424,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getListCompanyShortlistQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof listCompanyShortlist>>> = ({ signal }) => listCompanyShortlist({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCompanyShortlist>>, TError, TData> & { queryKey: QueryKey }
@@ -2025,7 +2455,14 @@ export function useListCompanyShortlist<TData = Awaited<ReturnType<typeof listCo
 }
 
 
+
+
+
+
+
 export const getCreateCompanyShortlistUrl = () => {
+
+
 
 
   return `/api/company/shortlist`
@@ -2046,6 +2483,9 @@ export const createCompanyShortlist = async (companyShortlistInput: CompanyShort
 );}
 
 
+
+
+
 export const getCreateCompanyShortlistMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCompanyShortlist>>, TError,{data: BodyType<CompanyShortlistInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createCompanyShortlist>>, TError,{data: BodyType<CompanyShortlistInput>}, TContext> => {
@@ -2058,11 +2498,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCompanyShortlist>>, {data: BodyType<CompanyShortlistInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  createCompanyShortlist(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -2088,6 +2534,8 @@ export const useCreateCompanyShortlist = <TError = ErrorType<ErrorResponse | Rat
 export const getUpdateCompanyShortlistUrl = (id: string,) => {
 
 
+
+
   return `/api/company/shortlist/${id}`
 }
 
@@ -2107,6 +2555,9 @@ export const updateCompanyShortlist = async (id: string,
 );}
 
 
+
+
+
 export const getUpdateCompanyShortlistMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCompanyShortlist>>, TError,{id: string;data: BodyType<CompanyShortlistUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateCompanyShortlist>>, TError,{id: string;data: BodyType<CompanyShortlistUpdate>}, TContext> => {
@@ -2119,11 +2570,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCompanyShortlist>>, {id: string;data: BodyType<CompanyShortlistUpdate>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  updateCompanyShortlist(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -2149,6 +2606,8 @@ export const useUpdateCompanyShortlist = <TError = ErrorType<ErrorResponse | Rat
 export const getGetAdminDashboardUrl = () => {
 
 
+
+
   return `/api/dashboard/admin`
 }
 
@@ -2167,6 +2626,9 @@ export const getAdminDashboard = async ( options?: Parameters<typeof customFetch
 );}
 
 
+
+
+
 export const getGetAdminDashboardQueryKey = () => {
     return [
     `/api/dashboard/admin`
@@ -2182,7 +2644,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetAdminDashboardQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminDashboard>>> = ({ signal }) => getAdminDashboard({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminDashboard>>, TError, TData> & { queryKey: QueryKey }
@@ -2207,6 +2673,11 @@ export function useGetAdminDashboard<TData = Awaited<ReturnType<typeof getAdminD
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
 
 
 export const getListProgramsUrl = (params?: ListProgramsParams,) => {
@@ -2239,6 +2710,9 @@ export const listPrograms = async (params?: ListProgramsParams, options?: Parame
 );}
 
 
+
+
+
 export const getListProgramsQueryKey = (params?: ListProgramsParams,) => {
     return [
     `/api/programs`, ...(params ? [params] : [])
@@ -2254,7 +2728,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getListProgramsQueryKey(params);
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof listPrograms>>> = ({ signal }) => listPrograms(params, { signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPrograms>>, TError, TData> & { queryKey: QueryKey }
@@ -2281,7 +2759,14 @@ export function useListPrograms<TData = Awaited<ReturnType<typeof listPrograms>>
 }
 
 
+
+
+
+
+
 export const getListNotificationsUrl = () => {
+
+
 
 
   return `/api/notifications`
@@ -2302,6 +2787,9 @@ export const listNotifications = async ( options?: Parameters<typeof customFetch
 );}
 
 
+
+
+
 export const getListNotificationsQueryKey = () => {
     return [
     `/api/notifications`
@@ -2317,7 +2805,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getListNotificationsQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof listNotifications>>> = ({ signal }) => listNotifications({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listNotifications>>, TError, TData> & { queryKey: QueryKey }
@@ -2344,7 +2836,14 @@ export function useListNotifications<TData = Awaited<ReturnType<typeof listNotif
 }
 
 
+
+
+
+
+
 export const getMarkNotificationReadUrl = (id: string,) => {
+
+
 
 
   return `/api/notifications/${id}/read`
@@ -2365,6 +2864,9 @@ export const markNotificationRead = async (id: string, options?: Parameters<type
 );}
 
 
+
+
+
 export const getMarkNotificationReadMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markNotificationRead>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof markNotificationRead>>, TError,{id: string}, TContext> => {
@@ -2377,11 +2879,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof markNotificationRead>>, {id: string}> = (props) => {
           const {id} = props ?? {};
 
           return  markNotificationRead(id,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -2407,6 +2915,8 @@ export const useMarkNotificationRead = <TError = ErrorType<ErrorResponse | RateL
 export const getGetAdminOperationsUrl = () => {
 
 
+
+
   return `/api/admin/operations`
 }
 
@@ -2425,6 +2935,9 @@ export const getAdminOperations = async ( options?: Parameters<typeof customFetc
 );}
 
 
+
+
+
 export const getGetAdminOperationsQueryKey = () => {
     return [
     `/api/admin/operations`
@@ -2440,7 +2953,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetAdminOperationsQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminOperations>>> = ({ signal }) => getAdminOperations({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminOperations>>, TError, TData> & { queryKey: QueryKey }
@@ -2467,7 +2984,14 @@ export function useGetAdminOperations<TData = Awaited<ReturnType<typeof getAdmin
 }
 
 
+
+
+
+
+
 export const getResolveAdminSettlementIngestFailureUrl = (id: string,) => {
+
+
 
 
   return `/api/admin/settlement-ingest-failures/${id}`
@@ -2489,6 +3013,9 @@ export const resolveAdminSettlementIngestFailure = async (id: string,
 );}
 
 
+
+
+
 export const getResolveAdminSettlementIngestFailureMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAdminSettlementIngestFailure>>, TError,{id: string;data: BodyType<SettlementIngestFailureResolution>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof resolveAdminSettlementIngestFailure>>, TError,{id: string;data: BodyType<SettlementIngestFailureResolution>}, TContext> => {
@@ -2501,11 +3028,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveAdminSettlementIngestFailure>>, {id: string;data: BodyType<SettlementIngestFailureResolution>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  resolveAdminSettlementIngestFailure(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -2531,6 +3064,8 @@ export const useResolveAdminSettlementIngestFailure = <TError = ErrorType<ErrorR
 export const getGetAdminFunnelUrl = () => {
 
 
+
+
   return `/api/admin/funnel`
 }
 
@@ -2550,6 +3085,9 @@ export const getAdminFunnel = async ( options?: Parameters<typeof customFetch>[1
 );}
 
 
+
+
+
 export const getGetAdminFunnelQueryKey = () => {
     return [
     `/api/admin/funnel`
@@ -2565,7 +3103,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetAdminFunnelQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminFunnel>>> = ({ signal }) => getAdminFunnel({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminFunnel>>, TError, TData> & { queryKey: QueryKey }
@@ -2592,7 +3134,14 @@ export function useGetAdminFunnel<TData = Awaited<ReturnType<typeof getAdminFunn
 }
 
 
+
+
+
+
+
 export const getGetAdminPilotEvaluationOptionsUrl = () => {
+
+
 
 
   return `/api/admin/pilot-evaluation/options`
@@ -2614,6 +3163,9 @@ export const getAdminPilotEvaluationOptions = async ( options?: Parameters<typeo
 );}
 
 
+
+
+
 export const getGetAdminPilotEvaluationOptionsQueryKey = () => {
     return [
     `/api/admin/pilot-evaluation/options`
@@ -2629,7 +3181,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetAdminPilotEvaluationOptionsQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminPilotEvaluationOptions>>> = ({ signal }) => getAdminPilotEvaluationOptions({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminPilotEvaluationOptions>>, TError, TData> & { queryKey: QueryKey }
@@ -2654,6 +3210,11 @@ export function useGetAdminPilotEvaluationOptions<TData = Awaited<ReturnType<typ
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
 
 
 export const getGetAdminPilotEvaluationUrl = (params: GetAdminPilotEvaluationParams,) => {
@@ -2687,6 +3248,9 @@ export const getAdminPilotEvaluation = async (params: GetAdminPilotEvaluationPar
 );}
 
 
+
+
+
 export const getGetAdminPilotEvaluationQueryKey = (params?: GetAdminPilotEvaluationParams,) => {
     return [
     `/api/admin/pilot-evaluation`, ...(params ? [params] : [])
@@ -2702,7 +3266,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetAdminPilotEvaluationQueryKey(params);
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminPilotEvaluation>>> = ({ signal }) => getAdminPilotEvaluation(params, { signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminPilotEvaluation>>, TError, TData> & { queryKey: QueryKey }
@@ -2727,6 +3295,11 @@ export function useGetAdminPilotEvaluation<TData = Awaited<ReturnType<typeof get
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
 
 
 export const getListAdminPilotFeedbackUrl = (params: ListAdminPilotFeedbackParams,) => {
@@ -2759,6 +3332,9 @@ export const listAdminPilotFeedback = async (params: ListAdminPilotFeedbackParam
 );}
 
 
+
+
+
 export const getListAdminPilotFeedbackQueryKey = (params?: ListAdminPilotFeedbackParams,) => {
     return [
     `/api/admin/pilot-feedback`, ...(params ? [params] : [])
@@ -2774,7 +3350,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getListAdminPilotFeedbackQueryKey(params);
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminPilotFeedback>>> = ({ signal }) => listAdminPilotFeedback(params, { signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminPilotFeedback>>, TError, TData> & { queryKey: QueryKey }
@@ -2801,7 +3381,14 @@ export function useListAdminPilotFeedback<TData = Awaited<ReturnType<typeof list
 }
 
 
+
+
+
+
+
 export const getCreateAdminPilotFeedbackUrl = () => {
+
+
 
 
   return `/api/admin/pilot-feedback`
@@ -2822,6 +3409,9 @@ export const createAdminPilotFeedback = async (adminPilotFeedbackInput: AdminPil
 );}
 
 
+
+
+
 export const getCreateAdminPilotFeedbackMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminPilotFeedback>>, TError,{data: BodyType<AdminPilotFeedbackInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createAdminPilotFeedback>>, TError,{data: BodyType<AdminPilotFeedbackInput>}, TContext> => {
@@ -2834,11 +3424,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminPilotFeedback>>, {data: BodyType<AdminPilotFeedbackInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  createAdminPilotFeedback(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -2864,6 +3460,8 @@ export const useCreateAdminPilotFeedback = <TError = ErrorType<ErrorResponse | R
 export const getResolveAdminPilotFeedbackUrl = (id: string,) => {
 
 
+
+
   return `/api/admin/pilot-feedback/${id}`
 }
 
@@ -2883,6 +3481,9 @@ export const resolveAdminPilotFeedback = async (id: string,
 );}
 
 
+
+
+
 export const getResolveAdminPilotFeedbackMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAdminPilotFeedback>>, TError,{id: string;data: BodyType<AdminPilotFeedbackUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof resolveAdminPilotFeedback>>, TError,{id: string;data: BodyType<AdminPilotFeedbackUpdate>}, TContext> => {
@@ -2895,11 +3496,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveAdminPilotFeedback>>, {id: string;data: BodyType<AdminPilotFeedbackUpdate>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  resolveAdminPilotFeedback(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -2925,6 +3532,8 @@ export const useResolveAdminPilotFeedback = <TError = ErrorType<ErrorResponse | 
 export const getListAdminAuditLogsUrl = () => {
 
 
+
+
   return `/api/admin/audit-logs`
 }
 
@@ -2943,6 +3552,9 @@ export const listAdminAuditLogs = async ( options?: Parameters<typeof customFetc
 );}
 
 
+
+
+
 export const getListAdminAuditLogsQueryKey = () => {
     return [
     `/api/admin/audit-logs`
@@ -2958,7 +3570,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getListAdminAuditLogsQueryKey();
 
 
+
     const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminAuditLogs>>> = ({ signal }) => listAdminAuditLogs({ signal, ...requestOptions });
+
+
+
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminAuditLogs>>, TError, TData> & { queryKey: QueryKey }
@@ -2985,7 +3601,14 @@ export function useListAdminAuditLogs<TData = Awaited<ReturnType<typeof listAdmi
 }
 
 
+
+
+
+
+
 export const getIngestAdminTransactionSettlementUrl = () => {
+
+
 
 
   return `/api/admin/transactions/settlement`
@@ -3007,6 +3630,9 @@ export const ingestAdminTransactionSettlement = async (transactionSettlementInge
 );}
 
 
+
+
+
 export const getIngestAdminTransactionSettlementMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestAdminTransactionSettlement>>, TError,{data: BodyType<TransactionSettlementIngest>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof ingestAdminTransactionSettlement>>, TError,{data: BodyType<TransactionSettlementIngest>}, TContext> => {
@@ -3019,11 +3645,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingestAdminTransactionSettlement>>, {data: BodyType<TransactionSettlementIngest>}> = (props) => {
           const {data} = props ?? {};
 
           return  ingestAdminTransactionSettlement(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -3049,6 +3681,8 @@ export const useIngestAdminTransactionSettlement = <TError = ErrorType<ErrorResp
 export const getDecideVerificationUrl = (id: string,) => {
 
 
+
+
   return `/api/admin/verifications/${id}/decision`
 }
 
@@ -3068,6 +3702,9 @@ export const decideVerification = async (id: string,
 );}
 
 
+
+
+
 export const getDecideVerificationMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideVerification>>, TError,{id: string;data: BodyType<VerificationDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof decideVerification>>, TError,{id: string;data: BodyType<VerificationDecisionInput>}, TContext> => {
@@ -3080,11 +3717,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideVerification>>, {id: string;data: BodyType<VerificationDecisionInput>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  decideVerification(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -3110,6 +3753,8 @@ export const useDecideVerification = <TError = ErrorType<ErrorResponse | RateLim
 export const getCreateAdminProgramUrl = () => {
 
 
+
+
   return `/api/admin/programs`
 }
 
@@ -3128,6 +3773,9 @@ export const createAdminProgram = async (programInput: ProgramInput, options?: P
 );}
 
 
+
+
+
 export const getCreateAdminProgramMutationOptions = <TError = ErrorType<RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminProgram>>, TError,{data: BodyType<ProgramInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createAdminProgram>>, TError,{data: BodyType<ProgramInput>}, TContext> => {
@@ -3140,11 +3788,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminProgram>>, {data: BodyType<ProgramInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  createAdminProgram(data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -3170,6 +3824,8 @@ export const useCreateAdminProgram = <TError = ErrorType<RateLimitedResponse>,
 export const getUpdateAdminProgramUrl = (id: string,) => {
 
 
+
+
   return `/api/admin/programs/${id}`
 }
 
@@ -3189,6 +3845,9 @@ export const updateAdminProgram = async (id: string,
 );}
 
 
+
+
+
 export const getUpdateAdminProgramMutationOptions = <TError = ErrorType<RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminProgram>>, TError,{id: string;data: BodyType<ProgramUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateAdminProgram>>, TError,{id: string;data: BodyType<ProgramUpdate>}, TContext> => {
@@ -3201,11 +3860,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminProgram>>, {id: string;data: BodyType<ProgramUpdate>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  updateAdminProgram(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -3231,6 +3896,8 @@ export const useUpdateAdminProgram = <TError = ErrorType<RateLimitedResponse>,
 export const getUpdateAdminEnrollmentUrl = (id: string,) => {
 
 
+
+
   return `/api/admin/enrollments/${id}`
 }
 
@@ -3250,6 +3917,9 @@ export const updateAdminEnrollment = async (id: string,
 );}
 
 
+
+
+
 export const getUpdateAdminEnrollmentMutationOptions = <TError = ErrorType<RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminEnrollment>>, TError,{id: string;data: BodyType<EnrollmentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateAdminEnrollment>>, TError,{id: string;data: BodyType<EnrollmentUpdate>}, TContext> => {
@@ -3262,11 +3932,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminEnrollment>>, {id: string;data: BodyType<EnrollmentUpdate>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  updateAdminEnrollment(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -3292,6 +3968,8 @@ export const useUpdateAdminEnrollment = <TError = ErrorType<RateLimitedResponse>
 export const getUpdateAdminMatchingUrl = (id: string,) => {
 
 
+
+
   return `/api/admin/matchings/${id}`
 }
 
@@ -3311,6 +3989,9 @@ export const updateAdminMatching = async (id: string,
 );}
 
 
+
+
+
 export const getUpdateAdminMatchingMutationOptions = <TError = ErrorType<RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminMatching>>, TError,{id: string;data: BodyType<MatchingUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateAdminMatching>>, TError,{id: string;data: BodyType<MatchingUpdate>}, TContext> => {
@@ -3323,11 +4004,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminMatching>>, {id: string;data: BodyType<MatchingUpdate>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  updateAdminMatching(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -3353,6 +4040,8 @@ export const useUpdateAdminMatching = <TError = ErrorType<RateLimitedResponse>,
 export const getUpdateAdminTransactionUrl = (id: string,) => {
 
 
+
+
   return `/api/admin/transactions/${id}`
 }
 
@@ -3372,6 +4061,9 @@ export const updateAdminTransaction = async (id: string,
 );}
 
 
+
+
+
 export const getUpdateAdminTransactionMutationOptions = <TError = ErrorType<RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminTransaction>>, TError,{id: string;data: BodyType<TransactionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateAdminTransaction>>, TError,{id: string;data: BodyType<TransactionUpdate>}, TContext> => {
@@ -3384,11 +4076,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminTransaction>>, {id: string;data: BodyType<TransactionUpdate>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  updateAdminTransaction(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -3414,9 +4112,77 @@ export const useUpdateAdminTransaction = <TError = ErrorType<RateLimitedResponse
 export const getCreateAdminManualTransactionUrl = () => {
 
 
+
+
   return `/api/admin/transactions/manual`
 }
+
+/**
+ * @summary Record a sandbox or manual program payment
+ */
+export const createAdminManualTransaction = async (manualProgramTransactionInput: ManualProgramTransactionInput, options?: Parameters<typeof customFetch>[1]): Promise<Transaction> => {
+
+  return customFetch<Transaction>(getCreateAdminManualTransactionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(manualProgramTransactionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminManualTransactionMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminManualTransaction>>, TError,{data: BodyType<ManualProgramTransactionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminManualTransaction>>, TError,{data: BodyType<ManualProgramTransactionInput>}, TContext> => {
+
+const mutationKey = ['createAdminManualTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminManualTransaction>>, {data: BodyType<ManualProgramTransactionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminManualTransaction(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminManualTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminManualTransaction>>>
+    export type CreateAdminManualTransactionMutationBody = BodyType<ManualProgramTransactionInput>
+    export type CreateAdminManualTransactionMutationError = ErrorType<ErrorResponse | RateLimitedResponse>
+
+    /**
+ * @summary Record a sandbox or manual program payment
+ */
+export const useCreateAdminManualTransaction = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminManualTransaction>>, TError,{data: BodyType<ManualProgramTransactionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminManualTransaction>>,
+        TError,
+        {data: BodyType<ManualProgramTransactionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminManualTransactionMutationOptions(options));
+    }
+
 export const getResolveAdminTransactionReconciliationUrl = (id: string,) => {
+
+
 
 
   return `/api/admin/transactions/${id}/reconciliation`
@@ -3438,6 +4204,9 @@ export const resolveAdminTransactionReconciliation = async (id: string,
 );}
 
 
+
+
+
 export const getResolveAdminTransactionReconciliationMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAdminTransactionReconciliation>>, TError,{id: string;data: BodyType<TransactionReconciliationResolution>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof resolveAdminTransactionReconciliation>>, TError,{id: string;data: BodyType<TransactionReconciliationResolution>}, TContext> => {
@@ -3450,11 +4219,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
+
+
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveAdminTransactionReconciliation>>, {id: string;data: BodyType<TransactionReconciliationResolution>}> = (props) => {
           const {id,data} = props ?? {};
 
           return  resolveAdminTransactionReconciliation(id,data,requestOptions)
         }
+
+
+
+
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -3476,112 +4251,3 @@ export const useResolveAdminTransactionReconciliation = <TError = ErrorType<Erro
       > => {
       return useMutation(getResolveAdminTransactionReconciliationMutationOptions(options));
     }
-
-
-    export type EnrollMemberProgramMutationResult = NonNullable<Awaited<ReturnType<typeof enrollMemberProgram>>>
-
-export const getEnrollMemberProgramMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enrollMemberProgram>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof enrollMemberProgram>>, TError,{id: string}, TContext> => {
-
-const mutationKey = ['enrollMemberProgram'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof enrollMemberProgram>>, {id: string}> = (props) => {
-          const {id} = props ?? {};
-
-          return  enrollMemberProgram(id,requestOptions)
-        }
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type EnrollMemberProgramMutationError = ErrorType<ErrorResponse | RateLimitedResponse>
-
-/**
- * @summary Record a sandbox or manual program payment
- */
-export const createAdminManualTransaction = async (manualProgramTransactionInput: ManualProgramTransactionInput, options?: Parameters<typeof customFetch>[1]): Promise<Transaction> => {
-
-  return customFetch<Transaction>(getCreateAdminManualTransactionUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(manualProgramTransactionInput)
-  }
-);}
-
-    export type CreateAdminManualTransactionMutationError = ErrorType<ErrorResponse | RateLimitedResponse>
-
-export const getCreateAdminManualTransactionMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminManualTransaction>>, TError,{data: BodyType<ManualProgramTransactionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createAdminManualTransaction>>, TError,{data: BodyType<ManualProgramTransactionInput>}, TContext> => {
-
-const mutationKey = ['createAdminManualTransaction'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminManualTransaction>>, {data: BodyType<ManualProgramTransactionInput>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  createAdminManualTransaction(data,requestOptions)
-        }
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    /**
- * @summary Record a sandbox or manual program payment
- */
-export const useCreateAdminManualTransaction = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminManualTransaction>>, TError,{data: BodyType<ManualProgramTransactionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof createAdminManualTransaction>>,
-        TError,
-        {data: BodyType<ManualProgramTransactionInput>},
-        TContext
-      > => {
-      return useMutation(getCreateAdminManualTransactionMutationOptions(options));
-    }
-
-    export type CreateAdminManualTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminManualTransaction>>>
-
-    export type CreateAdminManualTransactionMutationBody = BodyType<ManualProgramTransactionInput>
-
-    /**
- * @summary Enroll the signed-in member in a published program
- */
-export const useEnrollMemberProgram = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enrollMemberProgram>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof enrollMemberProgram>>,
-        TError,
-        {id: string},
-        TContext
-      > => {
-      return useMutation(getEnrollMemberProgramMutationOptions(options));
-    }
-
-/**
- * @summary Enroll the signed-in member in a published program
- */
-export const enrollMemberProgram = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<Enrollment> => {
-
-  return customFetch<Enrollment>(getEnrollMemberProgramUrl(id),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
