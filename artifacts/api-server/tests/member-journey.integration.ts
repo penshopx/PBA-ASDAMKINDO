@@ -2,13 +2,15 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import express, { type NextFunction, type Request, type Response } from "express";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
   auditLogsTable,
   companyProfilesTable,
   db,
+  enrollmentsTable,
   memberEvidenceTable,
   memberProfilesTable,
+  programsTable,
   readinessDiagnosticsTable,
   usersTable,
   verificationsTable,
@@ -23,15 +25,22 @@ const suffix = randomUUID();
 const memberId = `test-member-${suffix}`;
 const adminId = `test-admin-${suffix}`;
 const raceId = `test-race-${suffix}`;
+const enrollmentRaceMemberIds = [
+  `test-enrollment-race-a-${suffix}`,
+  `test-enrollment-race-b-${suffix}`,
+];
+const enrollmentRaceProgramId = `test-last-seat-${suffix}`;
 const evidenceKey = `evidence-${suffix}`;
 let actor: User;
+const actors = new Map<string, User>();
 
 const app = express();
 app.use(express.json());
 app.use((req: Request, _res: Response, next: NextFunction) => {
   const authenticated = req as AuthenticatedRequest;
-  authenticated.userId = actor.id;
-  authenticated.currentUser = actor;
+  const requestActor = actors.get(String(req.headers["x-test-user-id"] ?? "")) ?? actor;
+  authenticated.userId = requestActor.id;
+  authenticated.currentUser = requestActor;
   next();
 });
 app.use("/api", identityRouter, memberJourneyRouter, adminRouter);
@@ -49,6 +58,7 @@ async function request(path: string, init?: RequestInit) {
   const body = await response.json();
   return { response, body };
 }
+
 
 async function loadUser(id: string) {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
@@ -99,7 +109,71 @@ try {
       name: "Race Integration",
       email: `${raceId}@example.test`,
     },
+    ...enrollmentRaceMemberIds.map((id, index) => ({
+      id,
+      clerkUserId: id,
+      name: `Enrollment Race ${index + 1}`,
+      email: `${id}@example.test`,
+      role: "member",
+      onboardingComplete: true,
+    })),
   ]);
+  const enrollmentRaceMembers = await db
+    .select()
+    .from(usersTable)
+    .where(inArray(usersTable.id, enrollmentRaceMemberIds));
+  for (const member of enrollmentRaceMembers) actors.set(member.id, member);
+
+  await db.insert(programsTable).values({
+    id: enrollmentRaceProgramId,
+    name: "Bimtek Satu Kursi",
+    category: "Manajemen proyek",
+    mode: "online",
+    schedule: "September 2026",
+    duration: "2 hari",
+    price: "0",
+    instructor: "PBA ASDAMKINDO",
+    description: "Fixture terisolasi untuk regresi perebutan kursi terakhir.",
+    status: "published",
+    capacity: 1,
+  });
+
+  const enrollmentAttempts = await Promise.all(
+    enrollmentRaceMemberIds.map((id) =>
+      request(`/member/programs/${enrollmentRaceProgramId}/enroll`, {
+        method: "POST",
+        headers: { "x-test-user-id": id },
+      }),
+    ),
+  );
+  assert.deepEqual(
+    enrollmentAttempts.map(({ response }) => response.status).sort(),
+    [201, 409],
+  );
+  assert.equal(
+    enrollmentAttempts.find(({ response }) => response.status === 409)?.body.error,
+    "Kapasitas program sudah penuh.",
+  );
+
+  const enrollmentRows = await db
+    .select()
+    .from(enrollmentsTable)
+    .where(eq(enrollmentsTable.programId, enrollmentRaceProgramId));
+  assert.equal(enrollmentRows.length, 1);
+  const winningMemberId = enrollmentRows[0]!.memberUserId;
+  assert.equal(enrollmentRaceMemberIds.includes(winningMemberId), true);
+
+  const retryWinner = await request(`/member/programs/${enrollmentRaceProgramId}/enroll`, {
+    method: "POST",
+    headers: { "x-test-user-id": winningMemberId },
+  });
+  assert.equal(retryWinner.response.status, 200);
+  assert.equal(retryWinner.body.id, enrollmentRows[0]!.id);
+  const enrollmentRowsAfterRetry = await db
+    .select()
+    .from(enrollmentsTable)
+    .where(eq(enrollmentsTable.programId, enrollmentRaceProgramId));
+  assert.equal(enrollmentRowsAfterRetry.length, 1);
 
   actor = await loadUser(memberId);
   let result = await request("/onboarding/member", {
@@ -300,6 +374,8 @@ try {
 } finally {
   server.close();
   await db.transaction(async (tx) => {
+    await tx.delete(enrollmentsTable).where(eq(enrollmentsTable.programId, enrollmentRaceProgramId));
+    await tx.delete(programsTable).where(eq(programsTable.id, enrollmentRaceProgramId));
     await tx.delete(auditLogsTable).where(eq(auditLogsTable.actorUserId, adminId));
     await tx.delete(verificationsTable).where(eq(verificationsTable.submittedByUserId, memberId));
     await tx.delete(memberEvidenceTable).where(eq(memberEvidenceTable.memberUserId, memberId));
@@ -310,5 +386,6 @@ try {
     await tx.delete(usersTable).where(eq(usersTable.id, memberId));
     await tx.delete(usersTable).where(eq(usersTable.id, adminId));
     await tx.delete(usersTable).where(eq(usersTable.id, raceId));
+    await tx.delete(usersTable).where(inArray(usersTable.id, enrollmentRaceMemberIds));
   });
 }
