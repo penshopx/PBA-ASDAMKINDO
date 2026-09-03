@@ -238,6 +238,7 @@ export const SaveMemberDiagnosticResponse = zod.object({
   "updatedAt": zod.coerce.date()
 })
 
+
 /**
  * @summary Enroll the signed-in member in a published program
  */
@@ -1746,6 +1747,8 @@ export const IngestAdminTransactionSettlementResponse = zod.object({
   "occurredAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
+
+
 /**
  * @summary Approve, request changes, or reject a verification
  */
@@ -2005,6 +2008,8 @@ export const CreateAdminManualTransactionResponse = zod.object({
   "occurredAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
+
+
 /**
  * @summary Resolve a transaction reconciliation exception
  */

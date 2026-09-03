@@ -1,4 +1,5 @@
 import app from "./app";
+import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 import {
   expireCompanyTalentConsents,
@@ -20,7 +21,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
+const server = app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
@@ -29,16 +30,68 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
 });
 
-const expiryTimer = setInterval(() => {
-  void Promise.all([
+let expiryRun: Promise<void> | null = null;
+function runExpiryJobs(): void {
+  if (expiryRun) return;
+  expiryRun = Promise.all([
     expireCompanyTalentConsents().catch((err) => {
       logger.error({ err }, "Failed to expire company talent consents");
     }),
     remindCompanyTalentConsentExpiries().catch((err) => {
       logger.error({ err }, "Failed to create company talent consent reminders");
     }),
-  ]);
+  ]).then(() => undefined).finally(() => {
+    expiryRun = null;
+  });
+}
+
+const expiryTimer = setInterval(() => {
+  runExpiryJobs();
 }, 60_000);
 expiryTimer.unref();
 
-startVerificationSlaReminderWorker();
+const stopVerificationSlaReminderWorker = startVerificationSlaReminderWorker();
+let shuttingDown = false;
+const shutdownTimeoutMs = 15_000;
+
+async function shutdown(signal: NodeJS.Signals): Promise<void> {
+  if (shuttingDown) {
+    logger.warn({ signal }, "Second shutdown signal received; forcing exit");
+    server.closeAllConnections?.();
+    process.exit(1);
+  }
+  shuttingDown = true;
+  logger.info({ signal, timeoutMs: shutdownTimeoutMs }, "Graceful shutdown started");
+  clearInterval(expiryTimer);
+  stopVerificationSlaReminderWorker();
+
+  const timeout = setTimeout(() => {
+    logger.error({ signal, timeoutMs: shutdownTimeoutMs }, "Graceful shutdown timed out");
+    server.closeAllConnections?.();
+    process.exit(1);
+  }, shutdownTimeoutMs);
+  timeout.unref();
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+    if (expiryRun) await expiryRun;
+    await pool.end();
+    clearTimeout(timeout);
+    logger.info({ signal }, "Graceful shutdown completed");
+    process.exit(0);
+  } catch (err) {
+    clearTimeout(timeout);
+    logger.error({ err, signal }, "Graceful shutdown failed");
+    server.closeAllConnections?.();
+    process.exit(1);
+  }
+}
+
+process.on("SIGTERM", () => {
+  void shutdown("SIGTERM");
+});
+process.on("SIGINT", () => {
+  void shutdown("SIGINT");
+});
