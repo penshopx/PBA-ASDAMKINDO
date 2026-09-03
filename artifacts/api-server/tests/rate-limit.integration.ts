@@ -8,6 +8,8 @@ import app from "../src/app";
 import { logger } from "../src/lib/logger";
 import {
   createRateLimitMiddleware,
+  getRateLimitAlertThreshold,
+  getRateLimitAlertThresholdPercent,
   getRateLimitClientAddress,
   getClientIdentity,
   getRateLimitPolicy,
@@ -35,6 +37,15 @@ assert.equal(rateLimitPolicies.ingress.max, 300);
 assert.equal(rateLimitPolicies.publicRead.max, 60);
 assert.equal(rateLimitPolicies.authSensitive.max, 30);
 assert.equal(rateLimitPolicies.write.max, 20);
+delete process.env.RATE_LIMIT_ALERT_THRESHOLD_PERCENT;
+assert.equal(getRateLimitAlertThresholdPercent(), 80);
+assert.equal(getRateLimitAlertThreshold(rateLimitPolicies.write), 16);
+process.env.RATE_LIMIT_ALERT_THRESHOLD_PERCENT = "90";
+assert.equal(getRateLimitAlertThresholdPercent(), 90);
+assert.equal(getRateLimitAlertThreshold(rateLimitPolicies.write), 18);
+process.env.RATE_LIMIT_ALERT_THRESHOLD_PERCENT = "10";
+assert.equal(getRateLimitAlertThresholdPercent(), 50);
+delete process.env.RATE_LIMIT_ALERT_THRESHOLD_PERCENT;
 delete process.env.RATE_LIMIT_FAILURE_MODE;
 assert.equal(getRateLimitStoreFailureMode(), "closed");
 process.env.RATE_LIMIT_FAILURE_MODE = "open";

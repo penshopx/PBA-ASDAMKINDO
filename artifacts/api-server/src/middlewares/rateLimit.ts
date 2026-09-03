@@ -10,6 +10,7 @@ const MAX_TRUSTED_PROXY_HOPS = 5;
 const MAX_FORWARDED_FOR_ENTRIES = 5;
 const MAX_CONFIGURED_BUCKETS = 100_000;
 const CLEANUP_INTERVAL_MS = 10 * 60_000;
+const DEFAULT_ALERT_THRESHOLD_PERCENT = 80;
 
 export type RateLimitPolicyName =
   | "ingress"
@@ -125,6 +126,24 @@ export function getRateLimitMaxBuckets(): number {
     "RATE_LIMIT_MAX_BUCKETS",
     DEFAULT_MAX_BUCKETS,
     MAX_CONFIGURED_BUCKETS,
+  );
+}
+
+export function getRateLimitAlertThresholdPercent(): number {
+  return Math.max(
+    50,
+    positiveIntegerFromEnv(
+      "RATE_LIMIT_ALERT_THRESHOLD_PERCENT",
+      DEFAULT_ALERT_THRESHOLD_PERCENT,
+      100,
+    ),
+  );
+}
+
+export function getRateLimitAlertThreshold(policy: RateLimitPolicy): number {
+  return Math.max(
+    1,
+    Math.ceil((policy.max * getRateLimitAlertThresholdPercent()) / 100),
   );
 }
 
@@ -349,16 +368,45 @@ async function enforceRateLimit(
     const remaining = Math.max(0, policy.max - bucket.count);
     setRateLimitHeaders(res, policy, remaining, resetAfterSeconds);
 
-    if (bucket.count > policy.max) {
-      res.setHeader("Retry-After", String(resetAfterSeconds));
+    if (bucket.count === getRateLimitAlertThreshold(policy)) {
       req.log.warn(
         {
+          rateLimitEvent: "near-capacity",
           rateLimitPolicy: policy.name,
-          rateLimitIdentity: identity.kind,
+          rateLimitIdentityKind: identity.kind,
           rateLimitStore: "postgres",
+          rateLimitCount: bucket.count,
+          rateLimitLimit: policy.max,
+          rateLimitRemaining: remaining,
+          rateLimitResetAfterSeconds: resetAfterSeconds,
+          rateLimitWindowSeconds: Math.ceil(policy.windowMs / 1_000),
+          requestMethod: req.method,
+          requestPath: requestPath(req),
         },
-        "Rate limit exceeded",
+        "Rate limit bucket reached alert threshold",
       );
+    }
+
+    if (bucket.count > policy.max) {
+      res.setHeader("Retry-After", String(resetAfterSeconds));
+      if (bucket.count === policy.max + 1) {
+        req.log.warn(
+          {
+            rateLimitEvent: "blocked",
+            rateLimitPolicy: policy.name,
+            rateLimitIdentityKind: identity.kind,
+            rateLimitStore: "postgres",
+            rateLimitCount: bucket.count,
+            rateLimitLimit: policy.max,
+            rateLimitRemaining: remaining,
+            rateLimitResetAfterSeconds: resetAfterSeconds,
+            rateLimitWindowSeconds: Math.ceil(policy.windowMs / 1_000),
+            requestMethod: req.method,
+            requestPath: requestPath(req),
+          },
+          "Rate limit blocked request",
+        );
+      }
       res.status(429).json({
         error: "Terlalu banyak permintaan. Coba lagi nanti.",
         code: "RATE_LIMITED",
@@ -373,9 +421,13 @@ async function enforceRateLimit(
     req.log.error(
       {
         err,
+        rateLimitEvent: "store-failure",
         rateLimitPolicy: policy.name,
+        rateLimitIdentityKind: identity.kind,
         rateLimitStore: "postgres",
         rateLimitFailureMode: failureMode,
+        requestMethod: req.method,
+        requestPath: requestPath(req),
       },
       "Distributed API rate limiter failed",
     );
