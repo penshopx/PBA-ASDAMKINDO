@@ -26,6 +26,7 @@ const testFiles = requestedTests.length
       "settlement-ingest-failures.integration",
       "verification-sla-reminder.integration",
       "consent-expiry-reminder.integration",
+      "observability.integration",
     ];
 
 try {

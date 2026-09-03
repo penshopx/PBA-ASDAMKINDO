@@ -14,6 +14,7 @@ import {
   GetAdminPilotEvaluationQueryParams,
   GetAdminPilotEvaluationResponse,
   GetAdminOperationsResponse,
+  GetAdminObservabilityResponse,
   IngestAdminTransactionSettlementBody,
   IngestAdminTransactionSettlementResponse,
   ListAdminMatchingsQueryParams,
@@ -66,6 +67,10 @@ import {
 } from "@workspace/db";
 import { getAuthenticatedUser, requireRole, requireUser } from "../lib/auth";
 import { logger } from "../lib/logger";
+import {
+  getObservabilityDashboard,
+  runSyntheticChecks,
+} from "../lib/observability";
 import { expireCompanyTalentConsents } from "../lib/talent-consent";
 import { listTalentMatches } from "../lib/talent-matching";
 import {
@@ -78,6 +83,7 @@ import {
 const router: IRouter = Router();
 const adminRoles = ["admin", "super_admin"] as const;
 const superAdminOnly = [requireUser, requireRole("super_admin")];
+const adminOnly = [requireUser, requireRole(...adminRoles)];
 
 function iso(value: Date | null): string | null {
   return value?.toISOString() ?? null;
@@ -1024,6 +1030,15 @@ router.get("/admin/operations", requireUser, requireRole(...adminRoles), async (
 
 router.get("/admin/audit-logs", ...superAdminOnly, async (_req, res): Promise<void> => {
   res.json(ListAdminAuditLogsResponse.parse(await getAuditLogs(true)));
+});
+
+router.get("/admin/observability", ...adminOnly, async (_req, res): Promise<void> => {
+  const synthetic = await runSyntheticChecks();
+  const data = GetAdminObservabilityResponse.parse({
+    ...getObservabilityDashboard(),
+    synthetic,
+  });
+  res.status(synthetic.status === "ok" ? 200 : 503).json(data);
 });
 
 router.post(

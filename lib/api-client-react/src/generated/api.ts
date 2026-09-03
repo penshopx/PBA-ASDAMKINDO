@@ -75,6 +75,7 @@ import type {
   MemberOnboardingInput,
   MemberPassport,
   Notification,
+  ObservabilityDashboard,
   ProfessionalPassportUpdate,
   Program,
   ProgramInput,
@@ -84,6 +85,7 @@ import type {
   ReadinessDiagnostic,
   SettlementIngestFailure,
   SettlementIngestFailureResolution,
+  SyntheticHealthResult,
   TalentConsentSettings,
   TalentConsentSettingsUpdate,
   TalentPoolMatchesPage,
@@ -155,7 +157,6 @@ export const getHealthCheckQueryKey = () => {
     ] as const;
     }
 
-
 export const getHealthCheckQueryOptions = <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<RateLimitedResponse | ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -188,6 +189,84 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getHealthCheckQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReadinessCheckUrl = () => {
+
+
+
+
+  return `/api/readyz`
+}
+
+/**
+ * Runs a synthetic database-connectivity check for platform probes.
+ * @summary Readiness and critical dependency check
+ */
+export const readinessCheck = async ( options?: Parameters<typeof customFetch>[1]): Promise<SyntheticHealthResult> => {
+
+  return customFetch<SyntheticHealthResult>(getReadinessCheckUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getReadinessCheckQueryKey = () => {
+    return [
+    `/api/readyz`
+    ] as const;
+    }
+
+
+export const getReadinessCheckQueryOptions = <TData = Awaited<ReturnType<typeof readinessCheck>>, TError = ErrorType<RateLimitedResponse | SyntheticHealthResult>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof readinessCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getReadinessCheckQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof readinessCheck>>> = ({ signal }) => readinessCheck({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof readinessCheck>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ReadinessCheckQueryResult = NonNullable<Awaited<ReturnType<typeof readinessCheck>>>
+export type ReadinessCheckQueryError = ErrorType<RateLimitedResponse | SyntheticHealthResult>
+
+
+/**
+ * @summary Readiness and critical dependency check
+ */
+
+export function useReadinessCheck<TData = Awaited<ReturnType<typeof readinessCheck>>, TError = ErrorType<RateLimitedResponse | SyntheticHealthResult>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof readinessCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getReadinessCheckQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -3594,6 +3673,84 @@ export function useListAdminAuditLogs<TData = Awaited<ReturnType<typeof listAdmi
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListAdminAuditLogsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminObservabilityUrl = () => {
+
+
+
+
+  return `/api/admin/observability`
+}
+
+/**
+ * Returns aggregate, PII-free API and worker metrics for authorized administrators.
+ * @summary View operational health and telemetry
+ */
+export const getAdminObservability = async ( options?: Parameters<typeof customFetch>[1]): Promise<ObservabilityDashboard> => {
+
+  return customFetch<ObservabilityDashboard>(getGetAdminObservabilityUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminObservabilityQueryKey = () => {
+    return [
+    `/api/admin/observability`
+    ] as const;
+    }
+
+
+export const getGetAdminObservabilityQueryOptions = <TData = Awaited<ReturnType<typeof getAdminObservability>>, TError = ErrorType<ErrorResponse | RateLimitedResponse | ObservabilityDashboard>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminObservability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminObservabilityQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminObservability>>> = ({ signal }) => getAdminObservability({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminObservability>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminObservabilityQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminObservability>>>
+export type GetAdminObservabilityQueryError = ErrorType<ErrorResponse | RateLimitedResponse | ObservabilityDashboard>
+
+
+/**
+ * @summary View operational health and telemetry
+ */
+
+export function useGetAdminObservability<TData = Awaited<ReturnType<typeof getAdminObservability>>, TError = ErrorType<ErrorResponse | RateLimitedResponse | ObservabilityDashboard>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminObservability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminObservabilityQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

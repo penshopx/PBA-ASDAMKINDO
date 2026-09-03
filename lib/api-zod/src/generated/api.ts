@@ -18,6 +18,25 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Runs a synthetic database-connectivity check for platform probes.
+ * @summary Readiness and critical dependency check
+ */
+export const readinessCheckResponseDurationMsMin = 0;
+
+
+
+export const ReadinessCheckResponse = zod.object({
+  "status": zod.enum(['ok', 'failed']),
+  "checkedAt": zod.coerce.date(),
+  "durationMs": zod.int().min(readinessCheckResponseDurationMsMin),
+  "checks": zod.array(zod.object({
+  "name": zod.string(),
+  "status": zod.enum(['ok', 'failed'])
+}))
+})
+
+
+/**
  * Returns the signed-in user's role and onboarding profile.
  * @summary Get current user
  */
@@ -1693,6 +1712,93 @@ export const ListAdminAuditLogsResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const ListAdminAuditLogsResponse = zod.array(ListAdminAuditLogsResponseItem)
+
+
+/**
+ * Returns aggregate, PII-free API and worker metrics for authorized administrators.
+ * @summary View operational health and telemetry
+ */
+export const getAdminObservabilityResponseUptimeSecondsMin = 0;
+
+export const getAdminObservabilityResponseRoutesItemRequestsMin = 0;
+
+export const getAdminObservabilityResponseRoutesItemErrorsMin = 0;
+
+export const getAdminObservabilityResponseRoutesItemErrorRateMin = 0;
+export const getAdminObservabilityResponseRoutesItemErrorRateMax = 1;
+
+export const getAdminObservabilityResponseRoutesItemRateLimitedMin = 0;
+
+export const getAdminObservabilityResponseRoutesItemLatencyMsP50Min = 0;
+
+export const getAdminObservabilityResponseRoutesItemLatencyMsP95Min = 0;
+
+export const getAdminObservabilityResponseRoutesItemLatencyMsMaxMin = 0;
+
+export const getAdminObservabilityResponseWorkersItemRunsMin = 0;
+
+export const getAdminObservabilityResponseWorkersItemSuccessesMin = 0;
+
+export const getAdminObservabilityResponseWorkersItemFailuresMin = 0;
+
+export const getAdminObservabilityResponseWorkersItemSkippedMin = 0;
+
+export const getAdminObservabilityResponseWorkersItemConsecutiveFailuresMin = 0;
+
+export const getAdminObservabilityResponseWorkersItemLastDurationMsMin = 0;
+
+export const getAdminObservabilityResponseAlertsErrorRateThresholdMin = 0;
+
+
+
+export const getAdminObservabilityResponseAlertsCooldownMsMin = 1000;
+
+export const getAdminObservabilityResponseSyntheticDurationMsMin = 0;
+
+
+
+export const GetAdminObservabilityResponse = zod.object({
+  "generatedAt": zod.coerce.date(),
+  "uptimeSeconds": zod.int().min(getAdminObservabilityResponseUptimeSecondsMin),
+  "routes": zod.array(zod.object({
+  "route": zod.string(),
+  "requests": zod.int().min(getAdminObservabilityResponseRoutesItemRequestsMin),
+  "errors": zod.int().min(getAdminObservabilityResponseRoutesItemErrorsMin),
+  "errorRate": zod.number().min(getAdminObservabilityResponseRoutesItemErrorRateMin).max(getAdminObservabilityResponseRoutesItemErrorRateMax),
+  "rateLimited": zod.int().min(getAdminObservabilityResponseRoutesItemRateLimitedMin),
+  "latencyMs": zod.object({
+  "p50": zod.int().min(getAdminObservabilityResponseRoutesItemLatencyMsP50Min),
+  "p95": zod.int().min(getAdminObservabilityResponseRoutesItemLatencyMsP95Min),
+  "max": zod.int().min(getAdminObservabilityResponseRoutesItemLatencyMsMaxMin)
+})
+})),
+  "workers": zod.array(zod.object({
+  "name": zod.string(),
+  "runs": zod.int().min(getAdminObservabilityResponseWorkersItemRunsMin),
+  "successes": zod.int().min(getAdminObservabilityResponseWorkersItemSuccessesMin),
+  "failures": zod.int().min(getAdminObservabilityResponseWorkersItemFailuresMin),
+  "skipped": zod.int().min(getAdminObservabilityResponseWorkersItemSkippedMin),
+  "consecutiveFailures": zod.int().min(getAdminObservabilityResponseWorkersItemConsecutiveFailuresMin),
+  "lastDurationMs": zod.int().min(getAdminObservabilityResponseWorkersItemLastDurationMsMin).nullable(),
+  "lastOutcome": zod.union([zod.literal('success'),zod.literal('failure'),zod.literal('skipped'),zod.literal(null)]).nullable(),
+  "lastRunAt": zod.coerce.date().nullable()
+})),
+  "alerts": zod.object({
+  "errorRateThreshold": zod.number().min(getAdminObservabilityResponseAlertsErrorRateThresholdMin),
+  "latencyP95ThresholdMs": zod.number().min(1),
+  "workerConsecutiveFailureThreshold": zod.number().min(1),
+  "cooldownMs": zod.number().min(getAdminObservabilityResponseAlertsCooldownMsMin)
+}),
+  "synthetic": zod.object({
+  "status": zod.enum(['ok', 'failed']),
+  "checkedAt": zod.coerce.date(),
+  "durationMs": zod.int().min(getAdminObservabilityResponseSyntheticDurationMsMin),
+  "checks": zod.array(zod.object({
+  "name": zod.string(),
+  "status": zod.enum(['ok', 'failed'])
+}))
+})
+})
 
 
 /**

@@ -5,6 +5,10 @@ import { publishableKeyFromHost } from "@clerk/shared/keys";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import {
+  correlationIdFromRequest,
+  observabilityMiddleware,
+} from "./lib/observability";
+import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
   getClerkProxyHost,
@@ -21,6 +25,7 @@ app.set("trust proxy", getRateLimitTrustedProxyHops());
 app.use(
   pinoHttp({
     logger,
+    genReqId: (req) => correlationIdFromRequest(req),
     serializers: {
       req(req) {
         return {
@@ -37,6 +42,7 @@ app.use(
     },
   }),
 );
+app.use(observabilityMiddleware);
 app.use("/api", ingressRateLimitMiddleware);
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(express.json({ limit: "100kb" }));
@@ -62,7 +68,7 @@ const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     return;
   }
 
-  req.log.error({ err }, "Unhandled request error");
+  req.log.error({ err, correlationId: req.id }, "Unhandled request error");
   res.status(500).json({ error: "Terjadi kesalahan pada server." });
 };
 

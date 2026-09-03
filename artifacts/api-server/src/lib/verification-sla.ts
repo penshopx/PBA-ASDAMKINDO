@@ -7,6 +7,7 @@ import {
   verificationsTable,
 } from "@workspace/db";
 import { logger } from "./logger";
+import { recordWorkerRun } from "./observability";
 
 export const VERIFICATION_SLA_HOURS = 72;
 export const VERIFICATION_SLA_WARNING_HOURS = VERIFICATION_SLA_HOURS * 0.75;
@@ -193,6 +194,7 @@ export async function runVerificationSlaReminderWorker(
 ): Promise<VerificationSlaReminderSyncResult | null> {
   if (workerRunning) {
     workerStatus.skippedRuns += 1;
+    recordWorkerRun("verification-sla-reminders", "skipped", 0);
     logger.warn("Skipped overlapping verification SLA reminder worker run");
     return null;
   }
@@ -200,6 +202,7 @@ export async function runVerificationSlaReminderWorker(
   workerRunning = true;
   workerStatus.state = "running";
   workerStatus.lastStartedAt = now.toISOString();
+  const started = performance.now();
   try {
     const result = await synchronize(undefined, now);
     workerStatus.state = "succeeded";
@@ -209,6 +212,7 @@ export async function runVerificationSlaReminderWorker(
     workerStatus.lastError = null;
     workerStatus.lastRun = result;
     logger.info(result, "Verification SLA reminder worker completed");
+    recordWorkerRun("verification-sla-reminders", "success", performance.now() - started);
     return result;
   } catch (error) {
     workerStatus.state = "failed";
@@ -220,6 +224,7 @@ export async function runVerificationSlaReminderWorker(
       { err: error, consecutiveFailures: workerStatus.consecutiveFailures },
       "Verification SLA reminder worker failed",
     );
+    recordWorkerRun("verification-sla-reminders", "failure", performance.now() - started);
     return null;
   } finally {
     workerRunning = false;

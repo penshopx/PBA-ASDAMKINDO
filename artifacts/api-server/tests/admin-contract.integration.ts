@@ -17,6 +17,7 @@ import {
   GetAdminDashboardResponse,
   GetAdminFunnelResponse,
   GetAdminOperationsResponse,
+  GetAdminObservabilityResponse,
   GetAdminPilotEvaluationOptionsResponse,
   GetAdminPilotEvaluationResponse,
   GetAdminTalentConsentSettingsResponse,
@@ -59,6 +60,7 @@ import {
   UpdateMemberEvidenceResponse,
   UpdateMemberPassportResponse,
   HealthCheckResponse,
+  ReadinessCheckResponse,
 } from "@workspace/api-zod";
 import {
   auditLogsTable,
@@ -144,7 +146,7 @@ type RouteGroup = {
 };
 
 const routeGroups: RouteGroup[] = [
-  { name: "health", matches: (path) => path === "/healthz" },
+  { name: "health", matches: (path) => path === "/healthz" || path === "/readyz" },
   {
     name: "identity",
     matches: (path) => path === "/me" || path.startsWith("/onboarding/"),
@@ -383,6 +385,7 @@ async function assertContract(
 
 async function assertNonAdminRouteCoverage() {
   await assertContract("/healthz", 200, HealthCheckResponse);
+  await assertContract("/readyz", 200, ReadinessCheckResponse);
   await assertContract("/me", 200, GetCurrentUserResponse);
   await assertContract(
     "/onboarding/member",
@@ -1055,6 +1058,15 @@ try {
   assert.equal(result.response.status, 200);
   ListAdminAuditLogsResponse.parse(result.body);
   assert.ok(Array.isArray(result.body));
+
+  result = await requestAs(memberId, "/admin/observability");
+  assert.equal(result.response.status, 403);
+  await assertContract(
+    "/admin/observability",
+    200,
+    GetAdminObservabilityResponse,
+    { headers: { "x-test-user": adminId } },
+  );
 
   result = await request("/admin/programs", {
     headers: { "x-test-user": superAdminId },

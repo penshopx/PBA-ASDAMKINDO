@@ -3,6 +3,7 @@ import { count, eq, lt, sql } from "drizzle-orm";
 import type { Request, RequestHandler, Response } from "express";
 import { isIP } from "node:net";
 import { apiRateLimitBucketsTable, db } from "@workspace/db";
+import { recordRateLimitEvent } from "../lib/observability";
 
 const DEFAULT_WINDOW_SECONDS = 60;
 const DEFAULT_MAX_BUCKETS = 10_000;
@@ -196,7 +197,10 @@ function requestPath(req: Request): string {
 
 export function getRateLimitPolicy(req: Request): RateLimitPolicy {
   const path = requestPath(req);
-  if (req.method === "GET" && path === "/api/healthz") {
+  if (
+    req.method === "GET" &&
+    (path === "/api/healthz" || path === "/api/readyz")
+  ) {
     return rateLimitPolicies.health;
   }
   if (
@@ -369,6 +373,7 @@ async function enforceRateLimit(
     setRateLimitHeaders(res, policy, remaining, resetAfterSeconds);
 
     if (bucket.count === getRateLimitAlertThreshold(policy)) {
+      recordRateLimitEvent(policy.name, "near-capacity");
       req.log.warn(
         {
           rateLimitEvent: "near-capacity",
@@ -390,6 +395,7 @@ async function enforceRateLimit(
     if (bucket.count > policy.max) {
       res.setHeader("Retry-After", String(resetAfterSeconds));
       if (bucket.count === policy.max + 1) {
+        recordRateLimitEvent(policy.name, "blocked");
         req.log.warn(
           {
             rateLimitEvent: "blocked",
@@ -417,6 +423,7 @@ async function enforceRateLimit(
 
     next();
   } catch (err) {
+    recordRateLimitEvent(policy.name, "store-failure");
     const failureMode = getRateLimitStoreFailureMode();
     req.log.error(
       {

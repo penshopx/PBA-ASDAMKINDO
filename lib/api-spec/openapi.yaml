@@ -59,6 +59,27 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /readyz:
+    get:
+      operationId: readinessCheck
+      tags: [health]
+      summary: Readiness and critical dependency check
+      description: Runs a synthetic database-connectivity check for platform probes.
+      responses:
+        "200":
+          description: Service and critical dependencies are ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticHealthResult"
+        "503":
+          description: A critical dependency is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyntheticHealthResult"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /me:
     get:
       operationId: getCurrentUser
@@ -1552,6 +1573,39 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /admin/observability:
+    get:
+      operationId: getAdminObservability
+      tags: [admin]
+      summary: View operational health and telemetry
+      description: Returns aggregate, PII-free API and worker metrics for authorized administrators.
+      responses:
+        "200":
+          description: Operational telemetry dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObservabilityDashboard"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: A critical dependency is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObservabilityDashboard"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/transactions/settlement:
     post:
       operationId: ingestAdminTransactionSettlement
@@ -1868,6 +1922,134 @@ components:
           type: string
       required:
         - status
+    SyntheticHealthCheck:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [ok, failed]
+      required: [name, status]
+    SyntheticHealthResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, failed]
+        checkedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyntheticHealthCheck"
+      required: [status, checkedAt, durationMs, checks]
+    RouteLatency:
+      type: object
+      properties:
+        p50:
+          type: integer
+          minimum: 0
+        p95:
+          type: integer
+          minimum: 0
+        max:
+          type: integer
+          minimum: 0
+      required: [p50, p95, max]
+    ObservabilityRouteMetric:
+      type: object
+      properties:
+        route:
+          type: string
+        requests:
+          type: integer
+          minimum: 0
+        errors:
+          type: integer
+          minimum: 0
+        errorRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        rateLimited:
+          type: integer
+          minimum: 0
+        latencyMs:
+          $ref: "#/components/schemas/RouteLatency"
+      required: [route, requests, errors, errorRate, rateLimited, latencyMs]
+    ObservabilityWorkerMetric:
+      type: object
+      properties:
+        name:
+          type: string
+        runs:
+          type: integer
+          minimum: 0
+        successes:
+          type: integer
+          minimum: 0
+        failures:
+          type: integer
+          minimum: 0
+        skipped:
+          type: integer
+          minimum: 0
+        consecutiveFailures:
+          type: integer
+          minimum: 0
+        lastDurationMs:
+          type: [integer, "null"]
+          minimum: 0
+        lastOutcome:
+          type: [string, "null"]
+          enum: [success, failure, skipped, null]
+        lastRunAt:
+          type: [string, "null"]
+          format: date-time
+      required: [name, runs, successes, failures, skipped, consecutiveFailures, lastDurationMs, lastOutcome, lastRunAt]
+    ObservabilityAlertConfiguration:
+      type: object
+      properties:
+        errorRateThreshold:
+          type: number
+          minimum: 0
+        latencyP95ThresholdMs:
+          type: number
+          minimum: 1
+        workerConsecutiveFailureThreshold:
+          type: number
+          minimum: 1
+        cooldownMs:
+          type: number
+          minimum: 1000
+      required: [errorRateThreshold, latencyP95ThresholdMs, workerConsecutiveFailureThreshold, cooldownMs]
+    ObservabilityDashboard:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        uptimeSeconds:
+          type: integer
+          minimum: 0
+        routes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ObservabilityRouteMetric"
+        workers:
+          type: array
+          items:
+            $ref: "#/components/schemas/ObservabilityWorkerMetric"
+        alerts:
+          $ref: "#/components/schemas/ObservabilityAlertConfiguration"
+        synthetic:
+          $ref: "#/components/schemas/SyntheticHealthResult"
+      required: [generatedAt, uptimeSeconds, routes, workers, alerts, synthetic]
     ErrorResponse:
       type: object
       properties:

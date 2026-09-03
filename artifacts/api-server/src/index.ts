@@ -6,6 +6,10 @@ import {
   remindCompanyTalentConsentExpiries,
 } from "./lib/talent-consent";
 import { startVerificationSlaReminderWorker } from "./lib/verification-sla";
+import {
+  recordWorkerRun,
+  startSyntheticHealthCheckWorker,
+} from "./lib/observability";
 
 const rawPort = process.env["PORT"];
 
@@ -32,15 +36,28 @@ const server = app.listen(port, (err) => {
 
 let expiryRun: Promise<void> | null = null;
 function runExpiryJobs(): void {
-  if (expiryRun) return;
+  if (expiryRun) {
+    recordWorkerRun("talent-consent-maintenance", "skipped", 0);
+    return;
+  }
+  const started = performance.now();
+  let failed = false;
   expiryRun = Promise.all([
     expireCompanyTalentConsents().catch((err) => {
+      failed = true;
       logger.error({ err }, "Failed to expire company talent consents");
     }),
     remindCompanyTalentConsentExpiries().catch((err) => {
+      failed = true;
       logger.error({ err }, "Failed to create company talent consent reminders");
     }),
-  ]).then(() => undefined).finally(() => {
+  ]).then(() => {
+    recordWorkerRun(
+      "talent-consent-maintenance",
+      failed ? "failure" : "success",
+      performance.now() - started,
+    );
+  }).finally(() => {
     expiryRun = null;
   });
 }
@@ -51,6 +68,7 @@ const expiryTimer = setInterval(() => {
 expiryTimer.unref();
 
 const stopVerificationSlaReminderWorker = startVerificationSlaReminderWorker();
+const stopSyntheticHealthCheckWorker = startSyntheticHealthCheckWorker();
 let shuttingDown = false;
 const shutdownTimeoutMs = 15_000;
 
@@ -64,6 +82,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
   logger.info({ signal, timeoutMs: shutdownTimeoutMs }, "Graceful shutdown started");
   clearInterval(expiryTimer);
   stopVerificationSlaReminderWorker();
+  stopSyntheticHealthCheckWorker();
 
   const timeout = setTimeout(() => {
     logger.error({ signal, timeoutMs: shutdownTimeoutMs }, "Graceful shutdown timed out");

@@ -9,6 +9,116 @@ export interface HealthStatus {
   status: string;
 }
 
+export type SyntheticHealthCheckStatus = typeof SyntheticHealthCheckStatus[keyof typeof SyntheticHealthCheckStatus];
+
+
+export const SyntheticHealthCheckStatus = {
+  ok: 'ok',
+  failed: 'failed',
+} as const;
+
+export interface SyntheticHealthCheck {
+  name: string;
+  status: SyntheticHealthCheckStatus;
+}
+
+export type SyntheticHealthResultStatus = typeof SyntheticHealthResultStatus[keyof typeof SyntheticHealthResultStatus];
+
+
+export const SyntheticHealthResultStatus = {
+  ok: 'ok',
+  failed: 'failed',
+} as const;
+
+export interface SyntheticHealthResult {
+  status: SyntheticHealthResultStatus;
+  checkedAt: string;
+  /** @minimum 0 */
+  durationMs: number;
+  checks: SyntheticHealthCheck[];
+}
+
+export interface RouteLatency {
+  /** @minimum 0 */
+  p50: number;
+  /** @minimum 0 */
+  p95: number;
+  /** @minimum 0 */
+  max: number;
+}
+
+export interface ObservabilityRouteMetric {
+  route: string;
+  /** @minimum 0 */
+  requests: number;
+  /** @minimum 0 */
+  errors: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  errorRate: number;
+  /** @minimum 0 */
+  rateLimited: number;
+  latencyMs: RouteLatency;
+}
+
+/**
+ * @nullable
+ */
+export type ObservabilityWorkerMetricLastOutcome = typeof ObservabilityWorkerMetricLastOutcome[keyof typeof ObservabilityWorkerMetricLastOutcome] | null;
+
+
+export const ObservabilityWorkerMetricLastOutcome = {
+  success: 'success',
+  failure: 'failure',
+  skipped: 'skipped',
+} as const;
+
+export interface ObservabilityWorkerMetric {
+  name: string;
+  /** @minimum 0 */
+  runs: number;
+  /** @minimum 0 */
+  successes: number;
+  /** @minimum 0 */
+  failures: number;
+  /** @minimum 0 */
+  skipped: number;
+  /** @minimum 0 */
+  consecutiveFailures: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  lastDurationMs: number | null;
+  /** @nullable */
+  lastOutcome: ObservabilityWorkerMetricLastOutcome;
+  /** @nullable */
+  lastRunAt: string | null;
+}
+
+export interface ObservabilityAlertConfiguration {
+  /** @minimum 0 */
+  errorRateThreshold: number;
+  /** @minimum 1 */
+  latencyP95ThresholdMs: number;
+  /** @minimum 1 */
+  workerConsecutiveFailureThreshold: number;
+  /** @minimum 1000 */
+  cooldownMs: number;
+}
+
+export interface ObservabilityDashboard {
+  generatedAt: string;
+  /** @minimum 0 */
+  uptimeSeconds: number;
+  routes: ObservabilityRouteMetric[];
+  workers: ObservabilityWorkerMetric[];
+  alerts: ObservabilityAlertConfiguration;
+  synthetic: SyntheticHealthResult;
+}
+
 export interface ErrorResponse {
   error: string;
 }
