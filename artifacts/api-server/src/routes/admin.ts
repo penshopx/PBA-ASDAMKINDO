@@ -1037,7 +1037,7 @@ router.get("/admin/audit-logs", ...superAdminOnly, async (_req, res): Promise<vo
 router.get("/admin/observability", ...adminOnly, async (_req, res): Promise<void> => {
   const synthetic = await runSyntheticChecks();
   const data = GetAdminObservabilityResponse.parse({
-    ...getObservabilityDashboard(),
+    ...await getObservabilityDashboard(),
     synthetic,
   });
   res.status(synthetic.status === "ok" ? 200 : 503).json(data);

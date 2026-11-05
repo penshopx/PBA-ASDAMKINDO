@@ -14,3 +14,4 @@ export * from "./professional-passport";
 export * from "./company-recruitment";
 export * from "./api-rate-limit-buckets";
 export * from "./alert-responses";
+export * from "./operational-alerts";

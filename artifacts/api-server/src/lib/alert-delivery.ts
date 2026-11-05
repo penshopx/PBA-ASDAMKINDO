@@ -2,11 +2,11 @@ import { randomUUID } from "node:crypto";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { logger } from "./logger";
 import { registerAlertResponse } from "./alert-responses";
+import { readDelivery, readDeliveryHistory, reserveDelivery, saveDelivery, type AlertCooldown } from "./alert-delivery-store";
 
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_RETRY_BASE_MS = 250;
 const DEFAULT_TIMEOUT_MS = 5_000;
-const MAX_DELIVERY_RECORDS = 100;
 
 export interface OperationalAlert {
   deduplicationKey: string;
@@ -28,22 +28,11 @@ export interface AlertDeliveryRecord {
   error: string | null;
 }
 
-const deliveries = new Map<string, AlertDeliveryRecord>();
 const inFlight = new Map<string, Promise<void>>();
 
 function numberFromEnv(name: string, fallback: number, minimum: number): number {
   const parsed = Number(process.env[name]);
   return Number.isFinite(parsed) && parsed >= minimum ? parsed : fallback;
-}
-
-function recordDelivery(record: AlertDeliveryRecord): void {
-  deliveries.delete(record.deduplicationKey);
-  deliveries.set(record.deduplicationKey, record);
-  while (deliveries.size > MAX_DELIVERY_RECORDS) {
-    const oldest = deliveries.keys().next().value;
-    if (!oldest) break;
-    deliveries.delete(oldest);
-  }
 }
 
 function delay(ms: number): Promise<void> {
@@ -125,17 +114,42 @@ function webhookPayload(alert: OperationalAlert) {
   };
 }
 
-async function deliver(alert: OperationalAlert): Promise<void> {
-  if (!channelConfiguration().configured) {
-    recordDelivery({
-      deduplicationKey: alert.deduplicationKey,
-      alertName: alert.name,
-      status: "disabled",
-      attempts: 0,
-      lastAttemptAt: null,
-      deliveredAt: null,
-      error: "channel_not_configured",
-    });
+async function deliver(alert: OperationalAlert, cooldown?: AlertCooldown): Promise<void> {
+  const configured = channelConfiguration().configured;
+  const owner = randomUUID();
+  const record: AlertDeliveryRecord = {
+    deduplicationKey: alert.deduplicationKey,
+    alertName: alert.name,
+    status: configured ? "pending" : "disabled",
+    attempts: 0,
+    lastAttemptAt: null,
+    deliveredAt: null,
+    error: configured ? null : "channel_not_configured",
+  };
+  if (!await reserveDelivery(record, owner, cooldown)) return;
+  if (cooldown) {
+    logger.error({
+      alert: {
+        name: cooldown.key,
+        value: alert.value,
+        threshold: alert.threshold,
+        cooldownMs: cooldown.durationMs,
+        runbook: alert.runbook,
+      },
+    }, "Operational alert triggered");
+  }
+  await deliverReserved(alert, record, owner);
+}
+
+async function deliverReserved(
+  alert: OperationalAlert,
+  record: AlertDeliveryRecord,
+  owner: string,
+): Promise<void> {
+  // Register ACK only for the winner of the shared reservation, including
+  // manual tests. Losing replicas must not create phantom response deadlines.
+  await registerAlertResponse(alert);
+  if (record.status === "disabled") {
     logger.warn(
       { alertDelivery: { deduplicationKey: alert.deduplicationKey, status: "disabled" } },
       "On-call alert channel is not configured",
@@ -146,41 +160,35 @@ async function deliver(alert: OperationalAlert): Promise<void> {
   const maxAttempts = numberFromEnv("ON_CALL_WEBHOOK_MAX_ATTEMPTS", DEFAULT_MAX_ATTEMPTS, 1);
   const retryBaseMs = numberFromEnv("ON_CALL_WEBHOOK_RETRY_BASE_MS", DEFAULT_RETRY_BASE_MS, 1);
   const timeoutMs = numberFromEnv("ON_CALL_WEBHOOK_TIMEOUT_MS", DEFAULT_TIMEOUT_MS, 100);
-  const record: AlertDeliveryRecord = {
-    deduplicationKey: alert.deduplicationKey,
-    alertName: alert.name,
-    status: "pending",
-    attempts: 0,
-    lastAttemptAt: null,
-    deliveredAt: null,
-    error: null,
-  };
-  recordDelivery(record);
-
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     record.attempts = attempt;
     record.lastAttemptAt = new Date().toISOString();
-    recordDelivery(record);
+    const backoffMs = retryBaseMs * 2 ** (attempt - 1);
+    const leaseMs = timeoutMs + backoffMs + 30_000;
+    if (!await saveDelivery(record, owner, leaseMs)) return;
     try {
       await sendAlert(alert, timeoutMs);
-      record.status = "delivered";
-      record.deliveredAt = new Date().toISOString();
-      record.error = null;
-      recordDelivery(record);
-      logger.info(
-        { alertDelivery: { deduplicationKey: alert.deduplicationKey, status: "delivered", attempt } },
-        "On-call alert delivered",
-      );
-      return;
     } catch (error) {
       record.error = safeErrorMessage(error);
-      recordDelivery(record);
-      if (attempt < maxAttempts) await delay(retryBaseMs * 2 ** (attempt - 1));
+      if (!await saveDelivery(record, owner, leaseMs)) return;
+      if (attempt < maxAttempts) await delay(backoffMs);
+      continue;
     }
+    // A persistence failure is not a provider failure: never retry a message
+    // already acknowledged by the provider just because its DB update failed.
+    record.status = "delivered";
+    record.deliveredAt = new Date().toISOString();
+    record.error = null;
+    if (!await saveDelivery(record, owner)) return;
+    logger.info(
+      { alertDelivery: { deduplicationKey: alert.deduplicationKey, status: "delivered", attempt } },
+      "On-call alert delivered",
+    );
+    return;
   }
 
   record.status = "failed";
-  recordDelivery(record);
+  if (!await saveDelivery(record, owner)) return;
   logger.error(
     {
       alertChannelFailure: {
@@ -194,37 +202,31 @@ async function deliver(alert: OperationalAlert): Promise<void> {
   );
 }
 
-export function dispatchOperationalAlert(alert: OperationalAlert): Promise<void> {
+export function dispatchOperationalAlert(alert: OperationalAlert, cooldown?: AlertCooldown): Promise<void> {
   const existing = inFlight.get(alert.deduplicationKey);
   if (existing) return existing;
-  if (deliveries.get(alert.deduplicationKey)?.status === "delivered") return Promise.resolve();
-  const promise = registerAlertResponse(alert).then(() => deliver(alert)).finally(() => {
+  const promise = deliver(alert, cooldown).finally(() => {
     inFlight.delete(alert.deduplicationKey);
   });
   inFlight.set(alert.deduplicationKey, promise);
   return promise;
 }
 
-export function getAlertDeliveryStatus() {
-  const records = [...deliveries.values()];
+export async function getAlertDeliveryStatus() {
+  const records = await readDeliveryHistory();
   return {
     ...channelConfiguration(),
     healthy: channelConfiguration().configured && records.every((record) => record.status !== "failed"),
     failedDeliveries: records.filter((record) => record.status === "failed").length,
     pendingDeliveries: records.filter((record) => record.status === "pending").length,
-    recent: records.slice(-20).reverse(),
+    recent: records.slice(0, 20),
   };
 }
 
-let lastTestAt = 0;
-
 export async function sendOnCallTestAlert() {
   if (!channelConfiguration().configured) return { error: "channel_not_configured" as const };
-  // Reserve before awaiting delivery so concurrent admins cannot flood the channel.
-  if (Date.now() - lastTestAt < 60_000) return { error: "test_cooldown" as const };
-  lastTestAt = Date.now();
   const deduplicationKey = randomUUID();
-  await dispatchOperationalAlert({
+  const alert: OperationalAlert = {
     deduplicationKey,
     name: "UJI ALARM — PBA ASDAMKINDO (bukan insiden)",
     value: 1,
@@ -236,8 +238,19 @@ export async function sendOnCallTestAlert() {
       "Tidak perlu melakukan rollback atau mengubah layanan untuk alarm uji ini.",
     ],
     triggeredAt: new Date().toISOString(),
-  });
-  return { delivery: deliveries.get(deduplicationKey)! };
+  };
+  const owner = randomUUID();
+  const record: AlertDeliveryRecord = {
+    deduplicationKey, alertName: alert.name, status: "pending",
+    attempts: 0, lastAttemptAt: null, deliveredAt: null, error: null,
+  };
+  if (!await reserveDelivery(record, owner, { key: "manual-test", durationMs: 60_000 })) {
+    return { error: "test_cooldown" as const };
+  }
+  const promise = deliverReserved(alert, record, owner).finally(() => inFlight.delete(deduplicationKey));
+  inFlight.set(deduplicationKey, promise);
+  await promise;
+  return { delivery: await readDelivery(deduplicationKey) };
 }
 
 export async function waitForAlertDeliveries(): Promise<void> {
@@ -245,7 +258,5 @@ export async function waitForAlertDeliveries(): Promise<void> {
 }
 
 export function resetAlertDeliveryForTests(): void {
-  deliveries.clear();
   inFlight.clear();
-  lastTestAt = 0;
 }

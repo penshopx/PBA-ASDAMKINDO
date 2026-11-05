@@ -46,7 +46,6 @@ interface AlertDefinition {
 
 const routeMetrics = new Map<string, RouteMetric>();
 const workerMetrics = new Map<string, WorkerMetric>();
-const lastAlertAt = new Map<string, number>();
 let syntheticTimer: NodeJS.Timeout | null = null;
 let syntheticRunning = false;
 
@@ -119,31 +118,19 @@ function emitAlert(
   correlationContext: Record<string, string> = {},
 ): void {
   const now = Date.now();
-  const previous = lastAlertAt.get(name) ?? 0;
-  if (now - previous < definition.cooldownMs) return;
-  lastAlertAt.set(name, now);
-  logger.error(
-    {
-      alert: {
-        name,
-        value,
-        threshold: definition.threshold,
-        cooldownMs: definition.cooldownMs,
-        runbook: definition.runbook,
-      },
-    },
-    "Operational alert triggered",
-  );
   void dispatchOperationalAlert({
-      deduplicationKey: randomUUID(),
+    deduplicationKey: randomUUID(),
     name: definition.name,
     value,
     threshold: definition.threshold,
     correlationContext,
     runbook: definition.runbook,
     triggeredAt: new Date(now).toISOString(),
-  }).catch(() => {
-    logger.error({ responseEvent: "alert_registration_or_delivery_failed" }, "Operational alert dispatch failed");
+  }, { key: `operational:${name}`, durationMs: definition.cooldownMs }).catch(() => {
+    // Do not recursively alert on a broken alert store or silently fall back to
+    // process-local deduplication, which would flood the channel across replicas.
+    logger.error({ responseEvent: "alert_registration_or_delivery_failed", alertName: name },
+      "Operational alert dispatch failed");
   });
 }
 
@@ -340,7 +327,7 @@ export function stopSyntheticHealthCheckWorker(): void {
   syntheticTimer = null;
 }
 
-export function getObservabilityDashboard() {
+export async function getObservabilityDashboard() {
   return {
     generatedAt: new Date().toISOString(),
     uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1_000),
@@ -363,7 +350,7 @@ export function getObservabilityDashboard() {
       workerConsecutiveFailureThreshold: workerFailureThreshold(),
       cooldownMs: alertCooldownMs(),
     },
-    alertDelivery: getAlertDeliveryStatus(),
+    alertDelivery: await getAlertDeliveryStatus(),
   };
 }
 
@@ -371,6 +358,5 @@ export function resetObservabilityForTests(): void {
   stopSyntheticHealthCheckWorker();
   routeMetrics.clear();
   workerMetrics.clear();
-  lastAlertAt.clear();
   resetAlertDeliveryForTests();
 }

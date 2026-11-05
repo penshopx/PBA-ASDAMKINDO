@@ -90,6 +90,9 @@ import apiRouter from "../src/routes";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { resetAlertDeliveryForTests } from "../src/lib/alert-delivery";
 
+import { createAlertTestSchema } from "./helpers/alert-test-schema";
+
+const alertSchema = await createAlertTestSchema();
 const suffix = randomUUID();
 const adminId = `admin-contract-admin-${suffix}`;
 const superAdminId = `admin-contract-super-${suffix}`;
@@ -1097,6 +1100,10 @@ try {
       method: "POST", headers: { "x-test-user": adminId },
     });
     assert.equal(testMessages, 1);
+    result = await requestAs(adminId, "/admin/observability/responses");
+    assert.equal(result.response.status, 200);
+    assert.ok(result.body.some((row: { id: string }) => row.id === testResponseIds[0]),
+      "A manual test must still register an ACK deadline after shared delivery reservation");
     result = await requestAs(adminId, "/admin/observability/test-alert", { method: "POST" });
     assert.equal(result.response.status, 409);
     assert.equal(testMessages, 1);
@@ -1402,4 +1409,5 @@ try {
       .where(eq(companyProfilesTable.id, companyProfileId));
     await tx.delete(usersTable).where(inArray(usersTable.id, userIds));
   });
+  await alertSchema.cleanup();
 }

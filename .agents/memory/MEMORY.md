@@ -9,3 +9,4 @@
 - [Atomic terminal transitions](atomic-terminal-transitions.md) — lock and recheck one-way state changes in the same transaction; only the winner may write audit effects.
 - [Distributed limiter allocation](distributed-limiter-allocation.md) — shared rate-limit budgets require atomic updates plus serialized, hard-capped allocation for new identities.
 - [Observability label cardinality](observability-label-cardinality.md) — group API metrics by bounded route families; never use raw paths or user identifiers as metric labels.
+- [Alarm delivery recovery](alarm-delivery-recovery.md) — shared reservations survive restarts; interrupted sends are ambiguous and must not be automatically replayed.

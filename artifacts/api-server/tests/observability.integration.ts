@@ -5,8 +5,11 @@ import type { AddressInfo } from "node:net";
 import { once } from "node:events";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { GetAdminObservabilityResponse } from "@workspace/api-zod";
+import { pool } from "@workspace/db";
+import { randomUUID } from "node:crypto";
 import express from "express";
 import pinoHttp from "pino-http";
+import { createAlertTestSchema } from "./helpers/alert-test-schema";
 import { logger } from "../src/lib/logger";
 import {
   getObservabilityDashboard,
@@ -23,6 +26,7 @@ import {
   waitForAlertDeliveries,
 } from "../src/lib/alert-delivery";
 
+const alertSchema = await createAlertTestSchema();
 resetObservabilityForTests();
 process.env.ON_CALL_CHANNEL = "webhook";
 process.env.OBSERVABILITY_WORKER_FAILURE_THRESHOLD = "1";
@@ -76,7 +80,7 @@ try {
   recordWorkerRun("test-worker", "failure", 25);
   await waitForAlertDeliveries();
   recordWorkerRun("test-worker", "success", 10);
-  const dashboard = getObservabilityDashboard();
+  const dashboard = await getObservabilityDashboard();
   assert.ok(dashboard.routes.some((route) => route.route === "GET:programs"));
   assert.ok(dashboard.routes.some((route) => route.errors === 1));
   assert.equal(dashboard.workers[0]?.name, "test-worker");
@@ -97,7 +101,45 @@ try {
   });
   assert.equal(parsedDashboard.alertDelivery.recent[0]?.status, "delivered");
 
+  const makeAlert = (deduplicationKey: string) => ({
+    deduplicationKey, name: "local-persistence-failure-test", value: 1,
+    threshold: "test", correlationContext: {}, runbook: [], triggeredAt: new Date().toISOString(),
+  });
+  const attemptsBeforeStoreFailure = deliveryAttempts;
+  const originalConnect = pool.connect;
+  try {
+    pool.connect = async () => { throw new Error("simulated_store_unavailable"); };
+    await assert.rejects(dispatchOperationalAlert(makeAlert(randomUUID())), /simulated_store_unavailable/);
+  } finally {
+    pool.connect = originalConnect;
+  }
+  assert.equal(deliveryAttempts, attemptsBeforeStoreFailure, "No store reservation means no external send");
+
+  const acceptedKey = randomUUID();
+  const originalQuery = pool.query;
+  try {
+    pool.query = function (...args: any[]) {
+      if (typeof args[0] === "string" && args[0].includes("UPDATE operational_alert_deliveries") &&
+        args[1]?.[2] === "delivered") {
+        return Promise.reject(new Error("simulated_result_write_failure"));
+      }
+      return originalQuery.apply(this, args as any);
+    } as typeof pool.query;
+    await assert.rejects(dispatchOperationalAlert(makeAlert(acceptedKey)), /simulated_result_write_failure/);
+  } finally {
+    pool.query = originalQuery;
+  }
+  assert.equal(deliveryAttempts, attemptsBeforeStoreFailure + 1,
+    "An accepted notification must not be retried when its result cannot be saved");
+  await dispatchOperationalAlert(makeAlert(acceptedKey));
+  assert.equal(deliveryAttempts, attemptsBeforeStoreFailure + 1);
+  await pool.query(`UPDATE operational_alert_deliveries
+    SET lease_until = clock_timestamp() - interval '1 second' WHERE deduplication_key = $1`, [acceptedKey]);
+  const interrupted = (await getAlertDeliveryStatus()).recent.find((row) => row.deduplicationKey === acceptedKey);
+  assert.equal(interrupted?.error, "delivery_interrupted");
+
   resetAlertDeliveryForTests();
+  await alertSchema.reset();
   process.env.ON_CALL_CHANNEL = "slack";
   process.env.ON_CALL_SLACK_CHANNEL_ID = "C012345";
   const originalProxy = ReplitConnectors.prototype.proxy;
@@ -119,14 +161,17 @@ try {
         : { ok: true, ts: "123.456" });
     };
     const [testResult, concurrentResult] = await Promise.all([sendOnCallTestAlert(), sendOnCallTestAlert()]);
-    assert.equal(concurrentResult.error, "test_cooldown");
-    assert.equal(testResult.delivery?.status, "delivered");
+    const blocked = [testResult, concurrentResult].find((result) => result.error === "test_cooldown");
+    const delivered = [testResult, concurrentResult].find((result) => result.delivery);
+    assert.ok(blocked);
+    assert.ok(delivered);
+    assert.equal(delivered.delivery?.status, "delivered");
     assert.equal(slackAttempts, 3);
     assert.equal(new Set(messageIds).size, 1, "Retries must use the same message ID");
-    assert.equal(getAlertDeliveryStatus().channel, "slack");
-    assert.equal(getAlertDeliveryStatus().recent[0]?.status, "delivered");
+    assert.equal((await getAlertDeliveryStatus()).channel, "slack");
+    assert.equal((await getAlertDeliveryStatus()).recent[0]?.status, "delivered");
     await dispatchOperationalAlert({
-      deduplicationKey: testResult.delivery!.deduplicationKey,
+      deduplicationKey: delivered.delivery!.deduplicationKey,
       name: "duplicate",
       value: 1,
       threshold: "test",
@@ -137,6 +182,7 @@ try {
     assert.equal(slackAttempts, 3, "A delivered alert must not be sent again");
 
     resetAlertDeliveryForTests();
+    await alertSchema.reset();
     ReplitConnectors.prototype.proxy = async (_connector, _path, options) => {
       responseKeys.add((options?.body as { client_msg_id: string }).client_msg_id);
       return Response.json({ ok: false, error: "missing_scope" });
@@ -144,12 +190,19 @@ try {
     const failedTest = await sendOnCallTestAlert();
     assert.equal(failedTest.delivery?.status, "failed", "HTTP 200 with ok:false is not delivered");
     assert.equal(failedTest.delivery?.error, "slack_missing_scope");
-    assert.equal(getAlertDeliveryStatus().healthy, false);
+    assert.equal((await getAlertDeliveryStatus()).healthy, false);
 
     resetAlertDeliveryForTests();
+    await alertSchema.reset();
     delete process.env.ON_CALL_SLACK_CHANNEL_ID;
     assert.equal((await sendOnCallTestAlert()).error, "channel_not_configured");
-    assert.equal(getAlertDeliveryStatus().healthy, false);
+    assert.equal((await getAlertDeliveryStatus()).healthy, false);
+    await dispatchOperationalAlert(makeAlert(randomUUID()));
+    resetAlertDeliveryForTests();
+    const disabled = (await getAlertDeliveryStatus()).recent[0];
+    assert.equal(disabled?.status, "disabled");
+    assert.equal(disabled?.attempts, 0);
+    assert.equal(disabled?.error, "channel_not_configured");
   } finally {
     ReplitConnectors.prototype.proxy = originalProxy;
   }
@@ -165,4 +218,5 @@ try {
   await new Promise<void>((resolve, reject) =>
     webhookServer.close((error) => (error ? reject(error) : resolve())),
   );
+  await alertSchema.cleanup();
 }

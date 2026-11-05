@@ -57,8 +57,10 @@ melakukan uji ini.
    eskalasi jika Slack tidak cukup.
 
 Ulangi uji setiap tanggal 25, setelah pergantian petugas/perangkat, atau perubahan
-integrasi. Pembatasan satu uji per menit berlaku per proses server, termasuk
-permintaan bersamaan. Jangan mengubah metrik produksi untuk memicu alarm uji.
+integrasi. Pembatasan satu uji per menit berlaku bersama untuk seluruh instance
+yang memakai database yang sama, termasuk setelah restart dan permintaan
+bersamaan. Reservasi dilakukan sebelum pengiriman; uji gagal tetap menghabiskan
+cooldown. Jangan mengubah metrik produksi untuk memicu alarm uji.
 
 ## Arti status dan batasan
 
@@ -68,11 +70,47 @@ permintaan bersamaan. Jangan mengubah metrik produksi untuk memicu alarm uji.
 - `failed`: seluruh percobaan pengiriman gagal. Periksa kode kegagalan di
   dashboard dan kesehatan integrasi. Slack HTTP 200 dengan `ok:false` tetap gagal.
 
-Status dan deduplikasi lokal disimpan dalam memori proses, dibatasi jumlahnya,
-dan direset saat server dimulai ulang. Pada beberapa instance, riwayat
-masing-masing berbeda. ID pengiriman tetap sama saat retry; pesan yang sudah
-tercatat delivered tidak dikirim ulang oleh proses yang sama.
-Riwayat ini bukan arsip audit insiden permanen.
+Status, jumlah percobaan, waktu, kode kegagalan, kunci deduplikasi, dan cooldown
+disimpan di PostgreSQL, bukan memori proses. Semua instance harus memakai
+database yang sama. Dashboard membaca 20 pengiriman terbaru dari jendela 100
+pengiriman untuk ringkasan kesehatan; hasil tetap tersedia setelah restart.
+Metrik request/worker dan uptime masih lokal per proses, bukan agregasi cluster.
+
+Satu kunci pengiriman hanya dapat direservasi sekali. Status terminal
+(`delivered`, `failed`, `disabled`) tidak dikirim ulang dengan kunci yang sama,
+termasuk dari instance lain. Retry dalam satu pengiriman memakai ID yang sama.
+Cooldown alarm otomatis juga direservasi bersama berdasarkan jenis alarm dan
+konteks operasionalnya, memakai waktu database agar jam server tidak berpengaruh.
+Kunci deduplikasi tidak dihapus saat keluar dari jendela dashboard; tabel
+pengiriman saat ini tidak mempunyai penghapusan otomatis. Riwayat ini bukan
+arsip audit insiden dengan kebijakan retensi formal.
+
+Jika proses mati saat `pending`, instance lain tidak mengambil alih pengiriman.
+Setelah batas kepemilikan habis (timeout kanal + jeda retry + toleransi 30 detik),
+pembacaan dashboard menandainya `failed` dengan kode `delivery_interrupted`.
+Kanal mungkin sudah menerima pesan sebelum proses mati, sehingga pengiriman
+tersebut **tidak diulang otomatis**. Periksa kanal berdasarkan ID sebelum
+mengirim uji baru setelah cooldown. Penutupan server normal menunggu pengiriman
+aktif sampai batas graceful shutdown layanan.
+
+Gangguan penyimpanan tidak beralih diam-diam ke deduplikasi lokal: pengiriman
+baru dihentikan dan kegagalan dicatat di log; endpoint admin dapat gagal.
+Jika kanal menerima pesan tetapi pencatatan hasil gagal, pesan tidak diulang
+karena kegagalan database. Baris akan menjadi `delivery_interrupted` saat
+dashboard dibaca setelah lease habis. Tidak ada jaminan exactly-once pada kanal
+eksternal: timeout atau respons gagal dapat terjadi setelah pesan diterima.
+Receiver webhook perlu menduplikasi berdasarkan header
+`x-alert-deduplication-key` untuk mencegah duplikat akibat retry.
+
+### Penerapan schema
+
+Perubahan ini menambahkan `operational_alert_deliveries` dan
+`operational_alert_cooldowns` tanpa mengganti database yang sudah ada.
+Terapkan schema sebelum menjalankan server baru:
+`pnpm --filter @workspace/db run push` (pengembangan). Script setup setelah
+merge menjalankan push schema yang sama. Untuk lingkungan produksi, ikuti
+prosedur perubahan schema yang disetujui; jangan menjalankan pengujian ke
+database produksi atau menerbitkan aplikasi hanya untuk migrasi ini.
 
 ## Bukti uji pengembangan
 
@@ -125,3 +163,8 @@ bukti aktivasi pada lingkungan produksi.
 Test runner menonaktifkan kanal nyata sebelum menjalankan suite. Pengujian retry,
 kontrak, cooldown, dan izin menggunakan receiver lokal atau stub konektor Slack.
 Jangan menjalankan suite dengan konfigurasi yang mengirim alarm sungguhan.
+Suite restart/lintas-instance menjalankan beberapa proses terpisah, memakai
+receiver HTTP loopback dan schema database uji terisolasi. Suite membuktikan
+riwayat dashboard tetap sama setelah kedua proses diganti, satu pengirim untuk
+kunci yang sama, cooldown manual/otomatis bersama, retry gagal yang terbatas,
+serta proses mati di tengah pengiriman tanpa replay.

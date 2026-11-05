@@ -12,6 +12,8 @@ import {
   startSyntheticHealthCheckWorker,
 } from "./lib/observability";
 
+import { waitForAlertDeliveries } from "./lib/alert-delivery";
+
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
@@ -100,6 +102,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     });
     if (expiryRun) await expiryRun;
     await responseWorkerDrained;
+    await waitForAlertDeliveries();
     await pool.end();
     clearTimeout(timeout);
     logger.info({ signal }, "Graceful shutdown completed");
