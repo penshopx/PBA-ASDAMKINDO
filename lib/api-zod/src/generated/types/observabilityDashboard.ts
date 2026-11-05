@@ -8,6 +8,7 @@
 import type { ObservabilityAlertConfiguration } from './observabilityAlertConfiguration';
 import type { ObservabilityRouteMetric } from './observabilityRouteMetric';
 import type { ObservabilityWorkerMetric } from './observabilityWorkerMetric';
+import type { OnCallDeliveryStatus } from './onCallDeliveryStatus';
 import type { SyntheticHealthResult } from './syntheticHealthResult';
 
 export interface ObservabilityDashboard {
@@ -17,5 +18,6 @@ export interface ObservabilityDashboard {
   routes: ObservabilityRouteMetric[];
   workers: ObservabilityWorkerMetric[];
   alerts: ObservabilityAlertConfiguration;
+  alertDelivery: OnCallDeliveryStatus;
   synthetic: SyntheticHealthResult;
 }

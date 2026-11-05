@@ -1606,6 +1606,45 @@ paths:
                 $ref: "#/components/schemas/ObservabilityDashboard"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /admin/observability/test-alert:
+    post:
+      operationId: sendAdminOnCallTest
+      tags: [admin]
+      summary: Send a labelled test alert through the configured on-call channel
+      description: Admin only. At most one test per minute per server process. Delivery means provider acceptance, not device acknowledgement.
+      responses:
+        "200":
+          description: Provider accepted the test alert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnCallDeliveryRecord"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: A test was already requested within the last minute
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Channel is unconfigured or delivery failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/transactions/settlement:
     post:
       operationId: ingestAdminTransactionSettlement
@@ -2028,6 +2067,48 @@ components:
           type: number
           minimum: 1000
       required: [errorRateThreshold, latencyP95ThresholdMs, workerConsecutiveFailureThreshold, cooldownMs]
+    OnCallDeliveryRecord:
+      type: object
+      properties:
+        deduplicationKey:
+          type: string
+        alertName:
+          type: string
+        status:
+          type: string
+          enum: [pending, delivered, failed, disabled]
+        attempts:
+          type: integer
+          minimum: 0
+        lastAttemptAt:
+          type: [string, "null"]
+          format: date-time
+        deliveredAt:
+          type: [string, "null"]
+          format: date-time
+        error:
+          type: [string, "null"]
+      required: [deduplicationKey, alertName, status, attempts, lastAttemptAt, deliveredAt, error]
+    OnCallDeliveryStatus:
+      type: object
+      properties:
+        channel:
+          type: string
+        configured:
+          type: boolean
+        healthy:
+          type: boolean
+        failedDeliveries:
+          type: integer
+          minimum: 0
+        pendingDeliveries:
+          type: integer
+          minimum: 0
+        recent:
+          type: array
+          items:
+            $ref: "#/components/schemas/OnCallDeliveryRecord"
+      required: [channel, configured, healthy, failedDeliveries, pendingDeliveries, recent]
     ObservabilityDashboard:
       type: object
       properties:
@@ -2047,9 +2128,11 @@ components:
             $ref: "#/components/schemas/ObservabilityWorkerMetric"
         alerts:
           $ref: "#/components/schemas/ObservabilityAlertConfiguration"
+        alertDelivery:
+          $ref: "#/components/schemas/OnCallDeliveryStatus"
         synthetic:
           $ref: "#/components/schemas/SyntheticHealthResult"
-      required: [generatedAt, uptimeSeconds, routes, workers, alerts, synthetic]
+      required: [generatedAt, uptimeSeconds, routes, workers, alerts, alertDelivery, synthetic]
     ErrorResponse:
       type: object
       properties:

@@ -15,6 +15,7 @@ import {
   GetAdminPilotEvaluationResponse,
   GetAdminOperationsResponse,
   GetAdminObservabilityResponse,
+  SendAdminOnCallTestResponse,
   IngestAdminTransactionSettlementBody,
   IngestAdminTransactionSettlementResponse,
   ListAdminMatchingsQueryParams,
@@ -67,6 +68,7 @@ import {
 } from "@workspace/db";
 import { getAuthenticatedUser, requireRole, requireUser } from "../lib/auth";
 import { logger } from "../lib/logger";
+import { sendOnCallTestAlert } from "../lib/alert-delivery";
 import {
   getObservabilityDashboard,
   runSyntheticChecks,
@@ -1039,6 +1041,24 @@ router.get("/admin/observability", ...adminOnly, async (_req, res): Promise<void
     synthetic,
   });
   res.status(synthetic.status === "ok" ? 200 : 503).json(data);
+});
+
+router.post("/admin/observability/test-alert", ...adminOnly, async (_req, res): Promise<void> => {
+  const result = await sendOnCallTestAlert();
+  if ("error" in result) {
+    if (result.error === "test_cooldown") {
+      res.setHeader("Retry-After", "60");
+      res.status(409).json({ error: "Tunggu satu menit sebelum mengirim alarm uji berikutnya." });
+    } else {
+      res.status(503).json({ error: "Kanal piket belum dikonfigurasi." });
+    }
+    return;
+  }
+  if (result.delivery.status !== "delivered") {
+    res.status(503).json({ error: "Alarm uji gagal dikirim. Periksa status delivery pada dashboard." });
+    return;
+  }
+  res.json(SendAdminOnCallTestResponse.parse(result.delivery));
 });
 
 router.post(

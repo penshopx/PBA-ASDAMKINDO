@@ -135,7 +135,7 @@ function emitAlert(
     "Operational alert triggered",
   );
   void dispatchOperationalAlert({
-    deduplicationKey: `${name}:${now}`,
+      deduplicationKey: randomUUID(),
     name: definition.name,
     value,
     threshold: definition.threshold,

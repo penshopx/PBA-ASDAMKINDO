@@ -18,6 +18,7 @@ import {
   GetAdminFunnelResponse,
   GetAdminOperationsResponse,
   GetAdminObservabilityResponse,
+  SendAdminOnCallTestResponse,
   GetAdminPilotEvaluationOptionsResponse,
   GetAdminPilotEvaluationResponse,
   GetAdminTalentConsentSettingsResponse,
@@ -84,6 +85,8 @@ import {
 } from "@workspace/db";
 import type { AuthenticatedRequest } from "../src/lib/auth";
 import apiRouter from "../src/routes";
+import { ReplitConnectors } from "@replit/connectors-sdk";
+import { resetAlertDeliveryForTests } from "../src/lib/alert-delivery";
 
 const suffix = randomUUID();
 const adminId = `admin-contract-admin-${suffix}`;
@@ -1067,6 +1070,35 @@ try {
     GetAdminObservabilityResponse,
     { headers: { "x-test-user": adminId } },
   );
+
+  const originalProxy = ReplitConnectors.prototype.proxy;
+  process.env.ON_CALL_CHANNEL = "slack";
+  process.env.ON_CALL_SLACK_CHANNEL_ID = "C012345";
+  resetAlertDeliveryForTests();
+  let testMessages = 0;
+  try {
+    ReplitConnectors.prototype.proxy = async () => {
+      testMessages++;
+      return Response.json({ ok: true, ts: "123.456" });
+    };
+    result = await requestAs(memberId, "/admin/observability/test-alert", { method: "POST" });
+    assert.equal(result.response.status, 403);
+    assert.equal(testMessages, 0);
+    await assertContract("/admin/observability/test-alert", 200, SendAdminOnCallTestResponse, {
+      method: "POST", headers: { "x-test-user": adminId },
+    });
+    assert.equal(testMessages, 1);
+    result = await requestAs(adminId, "/admin/observability/test-alert", { method: "POST" });
+    assert.equal(result.response.status, 409);
+    assert.equal(testMessages, 1);
+    result = await requestAs(adminId, "/admin/observability");
+    assert.equal(result.body.alertDelivery.recent[0]?.status, "delivered");
+  } finally {
+    ReplitConnectors.prototype.proxy = originalProxy;
+    resetAlertDeliveryForTests();
+    delete process.env.ON_CALL_CHANNEL;
+    delete process.env.ON_CALL_SLACK_CHANNEL_ID;
+  }
 
   result = await request("/admin/programs", {
     headers: { "x-test-user": superAdminId },

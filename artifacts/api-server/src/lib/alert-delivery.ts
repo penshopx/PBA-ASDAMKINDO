@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { ReplitConnectors } from "@replit/connectors-sdk";
 import { logger } from "./logger";
 
 const DEFAULT_MAX_ATTEMPTS = 3;
@@ -48,8 +50,55 @@ function delay(ms: number): Promise<void> {
 }
 
 function safeErrorMessage(error: unknown): string {
+  if (error instanceof DeliveryError) return error.message;
   if (error instanceof Error) return error.name;
   return "UnknownError";
+}
+
+class DeliveryError extends Error {}
+
+function channelConfiguration() {
+  const channel = process.env.ON_CALL_CHANNEL ?? "webhook";
+  const configured = channel === "slack"
+    ? Boolean(process.env.ON_CALL_SLACK_CHANNEL_ID?.match(/^[CG][A-Z0-9]+$/))
+    : channel === "webhook" && Boolean(process.env.ON_CALL_WEBHOOK_URL);
+  return { channel, configured };
+}
+
+async function sendAlert(alert: OperationalAlert, timeoutMs: number): Promise<void> {
+  if (channelConfiguration().channel === "slack") {
+    // Resolve identity and refresh credentials through the connector on every attempt.
+    const response = await new ReplitConnectors().proxy("slack", "/chat.postMessage", {
+      method: "POST",
+      signal: AbortSignal.timeout(timeoutMs),
+      body: {
+        channel: process.env.ON_CALL_SLACK_CHANNEL_ID,
+        text: webhookPayload(alert).text,
+        mrkdwn: false,
+        unfurl_links: false,
+        unfurl_media: false,
+        client_msg_id: alert.deduplicationKey,
+      },
+    });
+    if (!response.ok) throw new DeliveryError(`slack_http_${response.status}`);
+    const result = await response.json() as { ok?: boolean; error?: string; ts?: string };
+    // Slack can reject a request with HTTP 200.
+    if (result.ok !== true || !result.ts) {
+      const code = result.error && /^[a-z_]{1,80}$/.test(result.error) ? result.error : "invalid_response";
+      throw new DeliveryError(`slack_${code}`);
+    }
+    return;
+  }
+  const response = await fetch(process.env.ON_CALL_WEBHOOK_URL!, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-alert-deduplication-key": alert.deduplicationKey,
+    },
+    body: JSON.stringify(webhookPayload(alert)),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) throw new DeliveryError(`webhook_http_${response.status}`);
 }
 
 function webhookPayload(alert: OperationalAlert) {
@@ -75,8 +124,7 @@ function webhookPayload(alert: OperationalAlert) {
 }
 
 async function deliver(alert: OperationalAlert): Promise<void> {
-  const webhookUrl = process.env.ON_CALL_WEBHOOK_URL;
-  if (!webhookUrl) {
+  if (!channelConfiguration().configured) {
     recordDelivery({
       deduplicationKey: alert.deduplicationKey,
       alertName: alert.name,
@@ -112,16 +160,7 @@ async function deliver(alert: OperationalAlert): Promise<void> {
     record.lastAttemptAt = new Date().toISOString();
     recordDelivery(record);
     try {
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-alert-deduplication-key": alert.deduplicationKey,
-        },
-        body: JSON.stringify(webhookPayload(alert)),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-      if (!response.ok) throw new Error(`WebhookHttp${response.status}`);
+      await sendAlert(alert, timeoutMs);
       record.status = "delivered";
       record.deliveredAt = new Date().toISOString();
       record.error = null;
@@ -143,7 +182,7 @@ async function deliver(alert: OperationalAlert): Promise<void> {
   logger.error(
     {
       alertChannelFailure: {
-        channel: "webhook",
+        channel: channelConfiguration().channel,
         deduplicationKey: alert.deduplicationKey,
         attempts: record.attempts,
         error: record.error,
@@ -156,6 +195,7 @@ async function deliver(alert: OperationalAlert): Promise<void> {
 export function dispatchOperationalAlert(alert: OperationalAlert): Promise<void> {
   const existing = inFlight.get(alert.deduplicationKey);
   if (existing) return existing;
+  if (deliveries.get(alert.deduplicationKey)?.status === "delivered") return Promise.resolve();
   const promise = deliver(alert).finally(() => {
     inFlight.delete(alert.deduplicationKey);
   });
@@ -166,13 +206,36 @@ export function dispatchOperationalAlert(alert: OperationalAlert): Promise<void>
 export function getAlertDeliveryStatus() {
   const records = [...deliveries.values()];
   return {
-    channel: "webhook",
-    configured: Boolean(process.env.ON_CALL_WEBHOOK_URL),
-    healthy: records.every((record) => record.status !== "failed"),
+    ...channelConfiguration(),
+    healthy: channelConfiguration().configured && records.every((record) => record.status !== "failed"),
     failedDeliveries: records.filter((record) => record.status === "failed").length,
     pendingDeliveries: records.filter((record) => record.status === "pending").length,
     recent: records.slice(-20).reverse(),
   };
+}
+
+let lastTestAt = 0;
+
+export async function sendOnCallTestAlert() {
+  if (!channelConfiguration().configured) return { error: "channel_not_configured" as const };
+  // Reserve before awaiting delivery so concurrent admins cannot flood the channel.
+  if (Date.now() - lastTestAt < 60_000) return { error: "test_cooldown" as const };
+  lastTestAt = Date.now();
+  const deduplicationKey = randomUUID();
+  await dispatchOperationalAlert({
+    deduplicationKey,
+    name: "UJI ALARM — PBA ASDAMKINDO (bukan insiden)",
+    value: 1,
+    threshold: "Uji manual kanal piket",
+    correlationContext: { testId: deduplicationKey, environment: process.env.NODE_ENV ?? "unknown" },
+    runbook: [
+      "Petugas piket: pastikan notifikasi diterima di perangkat, bukan hanya terlihat saat membuka Slack.",
+      "Balas pesan ini dengan konfirmasi penerimaan dan waktu penerimaan.",
+      "Tidak perlu melakukan rollback atau mengubah layanan untuk alarm uji ini.",
+    ],
+    triggeredAt: new Date().toISOString(),
+  });
+  return { delivery: deliveries.get(deduplicationKey)! };
 }
 
 export async function waitForAlertDeliveries(): Promise<void> {
@@ -182,4 +245,5 @@ export async function waitForAlertDeliveries(): Promise<void> {
 export function resetAlertDeliveryForTests(): void {
   deliveries.clear();
   inFlight.clear();
+  lastTestAt = 0;
 }

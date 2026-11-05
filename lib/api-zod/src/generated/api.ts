@@ -1753,6 +1753,12 @@ export const getAdminObservabilityResponseAlertsErrorRateThresholdMin = 0;
 
 export const getAdminObservabilityResponseAlertsCooldownMsMin = 1000;
 
+export const getAdminObservabilityResponseAlertDeliveryFailedDeliveriesMin = 0;
+
+export const getAdminObservabilityResponseAlertDeliveryPendingDeliveriesMin = 0;
+
+export const getAdminObservabilityResponseAlertDeliveryRecentItemAttemptsMin = 0;
+
 export const getAdminObservabilityResponseSyntheticDurationMsMin = 0;
 
 
@@ -1789,6 +1795,22 @@ export const GetAdminObservabilityResponse = zod.object({
   "workerConsecutiveFailureThreshold": zod.number().min(1),
   "cooldownMs": zod.number().min(getAdminObservabilityResponseAlertsCooldownMsMin)
 }),
+  "alertDelivery": zod.object({
+  "channel": zod.string(),
+  "configured": zod.boolean(),
+  "healthy": zod.boolean(),
+  "failedDeliveries": zod.int().min(getAdminObservabilityResponseAlertDeliveryFailedDeliveriesMin),
+  "pendingDeliveries": zod.int().min(getAdminObservabilityResponseAlertDeliveryPendingDeliveriesMin),
+  "recent": zod.array(zod.object({
+  "deduplicationKey": zod.string(),
+  "alertName": zod.string(),
+  "status": zod.enum(['pending', 'delivered', 'failed', 'disabled']),
+  "attempts": zod.int().min(getAdminObservabilityResponseAlertDeliveryRecentItemAttemptsMin),
+  "lastAttemptAt": zod.coerce.date().nullable(),
+  "deliveredAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}))
+}),
   "synthetic": zod.object({
   "status": zod.enum(['ok', 'failed']),
   "checkedAt": zod.coerce.date(),
@@ -1798,6 +1820,25 @@ export const GetAdminObservabilityResponse = zod.object({
   "status": zod.enum(['ok', 'failed'])
 }))
 })
+})
+
+
+/**
+ * Admin only. At most one test per minute per server process. Delivery means provider acceptance, not device acknowledgement.
+ * @summary Send a labelled test alert through the configured on-call channel
+ */
+export const sendAdminOnCallTestResponseAttemptsMin = 0;
+
+
+
+export const SendAdminOnCallTestResponse = zod.object({
+  "deduplicationKey": zod.string(),
+  "alertName": zod.string(),
+  "status": zod.enum(['pending', 'delivered', 'failed', 'disabled']),
+  "attempts": zod.int().min(sendAdminOnCallTestResponseAttemptsMin),
+  "lastAttemptAt": zod.coerce.date().nullable(),
+  "deliveredAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
 })
 
 

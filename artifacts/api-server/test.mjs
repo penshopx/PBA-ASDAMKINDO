@@ -4,6 +4,11 @@ import { build } from "esbuild";
 import { rm } from "node:fs/promises";
 
 process.env.NODE_ENV = "test";
+// Never send real on-call messages from regression suites. Individual delivery
+// tests opt into a local receiver or stub the Slack connector.
+process.env.ON_CALL_CHANNEL = "webhook";
+delete process.env.ON_CALL_WEBHOOK_URL;
+delete process.env.ON_CALL_SLACK_CHANNEL_ID;
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.resolve(artifactDir, ".test-dist");

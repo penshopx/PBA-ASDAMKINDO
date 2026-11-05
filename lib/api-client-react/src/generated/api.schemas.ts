@@ -109,6 +109,41 @@ export interface ObservabilityAlertConfiguration {
   cooldownMs: number;
 }
 
+export type OnCallDeliveryRecordStatus = typeof OnCallDeliveryRecordStatus[keyof typeof OnCallDeliveryRecordStatus];
+
+
+export const OnCallDeliveryRecordStatus = {
+  pending: 'pending',
+  delivered: 'delivered',
+  failed: 'failed',
+  disabled: 'disabled',
+} as const;
+
+export interface OnCallDeliveryRecord {
+  deduplicationKey: string;
+  alertName: string;
+  status: OnCallDeliveryRecordStatus;
+  /** @minimum 0 */
+  attempts: number;
+  /** @nullable */
+  lastAttemptAt: string | null;
+  /** @nullable */
+  deliveredAt: string | null;
+  /** @nullable */
+  error: string | null;
+}
+
+export interface OnCallDeliveryStatus {
+  channel: string;
+  configured: boolean;
+  healthy: boolean;
+  /** @minimum 0 */
+  failedDeliveries: number;
+  /** @minimum 0 */
+  pendingDeliveries: number;
+  recent: OnCallDeliveryRecord[];
+}
+
 export interface ObservabilityDashboard {
   generatedAt: string;
   /** @minimum 0 */
@@ -116,6 +151,7 @@ export interface ObservabilityDashboard {
   routes: ObservabilityRouteMetric[];
   workers: ObservabilityWorkerMetric[];
   alerts: ObservabilityAlertConfiguration;
+  alertDelivery: OnCallDeliveryStatus;
   synthetic: SyntheticHealthResult;
 }
 

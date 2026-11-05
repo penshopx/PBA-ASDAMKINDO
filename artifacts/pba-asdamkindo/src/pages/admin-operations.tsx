@@ -62,8 +62,9 @@ import type {
 import { QueryState } from "@/components/ui-kit";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import { OnCallStatus } from "@/components/on-call-status";
 
-type Tab = "funnel" | "pilot" | "verifications" | "programs" | "pipeline" | "revenue" | "settlement-failures" | "audit";
+type Tab = "funnel" | "pilot" | "verifications" | "programs" | "pipeline" | "revenue" | "settlement-failures" | "audit" | "on-call";
 
 const tabs: Array<{ id: Tab; label: string; icon: typeof ClipboardCheck }> = [
   { id: "funnel", label: "Funnel bisnis", icon: UsersRound },
@@ -74,6 +75,7 @@ const tabs: Array<{ id: Tab; label: string; icon: typeof ClipboardCheck }> = [
   { id: "revenue", label: "Komisi & pendapatan", icon: ReceiptText },
   { id: "settlement-failures", label: "Gagal ingest", icon: AlertTriangle },
   { id: "audit", label: "Audit log", icon: ShieldCheck },
+  { id: "on-call", label: "Alarm piket", icon: AlertTriangle },
 ];
 
 function formatIdr(value: number) {
@@ -181,6 +183,7 @@ export function AdminOperations() {
           {tab === "revenue" && <RevenueWorkspace items={data.transactions} canManage={data.permissions.canManageTransactions} mutation={updateTransaction} resolveMutation={resolveReconciliation} />}
           {tab === "settlement-failures" && <SettlementIngestFailureWorkspace items={data.settlementIngestFailures} canManage={data.permissions.canManageTransactions} mutation={resolveSettlementFailure} />}
           {tab === "audit" && <AuditWorkspace items={data.auditLogs} canView={data.permissions.canViewAudit} />}
+          {tab === "on-call" && <OnCallStatus />}
         </section>
       </div></>}
     </QueryState>

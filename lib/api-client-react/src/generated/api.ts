@@ -76,6 +76,7 @@ import type {
   MemberPassport,
   Notification,
   ObservabilityDashboard,
+  OnCallDeliveryRecord,
   ProfessionalPassportUpdate,
   Program,
   ProgramInput,
@@ -156,6 +157,7 @@ export const getHealthCheckQueryKey = () => {
     `/api/healthz`
     ] as const;
     }
+
 
 export const getHealthCheckQueryOptions = <TData = Awaited<ReturnType<typeof healthCheck>>, TError = ErrorType<RateLimitedResponse | ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
@@ -3763,6 +3765,78 @@ export function useGetAdminObservability<TData = Awaited<ReturnType<typeof getAd
 
 
 
+export const getSendAdminOnCallTestUrl = () => {
+
+
+
+
+  return `/api/admin/observability/test-alert`
+}
+
+/**
+ * Admin only. At most one test per minute per server process. Delivery means provider acceptance, not device acknowledgement.
+ * @summary Send a labelled test alert through the configured on-call channel
+ */
+export const sendAdminOnCallTest = async ( options?: Parameters<typeof customFetch>[1]): Promise<OnCallDeliveryRecord> => {
+
+  return customFetch<OnCallDeliveryRecord>(getSendAdminOnCallTestUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSendAdminOnCallTestMutationOptions = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendAdminOnCallTest>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendAdminOnCallTest>>, TError,void, TContext> => {
+
+const mutationKey = ['sendAdminOnCallTest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendAdminOnCallTest>>, void> = () => {
+
+
+          return  sendAdminOnCallTest(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendAdminOnCallTestMutationResult = NonNullable<Awaited<ReturnType<typeof sendAdminOnCallTest>>>
+
+    export type SendAdminOnCallTestMutationError = ErrorType<ErrorResponse | RateLimitedResponse>
+
+    /**
+ * @summary Send a labelled test alert through the configured on-call channel
+ */
+export const useSendAdminOnCallTest = <TError = ErrorType<ErrorResponse | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendAdminOnCallTest>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendAdminOnCallTest>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSendAdminOnCallTestMutationOptions(options));
+    }
+
 export const getIngestAdminTransactionSettlementUrl = () => {
 
 
@@ -4408,3 +4482,4 @@ export const useResolveAdminTransactionReconciliation = <TError = ErrorType<Erro
       > => {
       return useMutation(getResolveAdminTransactionReconciliationMutationOptions(options));
     }
+
