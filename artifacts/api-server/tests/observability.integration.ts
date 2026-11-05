@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { db, alertResponsesTable } from "@workspace/db";
+import { inArray } from "drizzle-orm";
 import type { AddressInfo } from "node:net";
 import { once } from "node:events";
 import { ReplitConnectors } from "@replit/connectors-sdk";
@@ -30,10 +32,12 @@ process.env.ON_CALL_WEBHOOK_RETRY_BASE_MS = "1";
 
 const receivedPayloads: unknown[] = [];
 let deliveryAttempts = 0;
+const responseKeys = new Set<string>();
 const webhookApp = express();
 webhookApp.use(express.json());
 webhookApp.post("/on-call", (req, res) => {
   deliveryAttempts += 1;
+  if (typeof req.body?.deduplicationKey === "string") responseKeys.add(req.body.deduplicationKey);
   receivedPayloads.push(req.body);
   res.sendStatus(deliveryAttempts < 3 ? 503 : 204);
 });
@@ -105,6 +109,7 @@ try {
       assert.equal(path, "/chat.postMessage");
       assert.ok(options?.signal);
       const body = options?.body as { channel: string; text: string; client_msg_id: string };
+       responseKeys.add(body.client_msg_id);
       assert.equal(body.channel, "C012345");
       assert.match(body.text, /UJI ALARM/);
       messageIds.push(body.client_msg_id);
@@ -132,7 +137,10 @@ try {
     assert.equal(slackAttempts, 3, "A delivered alert must not be sent again");
 
     resetAlertDeliveryForTests();
-    ReplitConnectors.prototype.proxy = async () => Response.json({ ok: false, error: "missing_scope" });
+    ReplitConnectors.prototype.proxy = async (_connector, _path, options) => {
+      responseKeys.add((options?.body as { client_msg_id: string }).client_msg_id);
+      return Response.json({ ok: false, error: "missing_scope" });
+    };
     const failedTest = await sendOnCallTestAlert();
     assert.equal(failedTest.delivery?.status, "failed", "HTTP 200 with ok:false is not delivered");
     assert.equal(failedTest.delivery?.error, "slack_missing_scope");
@@ -146,6 +154,7 @@ try {
     ReplitConnectors.prototype.proxy = originalProxy;
   }
 } finally {
+  if (responseKeys.size) await db.delete(alertResponsesTable).where(inArray(alertResponsesTable.id, [...responseKeys]));
   delete process.env.ON_CALL_CHANNEL;
   delete process.env.ON_CALL_SLACK_CHANNEL_ID;
   delete process.env.ON_CALL_WEBHOOK_URL;

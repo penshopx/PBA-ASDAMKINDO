@@ -90,7 +90,37 @@ Hasil ini membuktikan pengiriman di lingkungan pengembangan dan penerimaan
 notifikasi pada perangkat berdasarkan konfirmasi pengguna. Hasil ini bukan
 bukti aktivasi pada lingkungan produksi.
 
-## Keselamatan pengujian otomatis
+## Konfirmasi aktif dan tenggat respons
+
+- Panel **Operasional → Alarm piket → Konfirmasi petugas (ACK)** menampilkan
+  alarm baru yang tercatat sejak fitur ACK diaktifkan. Riwayat lama tidak
+  direkonstruksi secara otomatis.
+- Tenggat dihitung sejak alarm dipicu, bukan sejak Slack menerima pesan.
+  Default 15 menit; `ON_CALL_ACK_TIMEOUT_MINUTES` menerima 1–1440 menit.
+  Perubahan konfigurasi hanya berlaku untuk alarm baru.
+- Admin/Super Admin yang sedang masuk menekan **Saya menerima alarm (ACK)**.
+  Identitas aktor dan waktu ditetapkan server, bukan dikirim klien. ACK berulang
+  tidak menimpa konfirmasi pertama, termasuk saat dua admin menekan bersamaan.
+  Ini bukan integrasi reaksi/tombol Slack dan bukan verifikasi identitas petugas
+  dari Slack. Hak ACK saat ini mengikuti role Admin/Super Admin.
+- Status respons: `awaiting_ack`, `overdue`, `acknowledged`, atau
+  `acknowledged_late`. Status `delivered` tetap hanya membuktikan pengiriman.
+  ACK tidak menyatakan insiden sudah diselesaikan.
+- ACK dan tenggat disimpan pada database terpisah dari riwayat pengiriman.
+  Worker memeriksa keterlambatan setiap 30 detik dan setelah restart.
+  Dashboard memeriksa ulang saat dimuat dan diperbarui setiap 15 detik.
+  Semua respons yang belum dikonfirmasi tetap ditampilkan, plus 50 ACK terbaru.
+- `overdueAt` mencatat waktu tenggat yang terlewati dan tidak dihapus oleh ACK
+  terlambat. Transisi keterlambatan dicatat satu kali melalui conditional update.
+- Uji manual tanggal 25 pukul 09.00 WIB: kirim satu alarm uji, sengaja jangan ACK
+  sampai melewati tenggat, pastikan status terlambat muncul, lalu ACK dan pastikan
+  status berubah menjadi dikonfirmasi terlambat. Verifikasi lagi setelah reload.
+  **SMS, WhatsApp, telepon, dan eskalasi ke penerima lain belum diaktifkan.**
+- Gangguan database membuat ACK tidak dapat disimpan; jangan menganggap ACK
+  berhasil jika dashboard melaporkan kegagalan. Pemantauan independen di luar
+  aplikasi tetap diperlukan untuk kegagalan total aplikasi/database.
+
+## Keselamatan suite regresi
 
 Test runner menonaktifkan kanal nyata sebelum menjalankan suite. Pengujian retry,
 kontrak, cooldown, dan izin menggunakan receiver lokal atau stub konektor Slack.

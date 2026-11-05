@@ -142,6 +142,8 @@ function emitAlert(
     correlationContext,
     runbook: definition.runbook,
     triggeredAt: new Date(now).toISOString(),
+  }).catch(() => {
+    logger.error({ responseEvent: "alert_registration_or_delivery_failed" }, "Operational alert dispatch failed");
   });
 }
 

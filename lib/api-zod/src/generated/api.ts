@@ -1824,6 +1824,43 @@ export const GetAdminObservabilityResponse = zod.object({
 
 
 /**
+ * @summary List outstanding alert responses and recent acknowledgements
+ */
+export const ListAdminAlertResponsesResponseItem = zod.object({
+  "id": zod.string(),
+  "alertName": zod.string(),
+  "triggeredAt": zod.coerce.date(),
+  "responseDueAt": zod.coerce.date(),
+  "acknowledgedAt": zod.coerce.date().nullable(),
+  "overdueAt": zod.coerce.date().nullable(),
+  "responseStatus": zod.enum(['awaiting_ack', 'overdue', 'acknowledged', 'acknowledged_late'])
+})
+export const ListAdminAlertResponsesResponse = zod.array(ListAdminAlertResponsesResponseItem)
+
+
+/**
+ * @summary Acknowledge an alert using the authenticated administrator identity
+ */
+export const acknowledgeAdminAlertPathIdMax = 256;
+
+
+
+export const AcknowledgeAdminAlertParams = zod.object({
+  "id": zod.coerce.string().min(1).max(acknowledgeAdminAlertPathIdMax)
+})
+
+export const AcknowledgeAdminAlertResponse = zod.object({
+  "id": zod.string(),
+  "alertName": zod.string(),
+  "triggeredAt": zod.coerce.date(),
+  "responseDueAt": zod.coerce.date(),
+  "acknowledgedAt": zod.coerce.date().nullable(),
+  "overdueAt": zod.coerce.date().nullable(),
+  "responseStatus": zod.enum(['awaiting_ack', 'overdue', 'acknowledged', 'acknowledged_late'])
+})
+
+
+/**
  * Admin only. At most one test per minute per server process. Delivery means provider acceptance, not device acknowledgement.
  * @summary Send a labelled test alert through the configured on-call channel
  */

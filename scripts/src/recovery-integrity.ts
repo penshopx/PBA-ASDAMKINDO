@@ -135,6 +135,7 @@ const countTables = [
   "transactions",
   "notifications",
   "audit_logs",
+  "alert_responses",
   "settlement_ingest_failures",
 ] as const;
 

@@ -1,6 +1,7 @@
 import app from "./app";
 import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
+import { startAlertResponseWorker } from "./lib/alert-responses";
 import {
   expireCompanyTalentConsents,
   remindCompanyTalentConsentExpiries,
@@ -69,6 +70,7 @@ expiryTimer.unref();
 
 const stopVerificationSlaReminderWorker = startVerificationSlaReminderWorker();
 const stopSyntheticHealthCheckWorker = startSyntheticHealthCheckWorker();
+const stopAlertResponseWorker = startAlertResponseWorker();
 let shuttingDown = false;
 const shutdownTimeoutMs = 15_000;
 
@@ -83,6 +85,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
   clearInterval(expiryTimer);
   stopVerificationSlaReminderWorker();
   stopSyntheticHealthCheckWorker();
+  const responseWorkerDrained = stopAlertResponseWorker();
 
   const timeout = setTimeout(() => {
     logger.error({ signal, timeoutMs: shutdownTimeoutMs }, "Graceful shutdown timed out");
@@ -96,6 +99,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
       server.close((err) => (err ? reject(err) : resolve()));
     });
     if (expiryRun) await expiryRun;
+    await responseWorkerDrained;
     await pool.end();
     clearTimeout(timeout);
     logger.info({ signal }, "Graceful shutdown completed");

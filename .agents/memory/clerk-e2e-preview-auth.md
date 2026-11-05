@@ -22,3 +22,14 @@ identity and actual Clerk email before changing a test user's role. Only then
 seed privileges for that isolated fixture and clean it up. If ownership cannot
 be established, stop protected browser testing without changing any role; keep
 permission checks in the router harness and use a legitimate admin session.
+
+Clerk self-deletion of a synthetic test identity may require additional
+verification even after programmatic testing sign-in.
+
+**Why:** A protected UI test succeeded, but supported self-delete refused cleanup
+without further verification. Removing the application user did not prove the
+Clerk identity was removed.
+
+**How to apply:** Clean up owned application fixtures and privileges, navigate
+away before deleting the application user to prevent immediate recreation, and
+report any remaining test identity honestly. Do not bypass step-up verification.

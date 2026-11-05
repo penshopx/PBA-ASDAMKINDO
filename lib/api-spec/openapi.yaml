@@ -1606,6 +1606,56 @@ paths:
                 $ref: "#/components/schemas/ObservabilityDashboard"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /admin/observability/responses:
+    get:
+      operationId: listAdminAlertResponses
+      tags: [admin]
+      summary: List outstanding alert responses and recent acknowledgements
+      responses:
+        "200":
+          description: All outstanding responses and up to fifty recent acknowledgements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlertResponse"
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /admin/observability/responses/{id}/ack:
+    post:
+      operationId: acknowledgeAdminAlert
+      tags: [admin]
+      summary: Acknowledge an alert using the authenticated administrator identity
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+      responses:
+        "200":
+          description: First acknowledgement or idempotent replay
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertResponse"
+        "400":
+          description: Invalid identifier
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+        "404":
+          description: Alert response not found
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/observability/test-alert:
     post:
       operationId: sendAdminOnCallTest
@@ -2067,6 +2117,29 @@ components:
           type: number
           minimum: 1000
       required: [errorRateThreshold, latencyP95ThresholdMs, workerConsecutiveFailureThreshold, cooldownMs]
+    AlertResponse:
+      type: object
+      required: [id, alertName, triggeredAt, responseDueAt, acknowledgedAt, overdueAt, responseStatus]
+      properties:
+        id:
+          type: string
+        alertName:
+          type: string
+        triggeredAt:
+          type: string
+          format: date-time
+        responseDueAt:
+          type: string
+          format: date-time
+        acknowledgedAt:
+          type: [string, "null"]
+          format: date-time
+        overdueAt:
+          type: [string, "null"]
+          format: date-time
+        responseStatus:
+          type: string
+          enum: [awaiting_ack, overdue, acknowledged, acknowledged_late]
     OnCallDeliveryRecord:
       type: object
       properties:

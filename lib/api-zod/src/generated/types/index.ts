@@ -43,6 +43,8 @@ export * from './adminTalentConsentOverride';
 export * from './adminTalentConsentOverrideAction';
 export * from './adminTalentConsentPage';
 export * from './adminTalentConsentStatus';
+export * from './alertResponse';
+export * from './alertResponseResponseStatus';
 export * from './auditLog';
 export * from './auditLogActorRole';
 export * from './companyConsentHistoryEntry';

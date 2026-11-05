@@ -32,6 +32,7 @@ const testFiles = requestedTests.length
       "verification-sla-reminder.integration",
       "consent-expiry-reminder.integration",
       "observability.integration",
+      "alert-responses.integration",
     ];
 
 try {

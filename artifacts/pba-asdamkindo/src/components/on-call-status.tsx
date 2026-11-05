@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { AlertResponses } from "./alert-responses";
 import {
   getGetAdminObservabilityQueryKey,
+  getListAdminAlertResponsesQueryKey,
   useGetAdminObservability,
   useSendAdminOnCallTest,
 } from "@workspace/api-client-react";
@@ -33,7 +35,12 @@ export function OnCallStatus() {
         setCooldownUntil(Date.now() + 60_000);
         setFeedback(error.data?.error ?? "Alarm uji belum berhasil. Periksa koneksi dan coba lagi.");
       },
-      onSettled: () => client.invalidateQueries({ queryKey: getGetAdminObservabilityQueryKey() }),
+      onSettled: async () => {
+        await Promise.all([
+          client.invalidateQueries({ queryKey: getGetAdminObservabilityQueryKey() }),
+          client.invalidateQueries({ queryKey: getListAdminAlertResponsesQueryKey() }),
+        ]);
+      },
     },
   });
   return <section className="rounded-2xl border border-border bg-card p-5 sm:p-7" aria-label="Observability alarm piket">
@@ -73,6 +80,7 @@ export function OnCallStatus() {
           </li>)}
         </ul>}
     </>}
+    <AlertResponses />
     {feedback && <p className="mt-4 text-sm" role="status">{feedback}</p>}
   </section>;
 }

@@ -109,6 +109,28 @@ export interface ObservabilityAlertConfiguration {
   cooldownMs: number;
 }
 
+export type AlertResponseResponseStatus = typeof AlertResponseResponseStatus[keyof typeof AlertResponseResponseStatus];
+
+
+export const AlertResponseResponseStatus = {
+  awaiting_ack: 'awaiting_ack',
+  overdue: 'overdue',
+  acknowledged: 'acknowledged',
+  acknowledged_late: 'acknowledged_late',
+} as const;
+
+export interface AlertResponse {
+  id: string;
+  alertName: string;
+  triggeredAt: string;
+  responseDueAt: string;
+  /** @nullable */
+  acknowledgedAt: string | null;
+  /** @nullable */
+  overdueAt: string | null;
+  responseStatus: AlertResponseResponseStatus;
+}
+
 export type OnCallDeliveryRecordStatus = typeof OnCallDeliveryRecordStatus[keyof typeof OnCallDeliveryRecordStatus];
 
 

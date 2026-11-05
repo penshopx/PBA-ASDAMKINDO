@@ -8,6 +8,7 @@ import adminRouter from "./admin";
 import memberJourneyRouter from "./member-journey";
 import passportRouter from "./passport";
 import companyRouter from "./company";
+import alertResponsesRouter from "./alert-responses";
 
 const router: IRouter = Router();
 router.use(healthRouter);
@@ -16,6 +17,7 @@ router.use(programsRouter);
 router.use(notificationsRouter);
 router.use(dashboardsRouter);
 router.use(adminRouter);
+router.use(alertResponsesRouter);
 router.use(memberJourneyRouter);
 router.use(passportRouter);
 router.use(companyRouter);

@@ -19,6 +19,7 @@ import {
   GetAdminOperationsResponse,
   GetAdminObservabilityResponse,
   SendAdminOnCallTestResponse,
+  ListAdminAlertResponsesResponse,
   GetAdminPilotEvaluationOptionsResponse,
   GetAdminPilotEvaluationResponse,
   GetAdminTalentConsentSettingsResponse,
@@ -65,6 +66,7 @@ import {
 } from "@workspace/api-zod";
 import {
   auditLogsTable,
+  alertResponsesTable,
   companyProfilesTable,
   companyRequirementsTable,
   companyTalentConsentsTable,
@@ -1064,6 +1066,11 @@ try {
 
   result = await requestAs(memberId, "/admin/observability");
   assert.equal(result.response.status, 403);
+  await assertContract("/admin/observability/responses", 200, ListAdminAlertResponsesResponse, {
+    headers: { "x-test-user": adminId },
+  });
+  result = await requestAs(adminId, "/admin/observability/responses/nonexistent/ack", { method: "POST" });
+  assert.equal(result.response.status, 404);
   await assertContract(
     "/admin/observability",
     200,
@@ -1076,8 +1083,10 @@ try {
   process.env.ON_CALL_SLACK_CHANNEL_ID = "C012345";
   resetAlertDeliveryForTests();
   let testMessages = 0;
+  const testResponseIds: string[] = [];
   try {
-    ReplitConnectors.prototype.proxy = async () => {
+    ReplitConnectors.prototype.proxy = async (_connector, _path, options) => {
+      testResponseIds.push((options?.body as { client_msg_id: string }).client_msg_id);
       testMessages++;
       return Response.json({ ok: true, ts: "123.456" });
     };
@@ -1094,6 +1103,7 @@ try {
     result = await requestAs(adminId, "/admin/observability");
     assert.equal(result.body.alertDelivery.recent[0]?.status, "delivered");
   } finally {
+    if (testResponseIds.length) await db.delete(alertResponsesTable).where(inArray(alertResponsesTable.id, testResponseIds));
     ReplitConnectors.prototype.proxy = originalProxy;
     resetAlertDeliveryForTests();
     delete process.env.ON_CALL_CHANNEL;

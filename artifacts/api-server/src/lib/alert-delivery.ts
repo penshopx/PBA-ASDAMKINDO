@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { logger } from "./logger";
+import { registerAlertResponse } from "./alert-responses";
 
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_RETRY_BASE_MS = 250;
@@ -117,6 +118,7 @@ function webhookPayload(alert: OperationalAlert) {
       `[ON-CALL] ${alert.name}`,
       `Value: ${alert.value}`,
       `Threshold: ${alert.threshold}`,
+      "Konfirmasi aktif: buka Operasional → Alarm piket → Konfirmasi petugas (ACK). Membalas Slack saja tidak mencatat ACK di aplikasi.",
       `Context: ${JSON.stringify(alert.correlationContext)}`,
       `Runbook: ${alert.runbook.join(" | ")}`,
     ].join("\n"),
@@ -196,7 +198,7 @@ export function dispatchOperationalAlert(alert: OperationalAlert): Promise<void>
   const existing = inFlight.get(alert.deduplicationKey);
   if (existing) return existing;
   if (deliveries.get(alert.deduplicationKey)?.status === "delivered") return Promise.resolve();
-  const promise = deliver(alert).finally(() => {
+  const promise = registerAlertResponse(alert).then(() => deliver(alert)).finally(() => {
     inFlight.delete(alert.deduplicationKey);
   });
   inFlight.set(alert.deduplicationKey, promise);
@@ -230,7 +232,7 @@ export async function sendOnCallTestAlert() {
     correlationContext: { testId: deduplicationKey, environment: process.env.NODE_ENV ?? "unknown" },
     runbook: [
       "Petugas piket: pastikan notifikasi diterima di perangkat, bukan hanya terlihat saat membuka Slack.",
-      "Balas pesan ini dengan konfirmasi penerimaan dan waktu penerimaan.",
+      "Buka Operasional → Alarm piket dan tekan Saya menerima alarm (ACK).",
       "Tidak perlu melakukan rollback atau mengubah layanan untuk alarm uji ini.",
     ],
     triggeredAt: new Date().toISOString(),

@@ -33,6 +33,7 @@ import type {
   AdminTalentConsent,
   AdminTalentConsentOverride,
   AdminTalentConsentPage,
+  AlertResponse,
   AuditLog,
   CompanyConsentRequest,
   CompanyConsentRequestInput,
@@ -3764,6 +3765,154 @@ export function useGetAdminObservability<TData = Awaited<ReturnType<typeof getAd
 
 
 
+
+export const getListAdminAlertResponsesUrl = () => {
+
+
+
+
+  return `/api/admin/observability/responses`
+}
+
+/**
+ * @summary List outstanding alert responses and recent acknowledgements
+ */
+export const listAdminAlertResponses = async ( options?: Parameters<typeof customFetch>[1]): Promise<AlertResponse[]> => {
+
+  return customFetch<AlertResponse[]>(getListAdminAlertResponsesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminAlertResponsesQueryKey = () => {
+    return [
+    `/api/admin/observability/responses`
+    ] as const;
+    }
+
+
+export const getListAdminAlertResponsesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminAlertResponses>>, TError = ErrorType<void | RateLimitedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAlertResponses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminAlertResponsesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminAlertResponses>>> = ({ signal }) => listAdminAlertResponses({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminAlertResponses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminAlertResponsesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminAlertResponses>>>
+export type ListAdminAlertResponsesQueryError = ErrorType<void | RateLimitedResponse>
+
+
+/**
+ * @summary List outstanding alert responses and recent acknowledgements
+ */
+
+export function useListAdminAlertResponses<TData = Awaited<ReturnType<typeof listAdminAlertResponses>>, TError = ErrorType<void | RateLimitedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAlertResponses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminAlertResponsesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAcknowledgeAdminAlertUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/observability/responses/${id}/ack`
+}
+
+/**
+ * @summary Acknowledge an alert using the authenticated administrator identity
+ */
+export const acknowledgeAdminAlert = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<AlertResponse> => {
+
+  return customFetch<AlertResponse>(getAcknowledgeAdminAlertUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAcknowledgeAdminAlertMutationOptions = <TError = ErrorType<void | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeAdminAlert>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acknowledgeAdminAlert>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['acknowledgeAdminAlert'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acknowledgeAdminAlert>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  acknowledgeAdminAlert(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcknowledgeAdminAlertMutationResult = NonNullable<Awaited<ReturnType<typeof acknowledgeAdminAlert>>>
+
+    export type AcknowledgeAdminAlertMutationError = ErrorType<void | RateLimitedResponse>
+
+    /**
+ * @summary Acknowledge an alert using the authenticated administrator identity
+ */
+export const useAcknowledgeAdminAlert = <TError = ErrorType<void | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeAdminAlert>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acknowledgeAdminAlert>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getAcknowledgeAdminAlertMutationOptions(options));
+    }
 
 export const getSendAdminOnCallTestUrl = () => {
 
