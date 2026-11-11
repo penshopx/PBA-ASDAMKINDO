@@ -98,12 +98,16 @@ export function AlertResponses() {
               Selesai: {record.resolvedAt ? new Date(record.resolvedAt).toLocaleString("id-ID") : "—"}
               {record.resolvedBy ? ` · oleh ${record.resolvedBy}` : ""}
             </p>
-          : <button
-              className="mt-3 ml-2 rounded-lg border border-primary px-4 py-2 font-bold text-primary disabled:opacity-50"
-              disabled={resolve.isPending}
-              data-testid="button-alert-resolve"
-              onClick={() => { setFeedback(""); resolve.mutate({ id: record.id }); }}
-            >{resolve.isPending && resolve.variables?.id === record.id ? "Menyimpan…" : "Tandai insiden selesai"}</button>}
+          : record.acknowledgedAt
+            ? <button
+                className="mt-3 ml-2 rounded-lg border border-primary px-4 py-2 font-bold text-primary disabled:opacity-50"
+                disabled={resolve.isPending}
+                data-testid="button-alert-resolve"
+                onClick={() => { setFeedback(""); resolve.mutate({ id: record.id }); }}
+              >{resolve.isPending && resolve.variables?.id === record.id ? "Menyimpan…" : "Tandai insiden selesai"}</button>
+            : <p className="mt-2 text-xs text-muted-foreground">
+                Konfirmasi ACK diperlukan sebelum menandai insiden selesai.
+              </p>}
         {record.overdueAt && <p className="mt-1 text-xs text-destructive">
           Tenggat awal tetap tercatat. Pengiriman pengingat, ACK penerimaan, dan penyelesaian insiden adalah status terpisah.
         </p>}
