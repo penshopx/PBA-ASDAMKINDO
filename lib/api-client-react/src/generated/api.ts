@@ -3914,6 +3914,77 @@ export const useAcknowledgeAdminAlert = <TError = ErrorType<void | RateLimitedRe
       return useMutation(getAcknowledgeAdminAlertMutationOptions(options));
     }
 
+export const getResolveAdminAlertUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/observability/responses/${id}/resolve`
+}
+
+/**
+ * @summary Mark an incident resolved using the authenticated administrator identity
+ */
+export const resolveAdminAlert = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<AlertResponse> => {
+
+  return customFetch<AlertResponse>(getResolveAdminAlertUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResolveAdminAlertMutationOptions = <TError = ErrorType<void | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAdminAlert>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveAdminAlert>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['resolveAdminAlert'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveAdminAlert>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  resolveAdminAlert(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveAdminAlertMutationResult = NonNullable<Awaited<ReturnType<typeof resolveAdminAlert>>>
+
+    export type ResolveAdminAlertMutationError = ErrorType<void | RateLimitedResponse>
+
+    /**
+ * @summary Mark an incident resolved using the authenticated administrator identity
+ */
+export const useResolveAdminAlert = <TError = ErrorType<void | RateLimitedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAdminAlert>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveAdminAlert>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getResolveAdminAlertMutationOptions(options));
+    }
+
 export const getSendAdminOnCallTestUrl = () => {
 
 

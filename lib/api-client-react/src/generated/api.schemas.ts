@@ -120,6 +120,31 @@ export const AlertResponseResponseStatus = {
 } as const;
 
 /**
+ * Incident resolution state, independent from delivery and ACK.
+ */
+export type AlertResponseIncidentStatus = typeof AlertResponseIncidentStatus[keyof typeof AlertResponseIncidentStatus];
+
+
+export const AlertResponseIncidentStatus = {
+  open: 'open',
+  resolved: 'resolved',
+} as const;
+
+/**
+ * Initial alarm delivery state; independent from ACK, reminder delivery, and incident resolution.
+ */
+export type AlertResponseDeliveryStatus = typeof AlertResponseDeliveryStatus[keyof typeof AlertResponseDeliveryStatus];
+
+
+export const AlertResponseDeliveryStatus = {
+  unknown: 'unknown',
+  pending: 'pending',
+  delivered: 'delivered',
+  failed: 'failed',
+  disabled: 'disabled',
+} as const;
+
+/**
  * Latest reminder delivery state; independent from acknowledgement and incident resolution.
  */
 export type AlertResponseReminderStatus = typeof AlertResponseReminderStatus[keyof typeof AlertResponseReminderStatus];
@@ -144,6 +169,14 @@ export interface AlertResponse {
   /** @nullable */
   overdueAt: string | null;
   responseStatus: AlertResponseResponseStatus;
+  /** Incident resolution state, independent from delivery and ACK. */
+  incidentStatus: AlertResponseIncidentStatus;
+  /** @nullable */
+  resolvedAt: string | null;
+  /** @nullable */
+  resolvedBy: string | null;
+  /** Initial alarm delivery state; independent from ACK, reminder delivery, and incident resolution. */
+  deliveryStatus: AlertResponseDeliveryStatus;
   /** Latest reminder delivery state; independent from acknowledgement and incident resolution. */
   reminderStatus: AlertResponseReminderStatus;
   /** @minimum 0 */

@@ -2,6 +2,7 @@ import { randomUUID, createHash } from "node:crypto";
 import {
   db, alertResponsesTable, operationalAlertDeliveriesTable, type AlertResponseRow,
 } from "@workspace/db";
+import type { AlertResponseDeliveryStatus } from "@workspace/api-zod";
 import { and, desc, eq, inArray, isNotNull, isNull, lte, lt, or, sql } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -53,7 +54,11 @@ export async function registerAlertResponse(alert: {
   }).onConflictDoNothing();
 }
 
-export function alertResponseView(row: AlertResponseRow, now = new Date()) {
+export function alertResponseView(
+  row: AlertResponseRow,
+  now = new Date(),
+  deliveryStatus: AlertResponseDeliveryStatus = "unknown",
+) {
   const late = row.overdueAt !== null
     || (row.acknowledgedAt ?? now).getTime() >= row.responseDueAt.getTime();
   return {
@@ -64,6 +69,10 @@ export function alertResponseView(row: AlertResponseRow, now = new Date()) {
     acknowledgedAt: row.acknowledgedAt?.toISOString() ?? null,
     overdueAt: row.overdueAt?.toISOString() ?? (late ? row.responseDueAt.toISOString() : null),
     reminderStatus: row.ackReminderStatus,
+    deliveryStatus,
+    incidentStatus: row.incidentStatus,
+    resolvedAt: row.resolvedAt?.toISOString() ?? null,
+    resolvedBy: row.resolvedBy,
     reminderAttempts: row.ackReminderAttempts,
     reminderLastAttemptAt: row.ackReminderLastAttemptAt?.toISOString() ?? null,
     reminderExhausted: row.ackReminderAttempts >= alertAckReminderConfig().maxAttempts,
@@ -335,15 +344,24 @@ export async function listAlertResponses() {
     db.select().from(alertResponsesTable).where(isNotNull(alertResponsesTable.acknowledgedAt))
       .orderBy(desc(alertResponsesTable.acknowledgedAt)).limit(50),
   ]);
-  return [...outstanding, ...recent].map((row) => alertResponseView(row));
+  const rows = [...outstanding, ...recent];
+  const deliveries = rows.length
+    ? await db.select({
+      id: operationalAlertDeliveriesTable.deduplicationKey,
+      status: operationalAlertDeliveriesTable.status,
+    }).from(operationalAlertDeliveriesTable)
+      .where(inArray(operationalAlertDeliveriesTable.deduplicationKey, rows.map((row) => row.id)))
+    : [];
+  const deliveryStatuses = new Map(deliveries.map((delivery) => [delivery.id, delivery.status]));
+  return rows.map((row) => alertResponseView(row, new Date(), deliveryStatuses.get(row.id) ?? "unknown"));
 }
 
 export async function acknowledgeAlertResponse(id: string, actorUserId: string) {
-  return db.transaction(async (tx) => {
+  const row = await db.transaction(async (tx) => {
     const [row] = await tx.select().from(alertResponsesTable)
       .where(eq(alertResponsesTable.id, id)).for("update");
     if (!row) return null;
-    if (row.acknowledgedAt) return alertResponseView(row);
+    if (row.acknowledgedAt) return row;
     // Take the timestamp after acquiring the row lock, not before waiting for it.
     const now = new Date();
     const [updated] = await tx.update(alertResponsesTable).set({
@@ -362,8 +380,34 @@ export async function acknowledgeAlertResponse(id: string, actorUserId: string) 
         eq(operationalAlertDeliveriesTable.status, "pending"),
       ));
     }
-    return alertResponseView(updated!);
+    return updated!;
   });
+  if (!row) return null;
+  const [delivery] = await db.select({ status: operationalAlertDeliveriesTable.status })
+    .from(operationalAlertDeliveriesTable)
+    .where(eq(operationalAlertDeliveriesTable.deduplicationKey, id));
+  return alertResponseView(row, new Date(), delivery?.status ?? "unknown");
+}
+
+export async function resolveAlertResponse(id: string, actorUserId: string) {
+  const outcome = await db.transaction(async (tx) => {
+    const [row] = await tx.select().from(alertResponsesTable)
+      .where(eq(alertResponsesTable.id, id)).for("update");
+    if (!row) return { kind: "not_found" as const };
+    if (row.incidentStatus === "resolved") return { kind: "already_resolved" as const };
+
+    const [updated] = await tx.update(alertResponsesTable).set({
+      incidentStatus: "resolved",
+      resolvedAt: new Date(),
+      resolvedBy: actorUserId,
+    }).where(eq(alertResponsesTable.id, id)).returning();
+    return { kind: "resolved" as const, row: updated! };
+  });
+  if (outcome.kind !== "resolved") return outcome;
+  const [delivery] = await db.select({ status: operationalAlertDeliveriesTable.status })
+    .from(operationalAlertDeliveriesTable)
+    .where(eq(operationalAlertDeliveriesTable.deduplicationKey, id));
+  return { kind: "resolved" as const, response: alertResponseView(outcome.row, new Date(), delivery?.status ?? "unknown") };
 }
 
 export function startAlertResponseWorker(

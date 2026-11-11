@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AlertResponseDeliveryStatus } from './alertResponseDeliveryStatus';
+import type { AlertResponseIncidentStatus } from './alertResponseIncidentStatus';
 import type { AlertResponseReminderStatus } from './alertResponseReminderStatus';
 import type { AlertResponseResponseStatus } from './alertResponseResponseStatus';
 
@@ -18,6 +20,14 @@ export interface AlertResponse {
   /** @nullable */
   overdueAt: Date | null;
   responseStatus: AlertResponseResponseStatus;
+  /** Incident resolution state, independent from delivery and ACK. */
+  incidentStatus: AlertResponseIncidentStatus;
+  /** @nullable */
+  resolvedAt: Date | null;
+  /** @nullable */
+  resolvedBy: string | null;
+  /** Initial alarm delivery state; independent from ACK, reminder delivery, and incident resolution. */
+  deliveryStatus: AlertResponseDeliveryStatus;
   /** Latest reminder delivery state; independent from acknowledgement and incident resolution. */
   reminderStatus: AlertResponseReminderStatus;
   /** @minimum 0 */

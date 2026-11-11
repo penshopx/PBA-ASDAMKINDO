@@ -1838,6 +1838,10 @@ export const ListAdminAlertResponsesResponseItem = zod.object({
   "acknowledgedAt": zod.coerce.date().nullable(),
   "overdueAt": zod.coerce.date().nullable(),
   "responseStatus": zod.enum(['awaiting_ack', 'overdue', 'acknowledged', 'acknowledged_late']),
+  "incidentStatus": zod.enum(['open', 'resolved']).describe('Incident resolution state, independent from delivery and ACK.'),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "resolvedBy": zod.string().nullable(),
+  "deliveryStatus": zod.enum(['unknown', 'pending', 'delivered', 'failed', 'disabled']).describe('Initial alarm delivery state; independent from ACK, reminder delivery, and incident resolution.'),
   "reminderStatus": zod.enum(['not_sent', 'pending', 'delivered', 'failed', 'interrupted', 'stopped']).describe('Latest reminder delivery state; independent from acknowledgement and incident resolution.'),
   "reminderAttempts": zod.int().min(listAdminAlertResponsesResponseReminderAttemptsMin),
   "reminderLastAttemptAt": zod.coerce.date().nullable(),
@@ -1869,8 +1873,46 @@ export const AcknowledgeAdminAlertResponse = zod.object({
   "acknowledgedAt": zod.coerce.date().nullable(),
   "overdueAt": zod.coerce.date().nullable(),
   "responseStatus": zod.enum(['awaiting_ack', 'overdue', 'acknowledged', 'acknowledged_late']),
+  "incidentStatus": zod.enum(['open', 'resolved']).describe('Incident resolution state, independent from delivery and ACK.'),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "resolvedBy": zod.string().nullable(),
+  "deliveryStatus": zod.enum(['unknown', 'pending', 'delivered', 'failed', 'disabled']).describe('Initial alarm delivery state; independent from ACK, reminder delivery, and incident resolution.'),
   "reminderStatus": zod.enum(['not_sent', 'pending', 'delivered', 'failed', 'interrupted', 'stopped']).describe('Latest reminder delivery state; independent from acknowledgement and incident resolution.'),
   "reminderAttempts": zod.int().min(acknowledgeAdminAlertResponseReminderAttemptsMin),
+  "reminderLastAttemptAt": zod.coerce.date().nullable(),
+  "reminderExhausted": zod.boolean()
+})
+
+
+/**
+ * @summary Mark an incident resolved using the authenticated administrator identity
+ */
+export const resolveAdminAlertPathIdMax = 256;
+
+
+
+export const ResolveAdminAlertParams = zod.object({
+  "id": zod.coerce.string().min(1).max(resolveAdminAlertPathIdMax)
+})
+
+export const resolveAdminAlertResponseReminderAttemptsMin = 0;
+
+
+
+export const ResolveAdminAlertResponse = zod.object({
+  "id": zod.string(),
+  "alertName": zod.string(),
+  "triggeredAt": zod.coerce.date(),
+  "responseDueAt": zod.coerce.date(),
+  "acknowledgedAt": zod.coerce.date().nullable(),
+  "overdueAt": zod.coerce.date().nullable(),
+  "responseStatus": zod.enum(['awaiting_ack', 'overdue', 'acknowledged', 'acknowledged_late']),
+  "incidentStatus": zod.enum(['open', 'resolved']).describe('Incident resolution state, independent from delivery and ACK.'),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "resolvedBy": zod.string().nullable(),
+  "deliveryStatus": zod.enum(['unknown', 'pending', 'delivered', 'failed', 'disabled']).describe('Initial alarm delivery state; independent from ACK, reminder delivery, and incident resolution.'),
+  "reminderStatus": zod.enum(['not_sent', 'pending', 'delivered', 'failed', 'interrupted', 'stopped']).describe('Latest reminder delivery state; independent from acknowledgement and incident resolution.'),
+  "reminderAttempts": zod.int().min(resolveAdminAlertResponseReminderAttemptsMin),
   "reminderLastAttemptAt": zod.coerce.date().nullable(),
   "reminderExhausted": zod.boolean()
 })

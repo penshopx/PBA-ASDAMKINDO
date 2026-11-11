@@ -1,10 +1,10 @@
 import { Router } from "express";
 import {
   AcknowledgeAdminAlertParams, AcknowledgeAdminAlertResponse,
-  ListAdminAlertResponsesResponse,
+  ListAdminAlertResponsesResponse, ResolveAdminAlertParams, ResolveAdminAlertResponse,
 } from "@workspace/api-zod";
 import { getAuthenticatedUser, requireRole, requireUser } from "../lib/auth";
-import { acknowledgeAlertResponse, listAlertResponses } from "../lib/alert-responses";
+import { acknowledgeAlertResponse, listAlertResponses, resolveAlertResponse } from "../lib/alert-responses";
 
 const router = Router();
 const adminOnly = [requireUser, requireRole("admin", "super_admin")];
@@ -25,6 +25,24 @@ router.post("/admin/observability/responses/:id/ack", ...adminOnly, async (req, 
     return;
   }
   res.json(AcknowledgeAdminAlertResponse.parse(result));
+});
+
+router.post("/admin/observability/responses/:id/resolve", ...adminOnly, async (req, res) => {
+  const params = ResolveAdminAlertParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "ID alarm tidak valid." });
+    return;
+  }
+  const result = await resolveAlertResponse(params.data.id, getAuthenticatedUser(req).id);
+  if (result.kind === "not_found") {
+    res.status(404).json({ error: "Alarm tidak ditemukan." });
+    return;
+  }
+  if (result.kind === "already_resolved") {
+    res.status(409).json({ error: "Insiden sudah ditandai selesai." });
+    return;
+  }
+  res.json(ResolveAdminAlertResponse.parse(result.response));
 });
 
 export default router;

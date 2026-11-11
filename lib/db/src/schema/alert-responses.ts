@@ -10,6 +10,9 @@ export const alertResponsesTable = pgTable("alert_responses", {
   responseDueAt: timestamp("response_due_at", { withTimezone: true }).notNull(),
   acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
   acknowledgedBy: text("acknowledged_by").references(() => usersTable.id, { onDelete: "set null" }),
+  incidentStatus: text("incident_status", { enum: ["open", "resolved"] }).notNull().default("open"),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolvedBy: text("resolved_by").references(() => usersTable.id, { onDelete: "set null" }),
   overdueAt: timestamp("overdue_at", { withTimezone: true }),
   ackReminderEnabled: boolean("ack_reminder_enabled").notNull().default(false),
   ackReminderStatus: text("ack_reminder_status", {

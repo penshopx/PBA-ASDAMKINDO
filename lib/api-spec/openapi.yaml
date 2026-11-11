@@ -1656,6 +1656,38 @@ paths:
           description: Alert response not found
         "429":
           $ref: "#/components/responses/RateLimited"
+  /admin/observability/responses/{id}/resolve:
+    post:
+      operationId: resolveAdminAlert
+      tags: [admin]
+      summary: Mark an incident resolved using the authenticated administrator identity
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+      responses:
+        "200":
+          description: Incident resolution recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertResponse"
+        "400":
+          description: Invalid identifier
+        "401":
+          description: Authentication required
+        "403":
+          description: Admin role required
+        "404":
+          description: Alert response not found
+        "409":
+          description: Incident already resolved
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /admin/observability/test-alert:
     post:
       operationId: sendAdminOnCallTest
@@ -2119,7 +2151,7 @@ components:
       required: [errorRateThreshold, latencyP95ThresholdMs, workerConsecutiveFailureThreshold, cooldownMs]
     AlertResponse:
       type: object
-      required: [id, alertName, triggeredAt, responseDueAt, acknowledgedAt, overdueAt, responseStatus, reminderStatus, reminderAttempts, reminderLastAttemptAt, reminderExhausted]
+      required: [id, alertName, triggeredAt, responseDueAt, acknowledgedAt, overdueAt, responseStatus, incidentStatus, resolvedAt, resolvedBy, deliveryStatus, reminderStatus, reminderAttempts, reminderLastAttemptAt, reminderExhausted]
       properties:
         id:
           type: string
@@ -2140,6 +2172,19 @@ components:
         responseStatus:
           type: string
           enum: [awaiting_ack, overdue, acknowledged, acknowledged_late]
+        incidentStatus:
+          type: string
+          enum: [open, resolved]
+          description: Incident resolution state, independent from delivery and ACK.
+        resolvedAt:
+          type: [string, "null"]
+          format: date-time
+        resolvedBy:
+          type: [string, "null"]
+        deliveryStatus:
+          type: string
+          enum: [unknown, pending, delivered, failed, disabled]
+          description: Initial alarm delivery state; independent from ACK, reminder delivery, and incident resolution.
         reminderStatus:
           type: string
           enum: [not_sent, pending, delivered, failed, interrupted, stopped]
