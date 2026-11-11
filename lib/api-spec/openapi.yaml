@@ -2119,7 +2119,7 @@ components:
       required: [errorRateThreshold, latencyP95ThresholdMs, workerConsecutiveFailureThreshold, cooldownMs]
     AlertResponse:
       type: object
-      required: [id, alertName, triggeredAt, responseDueAt, acknowledgedAt, overdueAt, responseStatus]
+      required: [id, alertName, triggeredAt, responseDueAt, acknowledgedAt, overdueAt, responseStatus, reminderStatus, reminderAttempts, reminderLastAttemptAt, reminderExhausted]
       properties:
         id:
           type: string
@@ -2140,6 +2140,18 @@ components:
         responseStatus:
           type: string
           enum: [awaiting_ack, overdue, acknowledged, acknowledged_late]
+        reminderStatus:
+          type: string
+          enum: [not_sent, pending, delivered, failed, interrupted, stopped]
+          description: Latest reminder delivery state; independent from acknowledgement and incident resolution.
+        reminderAttempts:
+          type: integer
+          minimum: 0
+        reminderLastAttemptAt:
+          type: [string, "null"]
+          format: date-time
+        reminderExhausted:
+          type: boolean
     OnCallDeliveryRecord:
       type: object
       properties:

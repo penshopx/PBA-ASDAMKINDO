@@ -2,6 +2,7 @@ import app from "./app";
 import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { startAlertResponseWorker } from "./lib/alert-responses";
+import { isOnCallSlackConfigured, sendOnCallAcknowledgementReminder } from "./lib/alert-delivery";
 import {
   expireCompanyTalentConsents,
   remindCompanyTalentConsentExpiries,
@@ -72,7 +73,10 @@ expiryTimer.unref();
 
 const stopVerificationSlaReminderWorker = startVerificationSlaReminderWorker();
 const stopSyntheticHealthCheckWorker = startSyntheticHealthCheckWorker();
-const stopAlertResponseWorker = startAlertResponseWorker();
+const stopAlertResponseWorker = startAlertResponseWorker(
+  isOnCallSlackConfigured,
+  sendOnCallAcknowledgementReminder,
+);
 let shuttingDown = false;
 const shutdownTimeoutMs = 15_000;
 

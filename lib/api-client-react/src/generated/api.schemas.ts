@@ -119,6 +119,21 @@ export const AlertResponseResponseStatus = {
   acknowledged_late: 'acknowledged_late',
 } as const;
 
+/**
+ * Latest reminder delivery state; independent from acknowledgement and incident resolution.
+ */
+export type AlertResponseReminderStatus = typeof AlertResponseReminderStatus[keyof typeof AlertResponseReminderStatus];
+
+
+export const AlertResponseReminderStatus = {
+  not_sent: 'not_sent',
+  pending: 'pending',
+  delivered: 'delivered',
+  failed: 'failed',
+  interrupted: 'interrupted',
+  stopped: 'stopped',
+} as const;
+
 export interface AlertResponse {
   id: string;
   alertName: string;
@@ -129,6 +144,13 @@ export interface AlertResponse {
   /** @nullable */
   overdueAt: string | null;
   responseStatus: AlertResponseResponseStatus;
+  /** Latest reminder delivery state; independent from acknowledgement and incident resolution. */
+  reminderStatus: AlertResponseReminderStatus;
+  /** @minimum 0 */
+  reminderAttempts: number;
+  /** @nullable */
+  reminderLastAttemptAt: string | null;
+  reminderExhausted: boolean;
 }
 
 export type OnCallDeliveryRecordStatus = typeof OnCallDeliveryRecordStatus[keyof typeof OnCallDeliveryRecordStatus];

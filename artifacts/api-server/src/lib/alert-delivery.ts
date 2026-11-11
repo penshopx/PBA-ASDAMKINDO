@@ -16,6 +16,7 @@ export interface OperationalAlert {
   correlationContext: Record<string, string>;
   runbook: string[];
   triggeredAt: string;
+  acknowledgementReminders?: boolean;
 }
 
 export interface AlertDeliveryRecord {
@@ -55,28 +56,42 @@ function channelConfiguration() {
   return { channel, configured };
 }
 
+export function isOnCallSlackConfigured(): boolean {
+  return process.env.ON_CALL_CHANNEL === "slack"
+    && Boolean(process.env.ON_CALL_SLACK_CHANNEL_ID?.match(/^[CG][A-Z0-9]+$/));
+}
+
+async function sendSlackMessage(
+  deduplicationKey: string,
+  text: string,
+  timeoutMs: number,
+): Promise<void> {
+  const channelId = process.env.ON_CALL_SLACK_CHANNEL_ID;
+  if (!channelId?.match(/^[CG][A-Z0-9]+$/)) throw new DeliveryError("slack_channel_not_configured");
+  const response = await new ReplitConnectors().proxy("slack", "/chat.postMessage", {
+    method: "POST",
+    signal: AbortSignal.timeout(timeoutMs),
+    body: {
+      channel: channelId,
+      text,
+      mrkdwn: false,
+      unfurl_links: false,
+      unfurl_media: false,
+      client_msg_id: deduplicationKey,
+    },
+  });
+  if (!response.ok) throw new DeliveryError(`slack_http_${response.status}`);
+  const result = await response.json() as { ok?: boolean; error?: string; ts?: string };
+  if (result.ok !== true || !result.ts) {
+    const code = result.error && /^[a-z_]{1,80}$/.test(result.error) ? result.error : "invalid_response";
+    throw new DeliveryError(`slack_${code}`);
+  }
+}
+
 async function sendAlert(alert: OperationalAlert, timeoutMs: number): Promise<void> {
   if (channelConfiguration().channel === "slack") {
     // Resolve identity and refresh credentials through the connector on every attempt.
-    const response = await new ReplitConnectors().proxy("slack", "/chat.postMessage", {
-      method: "POST",
-      signal: AbortSignal.timeout(timeoutMs),
-      body: {
-        channel: process.env.ON_CALL_SLACK_CHANNEL_ID,
-        text: webhookPayload(alert).text,
-        mrkdwn: false,
-        unfurl_links: false,
-        unfurl_media: false,
-        client_msg_id: alert.deduplicationKey,
-      },
-    });
-    if (!response.ok) throw new DeliveryError(`slack_http_${response.status}`);
-    const result = await response.json() as { ok?: boolean; error?: string; ts?: string };
-    // Slack can reject a request with HTTP 200.
-    if (result.ok !== true || !result.ts) {
-      const code = result.error && /^[a-z_]{1,80}$/.test(result.error) ? result.error : "invalid_response";
-      throw new DeliveryError(`slack_${code}`);
-    }
+    await sendSlackMessage(alert.deduplicationKey, webhookPayload(alert).text, timeoutMs);
     return;
   }
   const response = await fetch(process.env.ON_CALL_WEBHOOK_URL!, {
@@ -114,6 +129,29 @@ function webhookPayload(alert: OperationalAlert) {
   };
 }
 
+export async function sendOnCallAcknowledgementReminder(reminder: {
+  incidentId: string;
+  alertName: string;
+  responseDueAt: string;
+  deliveryKey: string;
+  attempt: number;
+}): Promise<void> {
+  if (!isOnCallSlackConfigured()) throw new DeliveryError("slack_channel_not_configured");
+  const timeoutMs = numberFromEnv("ON_CALL_ACK_REMINDER_TIMEOUT_MS", DEFAULT_TIMEOUT_MS, 100);
+  await sendSlackMessage(
+    reminder.deliveryKey,
+    [
+      `[ACK REMINDER ${reminder.attempt}] Alarm belum dikonfirmasi`,
+      `Nama alarm: ${reminder.alertName}`,
+      `ID insiden: ${reminder.incidentId}`,
+      `Tenggat ACK: ${reminder.responseDueAt}`,
+      "Buka Operasional → Alarm piket untuk mencatat ACK. Membalas Slack tidak mencatat ACK.",
+      "ACK hanya mengonfirmasi penerimaan; penyelesaian insiden tetap langkah terpisah.",
+    ].join("\n"),
+    timeoutMs,
+  );
+}
+
 async function deliver(alert: OperationalAlert, cooldown?: AlertCooldown): Promise<void> {
   const configured = channelConfiguration().configured;
   const owner = randomUUID();
@@ -148,7 +186,7 @@ async function deliverReserved(
 ): Promise<void> {
   // Register ACK only for the winner of the shared reservation, including
   // manual tests. Losing replicas must not create phantom response deadlines.
-  await registerAlertResponse(alert);
+  await registerAlertResponse(alert, alert.acknowledgementReminders ?? true);
   if (record.status === "disabled") {
     logger.warn(
       { alertDelivery: { deduplicationKey: alert.deduplicationKey, status: "disabled" } },
@@ -238,6 +276,7 @@ export async function sendOnCallTestAlert() {
       "Tidak perlu melakukan rollback atau mengubah layanan untuk alarm uji ini.",
     ],
     triggeredAt: new Date().toISOString(),
+    acknowledgementReminders: false,
   };
   const owner = randomUUID();
   const record: AlertDeliveryRecord = {

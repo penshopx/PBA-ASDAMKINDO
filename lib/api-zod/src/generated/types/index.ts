@@ -44,6 +44,7 @@ export * from './adminTalentConsentOverrideAction';
 export * from './adminTalentConsentPage';
 export * from './adminTalentConsentStatus';
 export * from './alertResponse';
+export * from './alertResponseReminderStatus';
 export * from './alertResponseResponseStatus';
 export * from './auditLog';
 export * from './auditLogActorRole';

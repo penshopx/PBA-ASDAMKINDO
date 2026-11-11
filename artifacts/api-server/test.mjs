@@ -33,6 +33,7 @@ const testFiles = requestedTests.length
       "consent-expiry-reminder.integration",
       "observability.integration",
       "alert-responses.integration",
+      "alert-ack-reminders.integration",
       "alert-delivery-multi-instance.integration",
     ];
 

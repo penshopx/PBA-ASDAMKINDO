@@ -1826,6 +1826,10 @@ export const GetAdminObservabilityResponse = zod.object({
 /**
  * @summary List outstanding alert responses and recent acknowledgements
  */
+export const listAdminAlertResponsesResponseReminderAttemptsMin = 0;
+
+
+
 export const ListAdminAlertResponsesResponseItem = zod.object({
   "id": zod.string(),
   "alertName": zod.string(),
@@ -1833,7 +1837,11 @@ export const ListAdminAlertResponsesResponseItem = zod.object({
   "responseDueAt": zod.coerce.date(),
   "acknowledgedAt": zod.coerce.date().nullable(),
   "overdueAt": zod.coerce.date().nullable(),
-  "responseStatus": zod.enum(['awaiting_ack', 'overdue', 'acknowledged', 'acknowledged_late'])
+  "responseStatus": zod.enum(['awaiting_ack', 'overdue', 'acknowledged', 'acknowledged_late']),
+  "reminderStatus": zod.enum(['not_sent', 'pending', 'delivered', 'failed', 'interrupted', 'stopped']).describe('Latest reminder delivery state; independent from acknowledgement and incident resolution.'),
+  "reminderAttempts": zod.int().min(listAdminAlertResponsesResponseReminderAttemptsMin),
+  "reminderLastAttemptAt": zod.coerce.date().nullable(),
+  "reminderExhausted": zod.boolean()
 })
 export const ListAdminAlertResponsesResponse = zod.array(ListAdminAlertResponsesResponseItem)
 
@@ -1849,6 +1857,10 @@ export const AcknowledgeAdminAlertParams = zod.object({
   "id": zod.coerce.string().min(1).max(acknowledgeAdminAlertPathIdMax)
 })
 
+export const acknowledgeAdminAlertResponseReminderAttemptsMin = 0;
+
+
+
 export const AcknowledgeAdminAlertResponse = zod.object({
   "id": zod.string(),
   "alertName": zod.string(),
@@ -1856,7 +1868,11 @@ export const AcknowledgeAdminAlertResponse = zod.object({
   "responseDueAt": zod.coerce.date(),
   "acknowledgedAt": zod.coerce.date().nullable(),
   "overdueAt": zod.coerce.date().nullable(),
-  "responseStatus": zod.enum(['awaiting_ack', 'overdue', 'acknowledged', 'acknowledged_late'])
+  "responseStatus": zod.enum(['awaiting_ack', 'overdue', 'acknowledged', 'acknowledged_late']),
+  "reminderStatus": zod.enum(['not_sent', 'pending', 'delivered', 'failed', 'interrupted', 'stopped']).describe('Latest reminder delivery state; independent from acknowledgement and incident resolution.'),
+  "reminderAttempts": zod.int().min(acknowledgeAdminAlertResponseReminderAttemptsMin),
+  "reminderLastAttemptAt": zod.coerce.date().nullable(),
+  "reminderExhausted": zod.boolean()
 })
 
 

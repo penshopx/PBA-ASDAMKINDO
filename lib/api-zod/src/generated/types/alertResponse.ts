@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AlertResponseReminderStatus } from './alertResponseReminderStatus';
 import type { AlertResponseResponseStatus } from './alertResponseResponseStatus';
 
 export interface AlertResponse {
@@ -17,4 +18,11 @@ export interface AlertResponse {
   /** @nullable */
   overdueAt: Date | null;
   responseStatus: AlertResponseResponseStatus;
+  /** Latest reminder delivery state; independent from acknowledgement and incident resolution. */
+  reminderStatus: AlertResponseReminderStatus;
+  /** @minimum 0 */
+  reminderAttempts: number;
+  /** @nullable */
+  reminderLastAttemptAt: Date | null;
+  reminderExhausted: boolean;
 }

@@ -13,6 +13,15 @@ const labels = {
   acknowledged_late: "Dikonfirmasi setelah tenggat",
 };
 
+const reminderLabels = {
+  not_sent: "Belum ada pengingat terkirim",
+  pending: "Pengingat sedang dikirim",
+  delivered: "Pengingat Slack terkirim",
+  failed: "Pengiriman pengingat gagal",
+  interrupted: "Pengiriman terhenti; tidak dikirim ulang otomatis",
+  stopped: "Pengingat dihentikan setelah ACK",
+};
+
 export function AlertResponses() {
   const client = useQueryClient();
   const [feedback, setFeedback] = useState("");
@@ -49,6 +58,10 @@ export function AlertResponses() {
         <p className={record.overdueAt ? "font-semibold text-destructive" : "font-semibold"}>
           {labels[record.responseStatus]}
         </p>
+        {record.overdueAt && <p className="mt-1 text-xs text-muted-foreground">
+          Status pengingat: {reminderLabels[record.reminderStatus]} · {record.reminderAttempts} percobaan
+          {record.reminderExhausted ? " · batas percobaan tercapai" : ""}
+        </p>}
         <p className="mt-1 text-xs text-muted-foreground">
           Tenggat: {new Date(record.responseDueAt).toLocaleString("id-ID")}
         </p>
@@ -61,7 +74,7 @@ export function AlertResponses() {
               onClick={() => { setFeedback(""); acknowledge.mutate({ id: record.id }); }}
             >{acknowledge.isPending && acknowledge.variables?.id === record.id ? "Menyimpan…" : "Saya menerima alarm (ACK)"}</button>}
         {record.overdueAt && <p className="mt-1 text-xs text-destructive">
-          Pelanggaran tenggat tetap dicatat meskipun alarm telah dikonfirmasi.
+          Tenggat awal tetap tercatat. Pengiriman pengingat, ACK penerimaan, dan penyelesaian insiden adalah status terpisah.
         </p>}
       </li>)}
     </ul>
