@@ -5,10 +5,6 @@ import {
   BookOpen,
   BriefcaseBusiness,
   FileBadge2,
-  FileSearch,
-  FolderKanban,
-  GraduationCap,
-  Headset,
   Layers3,
   ShieldCheck,
   UsersRound,
@@ -40,37 +36,6 @@ const journeySteps = [
   },
 ];
 
-const gustaftaServiceGroups = [
-  {
-    icon: GraduationCap,
-    title: 'Kompetensi & sertifikasi',
-    links: [
-      { label: 'Ekosistem Kompetensi', href: 'https://gustafta.my.id/kompetensi-hub' },
-      { label: 'Jalur SBU–SKK', href: 'https://gustafta.my.id/#jalur-sbu-skk' },
-      { label: 'Portal SKK Ekosistem', href: 'https://gustafta.my.id/skk' },
-      { label: 'Portal SBU Mulai', href: 'https://gustafta.my.id/cek-kesiapan-sbu' },
-      { label: 'Bimtek SKK', href: 'https://bimtek-skk.gustafta.my.id/' },
-    ],
-  },
-  {
-    icon: FolderKanban,
-    title: 'Portofolio & proyek',
-    links: [
-      { label: 'Ruang Proyek Portfolio', href: 'https://gustafta.my.id/ruang-proyek' },
-      { label: 'Dokumen Proyek', href: 'https://gustafta.my.id/dokumen-proyek' },
-    ],
-  },
-  {
-    icon: Headset,
-    title: 'Dukungan profesional',
-    links: [
-      { label: 'Klinik Konsultasi', href: 'https://gustafta.my.id/klinik-konsultasi' },
-      { label: 'Bedah Dokumen', href: 'https://gustafta.my.id/bedah-dokumen' },
-      { label: 'KonstruksiAI', href: 'https://konstruksi-ai.gustafta.my.id/' },
-    ],
-  },
-];
-
 export function Home() {
   return (
     <main className="overflow-hidden bg-[#f1f7fc] text-[#15263a]">
@@ -80,7 +45,7 @@ export function Home() {
           <nav className="hidden items-center gap-7 text-sm font-semibold md:flex" aria-label="Navigasi utama">
             <a href="#cara-kerja" className="text-white/75 transition hover:text-[#a9d9ff]" data-testid="link-how-it-works">Cara kerja</a>
             <Link href="/programs" className="text-white/75 transition hover:text-[#a9d9ff]" data-testid="link-public-programs">Program</Link>
-            <a href="#ekosistem" className="text-white/75 transition hover:text-[#a9d9ff]" data-testid="link-gustafta-services">Ekosistem</a>
+            <a href="#ekosistem" className="text-white/75 transition hover:text-[#a9d9ff]" data-testid="link-pba-features">Fitur PBA</a>
             <a href="#untuk-siapa" className="text-white/75 transition hover:text-[#a9d9ff]" data-testid="link-for-who">Untuk siapa</a>
           </nav>
           <div className="flex items-center gap-2 sm:gap-4">
@@ -91,7 +56,7 @@ export function Home() {
         <nav className="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-5 py-3 text-xs font-semibold text-white/75 sm:px-8 md:hidden" aria-label="Navigasi ringkas">
           <a href="#cara-kerja" className="shrink-0" data-testid="link-mobile-how-it-works">Cara kerja</a>
           <Link href="/programs" className="shrink-0" data-testid="link-mobile-programs">Program</Link>
-          <a href="#ekosistem" className="shrink-0" data-testid="link-mobile-gustafta-services">Ekosistem</a>
+          <a href="#ekosistem" className="shrink-0" data-testid="link-mobile-pba-features">Fitur PBA</a>
           <a href="#untuk-siapa" className="shrink-0" data-testid="link-mobile-for-who">Untuk siapa</a>
         </nav>
 
@@ -229,43 +194,37 @@ export function Home() {
         <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10 lg:py-24">
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="eyebrow text-[#2878b8]">Layanan terkait · Gustafta</p>
-              <h2 className="display-font mt-4 max-w-2xl text-4xl font-semibold leading-tight sm:text-5xl">Rujukan tambahan untuk profesional konstruksi.</h2>
+              <p className="eyebrow text-[#2878b8]">Ruang kerja PBA</p>
+              <h2 className="display-font mt-4 max-w-2xl text-4xl font-semibold leading-tight sm:text-5xl">Dua cara untuk membuat pengalaman lebih jelas.</h2>
             </div>
             <p className="max-w-xl text-sm leading-6 text-[#52677c]">
-              PBA tetap menjadi ruang profil kompetensi dan Professional Passport. Tautan berikut menuju layanan eksternal Gustafta, bukan fitur yang terhubung ke akun PBA.
+              Catatan pengalaman dan rencana pengembangan kompetensi berada di dalam PBA. Mulailah dengan mencatat proyek, lalu lanjutkan dengan program dan alat perencanaan yang tersedia.
             </p>
           </div>
-          <div className="mt-9 grid gap-4 lg:grid-cols-3">
-            {gustaftaServiceGroups.map(({ icon: Icon, title, links }) => (
-              <article key={title} className="rounded-xl border border-[#c7d9e8] bg-white/80 p-5 sm:p-6" data-testid={`card-gustafta-${title.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}`}>
-                <div className="flex items-center gap-3 border-b border-[#dbe7f0] pb-4">
-                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#e4f1fc] text-[#246da8]"><Icon size={19} aria-hidden="true" /></span>
-                  <h3 className="display-font text-xl font-semibold">{title}</h3>
-                </div>
-                <ul className="mt-3 divide-y divide-[#e5edf4]">
-                  {links.map(({ label, href }) => (
-                    <li key={label}>
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex items-center justify-between gap-3 py-3 text-sm font-semibold text-[#294967] transition hover:text-[#176ba9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2878b8]"
-                        data-testid={`link-gustafta-${label.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}`}
-                      >
-                        <span>{label}</span>
-                        <ArrowUpRight size={16} className="shrink-0 text-[#5d87a8] transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            ))}
+          <div className="mt-9 grid gap-5 lg:grid-cols-[1.1fr_.9fr]">
+            <article className="relative overflow-hidden rounded-2xl bg-[#142a43] p-6 text-[#f4f8fc] sm:p-8" data-testid="card-pba-project-portfolio">
+              <div aria-hidden="true" className="absolute -right-12 -top-16 h-56 w-56 rounded-full border border-[#a9d9ff]/20" />
+              <div className="relative">
+                <span className="grid h-11 w-11 place-items-center rounded-lg bg-[#a9d9ff]/15 text-[#a9d9ff]"><BriefcaseBusiness size={21} /></span>
+                <p className="eyebrow mt-6 text-[#a9d9ff]">01 / pengalaman kerja</p>
+                <h3 className="display-font mt-2 max-w-lg text-3xl font-semibold">Portofolio proyek yang Anda kelola.</h3>
+                <p className="mt-3 max-w-xl text-sm leading-6 text-[#c3d0df]">Catat peran dan kontribusi proyek, simpan sebagai draft, lalu ajukan untuk ditinjau. Catatan tersimpan pada akun PBA Anda dan dapat diperbarui sesuai statusnya.</p>
+                <Link href="/sign-up" className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[#a9d9ff] px-4 py-2.5 text-sm font-bold text-[#0b1524] hover:bg-[#cce8ff]" data-testid="link-project-portfolio-signup">Buat akun untuk mulai <ArrowRight size={15} /></Link>
+              </div>
+            </article>
+            <article className="flex flex-col justify-between rounded-2xl border border-[#c7d9e8] bg-[#e5f1fb] p-6 sm:p-8" data-testid="card-pba-competency-journey">
+              <div>
+                <span className="grid h-11 w-11 place-items-center rounded-lg bg-white text-[#246da8]"><BookOpen size={21} /></span>
+                <p className="eyebrow mt-6 text-[#2878b8]">02 / perencanaan kompetensi</p>
+                <h3 className="display-font mt-2 text-3xl font-semibold text-[#15263a]">Jalur kompetensi dalam aplikasi.</h3>
+                <p className="mt-3 text-sm leading-6 text-[#52677c]">Gunakan diagnostik untuk refleksi pribadi, lihat progres belajar, dan jelajahi program PBA, termasuk Bimtek yang tersedia. Jalur ini membantu merencanakan langkah belajar, bukan menetapkan persyaratan atau menerbitkan sertifikasi.</p>
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href="/sign-up" className="inline-flex items-center gap-2 rounded-lg bg-[#176ba9] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#115681]" data-testid="link-journey-signup">Mulai perjalanan PBA <ArrowRight size={15} /></Link>
+                <Link href="/programs" className="inline-flex items-center gap-2 rounded-lg border border-[#aac6dc] px-4 py-2.5 text-sm font-bold text-[#1a629e] hover:bg-white/70" data-testid="link-journey-programs">Lihat program <ArrowUpRight size={15} /></Link>
+              </div>
+            </article>
           </div>
-          <p className="mt-5 flex items-start gap-2 text-xs leading-5 text-[#60758a]">
-            <FileSearch size={15} className="mt-0.5 shrink-0 text-[#2878b8]" aria-hidden="true" />
-            Informasi, akses akun, dan pengelolaan data pada layanan tersebut mengikuti situs masing-masing.
-          </p>
         </div>
       </section>
 

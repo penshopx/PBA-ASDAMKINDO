@@ -1,4 +1,4 @@
-import { Bell, BookOpen, BriefcaseBusiness, ChevronDown, ClipboardCheck, Compass, House, LogOut, Menu, Search, Sparkles, X, UserCircle, Users } from 'lucide-react';
+import { Bell, BookOpen, BriefcaseBusiness, ChevronDown, ClipboardCheck, Compass, FolderKanban, House, LogOut, Menu, Search, Sparkles, X, UserCircle, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth, useClerk } from '@clerk/react';
@@ -9,7 +9,8 @@ import { Skeleton } from '@/components/ui-kit';
 const memberNav = [
   { href: '/member/dashboard', label: 'Ringkasan', icon: House },
   { href: '/programs', label: 'Program belajar', icon: BookOpen },
-  { href: '/member/journey', label: 'Perjalanan kompetensi', icon: Sparkles },
+  { href: '/member/journey', label: 'Jalur kompetensi', icon: Sparkles },
+  { href: '/member/projects', label: 'Portofolio proyek', icon: FolderKanban },
   { href: '/member/passport', label: 'Paspor Profesional', icon: UserCircle },
   { href: '/notifications', label: 'Notifikasi', icon: Bell },
 ];

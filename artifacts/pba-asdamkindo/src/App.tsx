@@ -25,6 +25,7 @@ import NotFound from '@/pages/not-found';
 import { useGetCurrentUser } from '@workspace/api-client-react';
 import VideoWithControls from '@/components/video/VideoWithControls';
 import { CompanyTalent } from '@/pages/company-talent';
+import { MemberProjects } from '@/pages/member-projects';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -71,6 +72,7 @@ function AppRoutes({ clerkReady }: { clerkReady: boolean }) {
     <Route path="/app">{() => clerkReady ? <EntryRoute /> : <Redirect to="/" />}</Route>
     <Route path="/member/dashboard">{() => <Protected><AppShell><MemberDashboard /></AppShell></Protected>}</Route>
     <Route path="/member/journey">{() => <Protected><AppShell><MemberJourney /></AppShell></Protected>}</Route>
+    <Route path="/member/projects">{() => <Protected><MemberOnly><AppShell><MemberProjects /></AppShell></MemberOnly></Protected>}</Route>
     <Route path="/member/passport">{() => <Protected><MemberOnly><AppShell><MemberPassportPage /></AppShell></MemberOnly></Protected>}</Route>
     <Route path="/passport/:slug" component={PublicPassportPage} />
     <Route path="/company/dashboard">{() => <Protected><CompanyOnly><AppShell><CompanyDashboard /></AppShell></CompanyOnly></Protected>}</Route>
