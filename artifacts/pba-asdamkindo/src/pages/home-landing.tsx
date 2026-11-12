@@ -5,8 +5,11 @@ import {
   BookOpen,
   BriefcaseBusiness,
   FileBadge2,
+  FileSearch,
+  FolderKanban,
+  GraduationCap,
+  Headset,
   Layers3,
-  LockKeyhole,
   ShieldCheck,
   UsersRound,
 } from 'lucide-react';
@@ -37,6 +40,37 @@ const journeySteps = [
   },
 ];
 
+const gustaftaServiceGroups = [
+  {
+    icon: GraduationCap,
+    title: 'Kompetensi & sertifikasi',
+    links: [
+      { label: 'Ekosistem Kompetensi', href: 'https://gustafta.my.id/kompetensi-hub' },
+      { label: 'Jalur SBU–SKK', href: 'https://gustafta.my.id/#jalur-sbu-skk' },
+      { label: 'Portal SKK Ekosistem', href: 'https://gustafta.my.id/skk' },
+      { label: 'Portal SBU Mulai', href: 'https://gustafta.my.id/cek-kesiapan-sbu' },
+      { label: 'Bimtek SKK', href: 'https://bimtek-skk.gustafta.my.id/' },
+    ],
+  },
+  {
+    icon: FolderKanban,
+    title: 'Portofolio & proyek',
+    links: [
+      { label: 'Ruang Proyek Portfolio', href: 'https://gustafta.my.id/ruang-proyek' },
+      { label: 'Dokumen Proyek', href: 'https://gustafta.my.id/dokumen-proyek' },
+    ],
+  },
+  {
+    icon: Headset,
+    title: 'Dukungan profesional',
+    links: [
+      { label: 'Klinik Konsultasi', href: 'https://gustafta.my.id/klinik-konsultasi' },
+      { label: 'Bedah Dokumen', href: 'https://gustafta.my.id/bedah-dokumen' },
+      { label: 'KonstruksiAI', href: 'https://konstruksi-ai.gustafta.my.id/' },
+    ],
+  },
+];
+
 export function Home() {
   return (
     <main className="overflow-hidden bg-[#f1f7fc] text-[#15263a]">
@@ -46,6 +80,7 @@ export function Home() {
           <nav className="hidden items-center gap-7 text-sm font-semibold md:flex" aria-label="Navigasi utama">
             <a href="#cara-kerja" className="text-white/75 transition hover:text-[#a9d9ff]" data-testid="link-how-it-works">Cara kerja</a>
             <Link href="/programs" className="text-white/75 transition hover:text-[#a9d9ff]" data-testid="link-public-programs">Program</Link>
+            <a href="#ekosistem" className="text-white/75 transition hover:text-[#a9d9ff]" data-testid="link-gustafta-services">Ekosistem</a>
             <a href="#untuk-siapa" className="text-white/75 transition hover:text-[#a9d9ff]" data-testid="link-for-who">Untuk siapa</a>
           </nav>
           <div className="flex items-center gap-2 sm:gap-4">
@@ -56,6 +91,7 @@ export function Home() {
         <nav className="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-5 py-3 text-xs font-semibold text-white/75 sm:px-8 md:hidden" aria-label="Navigasi ringkas">
           <a href="#cara-kerja" className="shrink-0" data-testid="link-mobile-how-it-works">Cara kerja</a>
           <Link href="/programs" className="shrink-0" data-testid="link-mobile-programs">Program</Link>
+          <a href="#ekosistem" className="shrink-0" data-testid="link-mobile-gustafta-services">Ekosistem</a>
           <a href="#untuk-siapa" className="shrink-0" data-testid="link-mobile-for-who">Untuk siapa</a>
         </nav>
 
@@ -186,6 +222,50 @@ export function Home() {
               <Link href="/sign-up" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#a9d9ff]" data-testid="link-company-cta">Jelajahi PBA untuk perusahaan <ArrowRight size={15} /></Link>
             </article>
           </div>
+        </div>
+      </section>
+
+      <section id="ekosistem" className="scroll-mt-6 bg-[#f1f7fc]">
+        <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10 lg:py-24">
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="eyebrow text-[#2878b8]">Layanan terkait · Gustafta</p>
+              <h2 className="display-font mt-4 max-w-2xl text-4xl font-semibold leading-tight sm:text-5xl">Rujukan tambahan untuk profesional konstruksi.</h2>
+            </div>
+            <p className="max-w-xl text-sm leading-6 text-[#52677c]">
+              PBA tetap menjadi ruang profil kompetensi dan Professional Passport. Tautan berikut menuju layanan eksternal Gustafta, bukan fitur yang terhubung ke akun PBA.
+            </p>
+          </div>
+          <div className="mt-9 grid gap-4 lg:grid-cols-3">
+            {gustaftaServiceGroups.map(({ icon: Icon, title, links }) => (
+              <article key={title} className="rounded-xl border border-[#c7d9e8] bg-white/80 p-5 sm:p-6" data-testid={`card-gustafta-${title.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}`}>
+                <div className="flex items-center gap-3 border-b border-[#dbe7f0] pb-4">
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#e4f1fc] text-[#246da8]"><Icon size={19} aria-hidden="true" /></span>
+                  <h3 className="display-font text-xl font-semibold">{title}</h3>
+                </div>
+                <ul className="mt-3 divide-y divide-[#e5edf4]">
+                  {links.map(({ label, href }) => (
+                    <li key={label}>
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center justify-between gap-3 py-3 text-sm font-semibold text-[#294967] transition hover:text-[#176ba9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2878b8]"
+                        data-testid={`link-gustafta-${label.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}`}
+                      >
+                        <span>{label}</span>
+                        <ArrowUpRight size={16} className="shrink-0 text-[#5d87a8] transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+          <p className="mt-5 flex items-start gap-2 text-xs leading-5 text-[#60758a]">
+            <FileSearch size={15} className="mt-0.5 shrink-0 text-[#2878b8]" aria-hidden="true" />
+            Informasi, akses akun, dan pengelolaan data pada layanan tersebut mengikuti situs masing-masing.
+          </p>
         </div>
       </section>
 
