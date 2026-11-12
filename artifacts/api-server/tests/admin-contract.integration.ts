@@ -1074,6 +1074,11 @@ try {
   });
   result = await requestAs(adminId, "/admin/observability/responses/nonexistent/ack", { method: "POST" });
   assert.equal(result.response.status, 404);
+  await assertJsonError(
+    `/admin/observability/responses/nonexistent-${suffix}/resolve`,
+    404,
+    { method: "POST", headers: { "x-test-user": adminId } },
+  );
   await assertContract(
     "/admin/observability",
     200,

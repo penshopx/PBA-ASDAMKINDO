@@ -44,9 +44,11 @@ melakukan uji ini.
    notifikasi perangkat, dan memeriksa pengaturan jangan-ganggu. Jangan menganggap
    pesan kanal otomatis membunyikan perangkat.
 2. Admin masuk ke **Operasional → Alarm piket** lalu menekan **Kirim UJI ALARM**
-   satu kali. Pesan jelas berlabel uji, bukan insiden.
+   satu kali. Pesan jelas berlabel uji, bukan insiden. Tombol ini menguji kanal
+   pengiriman dan membuat catatan respons yang dapat di-ACK, tetapi sengaja tidak
+   menjadwalkan pengingat ACK Slack.
 3. Periksa status **delivered**, waktu, jumlah percobaan, dan ID di dashboard.
-   Endpoint yang sama tersedia untuk admin:
+   Endpoint pengiriman uji tersedia untuk admin:
    `POST /api/admin/observability/test-alert`.
    Pemeriksaan status: `GET /api/admin/observability`.
 4. Petugas mengonfirmasi bahwa notifikasi benar-benar diterima di perangkat,
@@ -69,6 +71,10 @@ cooldown. Jangan mengubah metrik produksi untuk memicu alarm uji.
 - `delivered`: penyedia menerima pesan; **bukan** konfirmasi penerimaan manusia.
 - `failed`: seluruh percobaan pengiriman gagal. Periksa kode kegagalan di
   dashboard dan kesehatan integrasi. Slack HTTP 200 dengan `ok:false` tetap gagal.
+- Alarm dari tombol **Kirim UJI ALARM** tidak mengirim pengingat ACK otomatis.
+  Tombol tersebut tidak dapat digunakan untuk membuktikan pengiriman pengingat;
+  uji pengingat membutuhkan pemicu khusus yang mengaktifkan pengingat tanpa
+  mengubah ambang alarm produksi.
 
 Status, jumlah percobaan, waktu, kode kegagalan, kunci deduplikasi, dan cooldown
 disimpan di PostgreSQL, bukan memori proses. Semua instance harus memakai
@@ -150,9 +156,11 @@ bukti aktivasi pada lingkungan produksi.
   Semua respons yang belum dikonfirmasi tetap ditampilkan, plus 50 ACK terbaru.
 - `overdueAt` mencatat waktu tenggat yang terlewati dan tidak dihapus oleh ACK
   terlambat. Transisi keterlambatan dicatat satu kali melalui conditional update.
-- Uji manual tanggal 25 pukul 09.00 WIB: kirim satu alarm uji, sengaja jangan ACK
-  sampai melewati tenggat, pastikan status terlambat muncul, lalu ACK dan pastikan
-  status berubah menjadi dikonfirmasi terlambat. Verifikasi lagi setelah reload.
+- Uji manual tanggal 25 pukul 09.00 WIB: tombol **Kirim UJI ALARM** dapat menguji
+  pencatatan tenggat, status terlambat, ACK, dan penyelesaian insiden. Tombol ini
+  tidak menguji pengiriman pengingat Slack. Uji pengingat Slack tetap menunggu
+  pemicu khusus yang aman; jangan mengubah ambang alarm produksi untuk memicunya.
+  Verifikasi ACK dan penyelesaian setelah reload.
   **SMS, WhatsApp, telepon, dan eskalasi ke penerima lain belum diaktifkan.**
 - Gangguan database membuat ACK tidak dapat disimpan; jangan menganggap ACK
   berhasil jika dashboard melaporkan kegagalan. Pemantauan independen di luar

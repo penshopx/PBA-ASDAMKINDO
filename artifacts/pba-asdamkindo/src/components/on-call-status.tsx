@@ -47,7 +47,8 @@ export function OnCallStatus() {
     <h2 className="text-xl font-bold">Observability — alarm piket</h2>
     <p className="mt-2 text-sm text-muted-foreground">
       Delivered berarti penyedia menerima pesan, bukan bukti perangkat petugas berbunyi.
-      Riwayat menampilkan proses server ini dan direset saat server dimulai ulang.
+      Riwayat tersimpan bersama di database dan tetap tersedia setelah server dimulai ulang.
+      Kirim UJI ALARM menguji kanal dan alur ACK, tetapi tidak menjadwalkan pengingat ACK Slack.
     </p>
     {query.isLoading && <p className="mt-4" role="status">Memuat status kanal…</p>}
     {query.isError && <p className="mt-4 text-destructive" role="alert">
@@ -70,7 +71,7 @@ export function OnCallStatus() {
         <button className="rounded-lg border border-border px-4 py-2 text-sm" onClick={() => query.refetch()}>Perbarui status</button>
       </div>
       {delivery.recent.length === 0
-        ? <p className="mt-4 text-sm text-muted-foreground">Belum ada pengiriman sejak server dimulai.</p>
+        ? <p className="mt-4 text-sm text-muted-foreground">Belum ada pengiriman pada riwayat tersimpan.</p>
         : <ul className="mt-4 space-y-3">
           {delivery.recent.map(record => <li key={record.deduplicationKey} className="rounded-lg border border-border p-3 text-sm">
             <strong>{record.alertName}</strong>
