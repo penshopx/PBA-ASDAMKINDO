@@ -53,6 +53,11 @@ export function Home() {
             <ButtonLink href="/sign-up" className="!bg-[#a9d9ff] !px-3 !py-2 !text-[#0b1524] hover:!bg-[#cce8ff] sm:!px-4" testId="link-sign-up">Buat akun</ButtonLink>
           </div>
         </header>
+        <nav className="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-5 py-3 text-xs font-semibold text-white/75 sm:px-8 md:hidden" aria-label="Navigasi ringkas">
+          <a href="#cara-kerja" className="shrink-0" data-testid="link-mobile-how-it-works">Cara kerja</a>
+          <Link href="/programs" className="shrink-0" data-testid="link-mobile-programs">Program</Link>
+          <a href="#untuk-siapa" className="shrink-0" data-testid="link-mobile-for-who">Untuk siapa</a>
+        </nav>
 
         <section className="relative isolate">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 opacity-20 [background-image:linear-gradient(rgba(169,217,255,.12)_1px,transparent_1px),linear-gradient(90deg,rgba(169,217,255,.12)_1px,transparent_1px)] [background-size:48px_48px]" />
@@ -81,7 +86,7 @@ export function Home() {
               <div className="relative rounded-2xl border border-[#a9d9ff]/25 bg-[#13243a] p-4 shadow-[0_28px_80px_rgba(0,0,0,.32)] sm:p-6">
                 <div className="flex items-center justify-between border-b border-white/10 pb-4">
                   <span className="eyebrow text-[.58rem] text-[#a9d9ff]">PBA / Professional Passport</span>
-                  <span className="flex items-center gap-1.5 text-[.65rem] font-semibold text-[#c1d8eb]"><LockKeyhole size={13} /> Kendali privasi</span>
+                  <span className="rounded border border-[#a9d9ff]/25 px-2 py-1 text-[.58rem] font-bold uppercase tracking-wider text-[#c1d8eb]">Ilustrasi</span>
                 </div>
                 <div className="flex items-center gap-3 py-5">
                   <span className="grid h-11 w-11 place-items-center rounded-full bg-[#213b59] text-[#a9d9ff]"><UsersRound size={22} /></span>
