@@ -1,0 +1,52 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+:root {
+  --background: 43 33% 96%;
+  --foreground: 195 27% 18%;
+  --border: 38 23% 84%;
+  --card: 42 39% 98%;
+  --card-foreground: 195 27% 18%;
+  --sidebar: 196 31% 18%;
+  --sidebar-foreground: 43 33% 96%;
+  --sidebar-border: 195 25% 29%;
+  --sidebar-primary: 34 91% 55%;
+  --sidebar-primary-foreground: 195 27% 18%;
+  --sidebar-accent: 195 25% 25%;
+  --sidebar-accent-foreground: 43 33% 96%;
+  --primary: 34 91% 55%;
+  --primary-foreground: 195 27% 18%;
+  --secondary: 195 25% 90%;
+  --secondary-foreground: 195 27% 18%;
+  --muted: 42 23% 91%;
+  --muted-foreground: 196 12% 45%;
+  --accent: 170 34% 40%;
+  --accent-foreground: 42 39% 98%;
+  --destructive: 4 68% 48%;
+  --destructive-foreground: 42 39% 98%;
+  --input: 38 23% 84%;
+  --ring: 34 91% 55%;
+  --app-font-sans: "DM Sans", sans-serif;
+  --app-font-serif: "Space Grotesk", sans-serif;
+  --app-font-mono: "Space Grotesk", monospace;
+  --radius: 0.75rem;
+}
+
+.display-font {
+  font-family: var(--app-font-serif);
+  letter-spacing: -0.045em;
+}
+
+.eyebrow {
+  font-family: var(--app-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.69rem;
+  font-weight: 700;
+}
+
+.grid-paper {
+  background-image:
+    linear-gradient(hsl(var(--foreground) / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+}

@@ -11,7 +11,8 @@ import { AdminOnly, AppShell, CompanyOnly, MemberOnly, Protected } from '@/compo
 import { AuthUnavailable, SignInPage, SignUpPage } from '@/pages/auth';
 import { AdminDashboard, CompanyDashboard, MemberDashboard } from '@/pages/portal';
 import { CompanyOnboarding, MemberOnboarding } from '@/pages/onboarding';
-import { Home, ProgramDetail, Programs } from '@/pages/public';
+import { ProgramDetail, Programs } from '@/pages/public';
+import { Home } from '@/pages/home-landing';
 import { Notifications } from '@/pages/notifications';
 import { AdminOperations } from '@/pages/admin-operations';
 import { Legal } from '@/pages/legal';
